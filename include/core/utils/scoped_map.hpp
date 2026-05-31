@@ -1,4 +1,4 @@
-// core/scoped_map.hpp
+// core/utils/scoped_map.hpp
 
 
 #pragma once
@@ -10,7 +10,6 @@
 #include <functional>
 #include <stdexcept>
 #include <algorithm>
-#include <ranges>
 
 namespace core {
 
@@ -25,7 +24,7 @@ public:
         scopes_.push_back(std::make_unique<scope>());
     }
 
-    void pop() noexcept {
+    void pop() {
         if (scopes_.size() > 1) scopes_.pop_back();
     }
 

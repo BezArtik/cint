@@ -1,4 +1,4 @@
-// include/ast/expression.hpp
+// ast/expression.hpp
 
 #pragma once
 
@@ -96,9 +96,5 @@ struct call_expr {
         : callee_(callee), args_(std::move(args)), line_(line), column_(column) {
     }
 };
-
-
-
-using expr_ptr = std::unique_ptr<expression>;
 
 } // namespace ast

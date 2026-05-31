@@ -1,4 +1,4 @@
-// core/error_report.hpp
+// core/error/error_report.hpp
 
 
 #pragma once
@@ -7,7 +7,6 @@
 #include <string>
 #include <format>
 #include <iostream>
-#include <utility>
 
 namespace core {
 

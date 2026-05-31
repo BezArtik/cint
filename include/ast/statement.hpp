@@ -1,4 +1,4 @@
-// include/ast/statement.hpp
+// ast/statement.hpp
 
 #pragma once
 

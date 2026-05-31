@@ -1,8 +1,7 @@
-// core/token_types.hpp
+// core/token/token_types.hpp
 
 
 #pragma once
-#include "core/token/token.hpp"
 #include <vector>
 #include <memory>
 #include <variant>

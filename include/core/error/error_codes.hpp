@@ -1,4 +1,4 @@
-// core/error_codes.hpp
+// core/error/error_codes.hpp
 
 
 #pragma once

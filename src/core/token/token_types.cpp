@@ -1,4 +1,4 @@
-// core/error/token_types.cpp
+// core/token/token_types.cpp
 
 #include "core/token/token_types.hpp"
 #include <vector>

@@ -1,4 +1,4 @@
-// core/error_report.cpp
+// core/error/error_report.cpp
 
 
 #include "core/error/error_report.hpp"

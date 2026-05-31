@@ -52,7 +52,6 @@ private:
     ast::expression factor();
     ast::expression unary();
 
-    ast::expression postfix_unary(ast::expr_ptr operand);
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
 

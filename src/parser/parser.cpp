@@ -1,4 +1,4 @@
-// src/parser/parser.cpp
+// parser/parser.cpp
 
 #include "parser/parser.hpp"
 #include "core/token/token_types.hpp"

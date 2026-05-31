@@ -1,4 +1,4 @@
-// src/main.cpp
+// main.cpp
 
 #include "core/token/token.hpp"
 #include "core/error/error_report.hpp"

@@ -1,4 +1,4 @@
-// src/debug/debug.cpp
+// debug/debug.cpp
 
 
 #include "debug/debug.hpp"
@@ -9,13 +9,14 @@
 #include <iostream>
 #include <iomanip>
 #include <string>
+#include <cstdint>
 
 
 namespace debug {
 
 namespace {
 
-std::string indent_str(int level) {
+std::string indent_str(uint32_t level) {
     return std::string(static_cast<size_t>(level) * 2, ' ');
 }
 
@@ -62,19 +63,19 @@ const char* token_type_name(core::token_type t) {
 
 
 
-void print_literal(const ast::literal_expr& e, int level) {
+void print_literal(const ast::literal_expr& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Literal: " << e.value_.lexeme_
         << " [line " << e.line_ << ":" << e.column_ << "]\n";
 }
 
-void print_variable(const ast::variable_expr& e, int level) {
+void print_variable(const ast::variable_expr& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Variable: " << e.name_.lexeme_
         << " [line " << e.line_ << ":" << e.column_ << "]\n";
 }
 
-void print_binary(const std::unique_ptr<ast::binary_expr>& e, int level) {
+void print_binary(const std::unique_ptr<ast::binary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Binary: " << e->op_.lexeme_
         << " [line " << e->line_ << ":" << e->column_ << "]\n";
@@ -86,7 +87,7 @@ void print_binary(const std::unique_ptr<ast::binary_expr>& e, int level) {
     print_expression(e->right_, level + 2);
 }
 
-void print_unary(const std::unique_ptr<ast::unary_expr>& e, int level) {
+void print_unary(const std::unique_ptr<ast::unary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Unary: " << e->op_.lexeme_
         << " [line " << e->line_ << ":" << e->column_ << "]\n";
@@ -94,7 +95,7 @@ void print_unary(const std::unique_ptr<ast::unary_expr>& e, int level) {
     print_expression(e->operand_, level + 1);
 }
 
-void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, int level) {
+void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Postfix: " << e->op_.lexeme_
         << " [line " << e->line_ << ":" << e->column_ << "]\n";
@@ -102,7 +103,7 @@ void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, int level) {
     print_expression(e->operand_, level + 1);
 }
 
-void print_call(const std::unique_ptr<ast::call_expr>& e, int level) {
+void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Call: " << e->callee_.lexeme_
         << " [line " << e->line_ << ":" << e->column_ << "]";
@@ -120,12 +121,12 @@ void print_call(const std::unique_ptr<ast::call_expr>& e, int level) {
 }
 
 
-void print_expression_stmt(const ast::expression_stmt& s, int level) {
+void print_expression_stmt(const ast::expression_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "ExpressionStmt\n";
     print_expression(s.expr_, level + 1);
 }
 
-void print_var_declaration(const ast::var_declaration& s, int level) {
+void print_var_declaration(const ast::var_declaration& s, uint32_t level) {
     std::cerr << indent_str(level)
         << "VarDeclaration: " << s.name_.lexeme_
         << " : " << type_name(s.type_);
@@ -133,13 +134,12 @@ void print_var_declaration(const ast::var_declaration& s, int level) {
     if (s.initializer_) {
         std::cerr << " =\n";
         print_expression(*s.initializer_, level + 1);
-    }
-    else {
+    } else {
         std::cerr << "\n";
     }
 }
 
-void print_block(const ast::block_stmt& s, int level) {
+void print_block(const ast::block_stmt& s, uint32_t level) {
     std::cerr << indent_str(level)
         << "BlockStmt [" << s.statements_.size() << " statements]\n";
 
@@ -148,7 +148,7 @@ void print_block(const ast::block_stmt& s, int level) {
     }
 }
 
-void print_while(const ast::while_stmt& s, int level) {
+void print_while(const ast::while_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "WhileStmt\n";
     std::cerr << indent_str(level + 1) << "Condition:\n";
     print_expression(s.condition_, level + 2);
@@ -156,7 +156,7 @@ void print_while(const ast::while_stmt& s, int level) {
     print_statement(*s.body_, level + 2);
 }
 
-void print_for(const ast::for_stmt& s, int level) {
+void print_for(const ast::for_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "ForStmt\n";
 
     if (s.initializer_) {
@@ -178,7 +178,7 @@ void print_for(const ast::for_stmt& s, int level) {
     print_statement(*s.body_, level + 2);
 }
 
-void print_if(const ast::if_stmt& s, int level) {
+void print_if(const ast::if_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "IfStmt\n";
 
     std::cerr << indent_str(level + 1) << "Condition:\n";
@@ -193,19 +193,18 @@ void print_if(const ast::if_stmt& s, int level) {
     }
 }
 
-void print_return(const ast::return_stmt& s, int level) {
+void print_return(const ast::return_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "ReturnStmt";
 
     if (s.value_) {
         std::cerr << "\n";
         print_expression(*s.value_, level + 1);
-    }
-    else {
+    } else {
         std::cerr << " (void)\n";
     }
 }
 
-void print_func_declaration(const ast::func_declaration& s, int level) {
+void print_func_declaration(const ast::func_declaration& s, uint32_t level) {
     std::cerr << indent_str(level)
         << "FuncDeclaration: " << s.name_.lexeme_
         << " -> " << type_name(s.return_type_) << "\n";
@@ -238,7 +237,7 @@ const char* type_name(const core::type& t) {
     return "???";
 }
 
-void print_expression(const ast::expression& expr, int level) {
+void print_expression(const ast::expression& expr, uint32_t level) {
     std::visit(core::overloaded{
         [level](const ast::literal_expr& e) { print_literal(e, level); },
         [level](const ast::variable_expr& e) { print_variable(e, level); },
@@ -249,7 +248,7 @@ void print_expression(const ast::expression& expr, int level) {
         }, expr);
 }
 
-void print_statement(const ast::statement& stmt, int level) {
+void print_statement(const ast::statement& stmt, uint32_t level) {
     std::visit(core::overloaded{
         [level](const ast::expression_stmt& s) { print_expression_stmt(s, level); },
         [level](const ast::var_declaration& s) { print_var_declaration(s, level); },
@@ -311,7 +310,7 @@ void print_semantic_info(const std::vector<std::unique_ptr<ast::statement>>&) {
 }
 
 
-void print_value(const runtime::value& val, int indent) {
+void print_value(const runtime::value& val, uint32_t indent) {
     std::cerr << indent_str(indent);
 
     auto t = val.type();
@@ -331,7 +330,7 @@ void print_value(const runtime::value& val, int indent) {
     }
 }
 
-void print_execution(const std::string& message, int indent) {
+void print_execution(const std::string& message, uint32_t indent) {
     std::cerr << indent_str(indent) << "[EXEC] " << message << "\n";
 }
 
