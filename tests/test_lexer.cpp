@@ -1,3 +1,6 @@
+// test_lexer.cpp
+
+
 #include <gtest/gtest.h>
 #include "lexer/lexer.hpp"
 #include "core/error/error_report.hpp"
@@ -6,7 +9,7 @@
 #include <string>
 #include <tuple>
 
-namespace {
+namespace tests {
 
 class lexer_harness {
 public:
@@ -276,4 +279,4 @@ TEST(lexer_test, unexpected_character) {
     EXPECT_TRUE(h.had_error());
 }
 
-} // anonymous namespace
+} // namespace tests

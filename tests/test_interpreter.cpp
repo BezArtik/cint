@@ -1,3 +1,6 @@
+// test_interpreter.cpp
+
+
 #include <gtest/gtest.h>
 #include "parser/parser.hpp"
 #include "lexer/lexer.hpp"
@@ -10,7 +13,7 @@
 #include <sstream>
 
 namespace tests {
-#if 1
+
 class interpreter_harness {
 public:
     interpreter_harness(std::string source)
@@ -96,6 +99,6 @@ INSTANTIATE_TEST_SUITE_P(all, runtime_error_test, ::testing::Values(
     runtime_error_case{ "int main() { int x = y; return 0; }",             "undefined var" }
 ));
 
-#endif
+
 
 } // namespace tests
