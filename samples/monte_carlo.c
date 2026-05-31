@@ -1,7 +1,4 @@
-// Monte Carlo method to estimate the value of pi
-// This code estimates the value of pi using the Monte Carlo method 
-// by generating random points in a unit square and counting how many 
-// fall within a quarter circle inscribed within that square.
+
 
 int monte_carlo_pi(int iterations) {
     int inside = 0;

@@ -104,7 +104,7 @@ value value::div(const value& other) const {
         return value(*as_int() / *other.as_int());
     }
     double rhs = other.to_double();
-    if (std::abs(rhs) < std::numeric_limits <double>::epsilon()) 
+    if (std::abs(rhs) < std::numeric_limits<double>::epsilon()) 
         throw core::interpret_error{core::error_code::division_by_zero};
     return value(to_double() / rhs);
 }

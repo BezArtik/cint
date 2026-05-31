@@ -12,7 +12,8 @@
 namespace parser {
 
 [[noreturn]] void parser::error(const core::token& token, core::error_code code) {
-    throw core::parse_error{ code, token.line_, token.column_ };
+    reporter_.error(token.line_, token.column_, code);
+    throw core::parse_error{};
 }
 
 parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter)
@@ -84,16 +85,13 @@ ast::stmt_ptr parser::declaration() {
                 return statement();
             }
 
-            auto type = kw->semantic_type_;
+            const auto& type = kw->semantic_type_;
             const auto& name = consume(core::token_type::IDENTIFIER,
                 core::error_code::expected_identifier);
 
             if (match({ core::token_type::LEFT_PAREN })) {
                 return func_declaration(type, name);
             } else {
-                if (type.is_void()) {
-                    error(prev(), core::error_code::void_variable);
-                }
                 return var_declaration(type, name);
             }
         }
@@ -338,7 +336,19 @@ ast::expression parser::unary() {
         return ast::expression(std::make_unique<ast::unary_expr>(
             op, std::move(operand), op.line_, op.column_));
     }
-    return primary();
+    return postfix();
+}
+
+ast::expression parser::postfix() {
+    auto expr = primary();
+
+    if (match({ core::token_type::INCREMENT, core::token_type::DECREMENT })) {
+        const auto& op = prev();
+        return ast::expression(std::make_unique<ast::postfix_expr>(
+            std::move(expr), op, op.line_, op.column_));
+    }
+
+    return expr;
 }
 
 ast::expression parser::primary() {

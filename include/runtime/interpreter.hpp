@@ -6,14 +6,13 @@
 #include "ast/statement.hpp"
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
+#include "runtime/environment.hpp"
 #include <memory>
 #include <vector>
 #include <unordered_map>
 #include <string>
 
 namespace runtime {
-
-class environment;
 
 struct return_exception {
     value return_value_;

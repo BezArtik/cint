@@ -1,5 +1,4 @@
-// Leibniz formula for π: π = 4 * (1 - 1/3 + 1/5 - 1/7 + ...)
-// This code calculates an approximation of π using the Leibniz formula.
+
 
 double leibniz_pi(int terms) {
     double pi = 0.0;

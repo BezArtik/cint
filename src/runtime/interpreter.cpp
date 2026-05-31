@@ -25,7 +25,7 @@ namespace runtime {
 
 [[noreturn]] void interpreter::error(core::error_code code, size_t line, size_t column, std::string_view msg) {
 	reporter_.error(line, column, code, msg);
-    throw core::interpret_error{ code, line, column };
+    throw core::interpret_error{ code };
 }
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug)
@@ -47,7 +47,30 @@ interpreter::scope_guard::~scope_guard() {
 
 void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
     try {
-        for (const auto& stmt : statements) execute(*stmt);
+        for (const auto& stmt : statements) {
+            if (std::holds_alternative<ast::func_declaration>(stmt->data_)) {
+                execute(*stmt);
+            }
+        }
+        for (const auto& stmt : statements) {
+            if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) {
+                execute(*stmt);
+            }
+        }
+        auto main_it = functions_.find("main");
+        if (main_it != functions_.end()) {
+            const auto& func = *main_it->second;
+            scope_guard guard(current_env_);
+            try {
+                for (const auto& s : func.body_->statements_) execute(*s);
+            } catch (const return_exception& ret) {
+                if (debug_) {
+                    std::cerr << "[main] returned ";
+                    debug::print_value(ret.return_value_);
+                }
+            }
+        }
+
     } catch (const core::interpret_error& e) {}
 }
 
@@ -233,13 +256,17 @@ value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
 
     auto left = evaluate_variable(var);
     value result;
-    switch (expr.op_.type_) {
-    case core::token_type::PLUS_EQUAL:   result = left.add(right); break;
-    case core::token_type::MINUS_EQUAL:  result = left.sub(right); break;
-    case core::token_type::STAR_EQUAL:   result = left.mul(right); break;
-    case core::token_type::SLASH_EQUAL:  result = left.div(right); break;
-    case core::token_type::PERCENT_EQUAL:result = left.mod(right); break;
-    default: error(core::error_code::unsupported_binary_operator, expr.op_.line_, expr.op_.column_);
+    try {
+        switch (expr.op_.type_) {
+        case core::token_type::PLUS_EQUAL:    result = left.add(right); break;
+        case core::token_type::MINUS_EQUAL:   result = left.sub(right); break;
+        case core::token_type::STAR_EQUAL:    result = left.mul(right); break;
+        case core::token_type::SLASH_EQUAL:   result = left.div(right); break;
+        case core::token_type::PERCENT_EQUAL: result = left.mod(right); break;
+        default: error(core::error_code::unsupported_binary_operator, expr.op_.line_, expr.op_.column_);
+        }
+    } catch (const core::interpret_error& e) {
+        error(e.code_, expr.op_.line_, expr.op_.column_);
     }
 
     if (!current_env_->assign(name, result))
@@ -263,43 +290,83 @@ value interpreter::evaluate_logical(const ast::binary_expr& expr) {
 value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
     auto right = evaluate(expr.right_);
-
-    switch (expr.op_.type_) {
-    case core::token_type::PLUS:          return left.add(right);
-    case core::token_type::MINUS:         return left.sub(right);
-    case core::token_type::STAR:          return left.mul(right);
-    case core::token_type::SLASH:         return left.div(right);
-    case core::token_type::PERCENT:       return left.mod(right);
-    case core::token_type::EQUAL_EQUAL:   return left.eq(right);
-    case core::token_type::BANG_EQUAL:    return left.neq(right);
-    case core::token_type::LESS:          return left.lt(right);
-    case core::token_type::LESS_EQUAL:    return left.le(right);
-    case core::token_type::GREATER:       return left.gt(right);
-    case core::token_type::GREATER_EQUAL: return left.ge(right);
-    default: error(core::error_code::unsupported_binary_operator, expr.op_.line_, expr.op_.column_);
+    try {
+        switch (expr.op_.type_) {
+        case core::token_type::PLUS:          return left.add(right);
+        case core::token_type::MINUS:         return left.sub(right);
+        case core::token_type::STAR:          return left.mul(right);
+        case core::token_type::SLASH:         return left.div(right);
+        case core::token_type::PERCENT:       return left.mod(right);
+        case core::token_type::EQUAL_EQUAL:   return left.eq(right);
+        case core::token_type::BANG_EQUAL:    return left.neq(right);
+        case core::token_type::LESS:          return left.lt(right);
+        case core::token_type::LESS_EQUAL:    return left.le(right);
+        case core::token_type::GREATER:       return left.gt(right);
+        case core::token_type::GREATER_EQUAL: return left.ge(right);
+        default:
+            error(core::error_code::unsupported_binary_operator,
+                expr.op_.line_, expr.op_.column_);
+        }
+    } catch (const core::interpret_error& e) {
+        error(e.code_, expr.op_.line_, expr.op_.column_);
     }
 }
 
 value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     auto operand = evaluate(expr.operand_);
 
-    switch (expr.op_.type_) {
-    case core::token_type::MINUS: {
-        if (operand.type() == core::type::int_type()) {
-            return value(-operand.as_int().value());
-        } else if (operand.type() == core::type::double_type()) {
+    try {
+        switch (expr.op_.type_) {
+        case core::token_type::MINUS: {
+            if (operand.type() == core::type::int_type())
+                return value(-operand.as_int().value());
             return value(-operand.as_double().value());
         }
-        error(core::error_code::unary_minus_requires_numeric, expr.op_.line_, expr.op_.column_);
+        case core::token_type::BANG:
+            return operand.not_op();
+
+        case core::token_type::INCREMENT:
+        case core::token_type::DECREMENT: {
+            const auto* var = std::get_if<ast::variable_expr>(&expr.operand_);
+            if (!var) {
+                error(core::error_code::increment_requires_lvalue,
+                    expr.op_.line_, expr.op_.column_);
+            }
+
+            std::string name{ var->name_.lexeme_ };
+            auto old_val = evaluate_variable(*var);
+
+            value new_val;
+            if (old_val.type() == core::type::int_type()) {
+                auto v = old_val.as_int().value();
+                new_val = value(expr.op_.type_ == core::token_type::INCREMENT
+                    ? v + 1 : v - 1);
+            } else {
+                auto v = old_val.as_double().value();
+                new_val = value(expr.op_.type_ == core::token_type::INCREMENT
+                    ? v + 1.0 : v - 1.0);
+            }
+            if (!current_env_->assign(name, new_val))
+                error(core::error_code::undefined_variable,
+                    expr.op_.line_, expr.op_.column_, name);
+            return new_val;
+        }
+
+        default:
+            error(core::error_code::unsupported_unary_operator,
+                expr.op_.line_, expr.op_.column_);
+        }
+    } catch (const core::interpret_error& e) {
+        error(e.code_, expr.op_.line_, expr.op_.column_);
     }
-    case core::token_type::BANG: {
-        return operand.not_op();
-    }
-    case core::token_type::INCREMENT:
-    case core::token_type::DECREMENT: {
-        const auto& var = std::get<ast::variable_expr>(expr.operand_);
-        std::string name{ var.name_.lexeme_ };
-        auto old_val = evaluate_variable(var);
+}
+
+value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
+    const auto* var = std::get_if<ast::variable_expr>(&expr.operand_);
+    std::string name{ var->name_.lexeme_ };
+    auto old_val = evaluate_variable(*var);
+
+    try {
         value new_val;
         if (old_val.type() == core::type::int_type()) {
             auto v = old_val.as_int().value();
@@ -308,29 +375,12 @@ value interpreter::evaluate_unary(const ast::unary_expr& expr) {
             auto v = old_val.as_double().value();
             new_val = value(expr.op_.type_ == core::token_type::INCREMENT ? v + 1.0 : v - 1.0);
         }
-        if (!current_env_->assign(name, new_val)) 
+        if (!current_env_->assign(name, new_val))
             error(core::error_code::undefined_variable, expr.op_.line_, expr.op_.column_, name);
-        return new_val;
+    } catch (const core::interpret_error& e) {
+        error(e.code_, expr.op_.line_, expr.op_.column_);
     }
-    default: error(core::error_code::unsupported_unary_operator, expr.op_.line_, expr.op_.column_);
-    }
-}
 
-value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
-    const auto& var = std::get<ast::variable_expr>(expr.operand_);
-    std::string name{ var.name_.lexeme_ };
-    auto old_val = evaluate_variable(var);
-    value new_val{};
-    if (old_val.type() == core::type::int_type()) {
-        auto v = old_val.as_int().value();
-        new_val = value(expr.op_.type_ == core::token_type::INCREMENT ? v + 1 : v - 1);
-    } else {
-        auto v = old_val.as_double().value();
-        new_val = value(expr.op_.type_ == core::token_type::INCREMENT ? v + 1.0 : v - 1.0);
-    }
-    if (!current_env_->assign(name, new_val)) 
-        error(core::error_code::undefined_variable, expr.op_.line_, expr.op_.column_, name);
-    
     return old_val;
 }
 

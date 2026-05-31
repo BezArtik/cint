@@ -54,6 +54,12 @@ void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
 void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     std::string name{ stmt.name_.lexeme_ };
 
+    if (stmt.type_.is_void()) {
+        reporter_.error(stmt.name_.line_, stmt.name_.column_,
+            core::error_code::void_variable);
+        return;
+    }
+
     if (symbols_.contains_in_current_scope(name)) {
         reporter_.error(stmt.name_.line_, stmt.name_.column_,
             core::error_code::redeclaration_variable, name);
@@ -129,9 +135,9 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
 
     auto return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
-    if (return_type != *curr_return_type_) {
-        reporter_.error(stmt.keyword_.line_, stmt.keyword_.column_,
-            core::error_code::return_type_mismatch);
+    if (!curr_return_type_->is_assignable_from(return_type)) {
+            reporter_.error(stmt.keyword_.line_, stmt.keyword_.column_,
+        core::error_code::return_type_mismatch);
     }
 }
 

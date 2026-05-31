@@ -51,6 +51,7 @@ private:
     ast::expression term();
     ast::expression factor();
     ast::expression unary();
+    ast::expression postfix();
 
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
