@@ -101,15 +101,6 @@ print("text");
 - `samples/`           -- example programs  
 
 
-## Examples
-
-`fib.c`           -- Fibonacci numbers  
-`prime.c`         -- Prime numbers 
-`monte_carlo.c`   -- Monte Carlo pi calculation  
-`leibniz.c`       -- Leibniz series for pi  
-`print_test.c`    -- Type and print demo  
-
-
 ## Architecture
 
 Pipeline: source -> Lexer -> tokens -> Parser -> AST -> TypeChecker -> checked AST -> Interpreter -> output
