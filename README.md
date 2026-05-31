@@ -120,13 +120,6 @@ Pipeline: source -> Lexer -> tokens -> Parser -> AST -> TypeChecker -> checked A
 - Interpreter -- tree-walk AST execution
 
 
-## Limitations
-
-- No arrays, pointers, or structs
-- Strings without escape sequences
-- Recursive functions may overflow (no depth limit)
-
-
 ## License
 
 MIT

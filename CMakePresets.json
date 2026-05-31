@@ -32,6 +32,16 @@
         "BUILD_TESTS": "OFF"
       }
     },
+    {
+      "name": "msvc-debug-sanitized",
+      "displayName": "MSVC Debug + ASan",
+      "description": "MSVC Debug with AddressSanitizer enabled",
+      "inherits": "msvc-debug",
+      "cacheVariables": {
+        "ENABLE_ASAN": "ON",
+        "ENABLE_WARNINGS_AS_ERRORS": "ON"
+      }
+    },
 
     {
       "name": "gcc-base",
@@ -72,6 +82,16 @@
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTS": "OFF"
       }
+    },
+    {
+      "name": "gcc-debug-sanitized",
+      "displayName": "GCC Debug + Sanitizers",
+      "description": "GCC Debug with ASan and UBSan enabled",
+      "inherits": "gcc-debug",
+      "cacheVariables": {
+        "ENABLE_SANITIZERS": "ON",
+        "ENABLE_WARNINGS_AS_ERRORS": "ON"
+      }
     }
   ],
 
@@ -88,6 +108,12 @@
       "configuration": "Release",
       "displayName": "Build MSVC Release"
     },
+    {
+      "name": "msvc-debug-sanitized",
+      "configurePreset": "msvc-debug-sanitized",
+      "configuration": "Debug",
+      "displayName": "Build MSVC Debug + ASan"
+    },
 
     {
       "name": "gcc-debug",
@@ -98,6 +124,11 @@
       "name": "gcc-release",
       "configurePreset": "gcc-release",
       "displayName": "Build GCC Release"
+    },
+    {
+      "name": "gcc-debug-sanitized",
+      "configurePreset": "gcc-debug-sanitized",
+      "displayName": "Build GCC Debug + Sanitizers"
     }
   ],
 
@@ -108,12 +139,24 @@
       "configuration": "Debug",
       "displayName": "Test MSVC Debug"
     },
+    {
+      "name": "msvc-debug-sanitized",
+      "configurePreset": "msvc-debug-sanitized",
+      "configuration": "Debug",
+      "displayName": "Test MSVC Debug + ASan"
+    },
 
     {
       "name": "gcc-debug",
       "configurePreset": "gcc-debug",
       "configuration": "Debug",
       "displayName": "Test GCC Debug"
+    },
+    {
+      "name": "gcc-debug-sanitized",
+      "configurePreset": "gcc-debug-sanitized",
+      "configuration": "Debug",
+      "displayName": "Test GCC Debug + Sanitizers"
     }
   ]
 }
