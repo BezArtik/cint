@@ -40,6 +40,8 @@ private:
     core::type type_of_unary(const ast::unary_expr& expr);
 	core::type type_of_postfix(const ast::postfix_expr& expr);
     core::type type_of_call(const ast::call_expr& expr);
+	core::type type_of_array_literal(const ast::array_literal_expr& expr);
+	core::type type_of_index(const ast::index_expr& expr);
 
 	static bool is_lvalue(const ast::expression& expr);
 

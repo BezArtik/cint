@@ -32,6 +32,11 @@ public:
     std::optional<double> as_double() const noexcept;
     std::optional<bool> as_bool() const noexcept;
     std::optional<std::string> as_string() const noexcept;
+	std::optional<std::vector<value>> as_array() const noexcept;
+
+    size_t array_size() const;
+    const value& element_at(size_t index) const;
+    value& element_at(size_t index);
 
     value add(const value& other) const;
     value sub(const value& other) const;
@@ -56,6 +61,7 @@ private:
         double,
         bool,
         std::string,
+		std::vector<value>,
         std::monostate
     > data_;
 };

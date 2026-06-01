@@ -103,8 +103,24 @@ ast::stmt_ptr parser::declaration() {
 }
 
 ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
+    std::optional<ast::expression> array_size;
+
+    if (match({ core::token_type::LEFT_BRACKET })) {
+        if (!check(core::token_type::RIGHT_BRACKET)) {
+            array_size = expression();
+        }
+        consume(core::token_type::RIGHT_BRACKET, core::error_code::expected_right_bracket);
+		type = core::type::array_type(type, 0);
+    }
+
     std::optional<ast::expression> initializer;
-    if (match({ core::token_type::EQUAL })) initializer = expression();
+    if (match({ core::token_type::EQUAL })) {
+        if (match({ core::token_type::LEFT_BRACE })) {
+            initializer = array_literal();
+        } else {
+            initializer = expression();
+        }
+    }
     consume(core::token_type::SEMICOLON, core::error_code::expected_semicolon);
     return std::make_unique<ast::statement>(
         ast::var_declaration(type, name, std::move(initializer))
@@ -189,9 +205,9 @@ ast::stmt_ptr parser::for_statement() {
     ast::stmt_ptr initializer;
     if (match({ core::token_type::SEMICOLON })) {}
     else if (match({ core::token_type::KEYWORD })) {
-        auto kw = prev().as_keyword();
+        const auto& kw = prev().as_keyword();
         if (kw && is_type_keyword(*kw)) {
-            auto type = kw->semantic_type_;
+            const auto& type = kw->semantic_type_;
             initializer = var_declaration(type,
                 consume(core::token_type::IDENTIFIER, core::error_code::expected_identifier));
         } else {
@@ -342,13 +358,34 @@ ast::expression parser::unary() {
 ast::expression parser::postfix() {
     auto expr = primary();
 
-    if (match({ core::token_type::INCREMENT, core::token_type::DECREMENT })) {
-        const auto& op = prev();
-        return ast::expression(std::make_unique<ast::postfix_expr>(
-            std::move(expr), op, op.line_, op.column_));
+    while (true) {
+        if (match({ core::token_type::LEFT_BRACKET })) {
+			expr = finish_index(std::move(expr));
+		} else if (match({ core::token_type::INCREMENT, 
+                           core::token_type::DECREMENT })) {
+			const auto& op = prev();
+			expr = ast::expression(std::make_unique<ast::postfix_expr>(
+				std::move(expr), op, op.line_, op.column_));
+        } else {
+            break;
+        }
+        
     }
 
     return expr;
+}
+
+ast::expression parser::array_literal() {
+	std::vector<ast::expression> elements;
+	const auto& brace = prev();
+	if (!check(core::token_type::RIGHT_BRACE)) {
+		do {
+			elements.push_back(expression());
+		} while (match({ core::token_type::COMMA }));
+	}
+	consume(core::token_type::RIGHT_BRACE, core::error_code::expected_right_brace);
+	return ast::expression(std::make_unique<ast::array_literal_expr>(
+		std::move(elements), brace.line_, brace.column_));
 }
 
 ast::expression parser::primary() {
@@ -380,6 +417,10 @@ ast::expression parser::primary() {
         return expr;
     }
 
+	if (match({ core::token_type::LEFT_BRACKET })) {
+		return array_literal();
+	}
+
     error(peek(), core::error_code::expected_expression);
 }
 
@@ -396,6 +437,14 @@ ast::expression parser::finish_call(const core::token& callee) {
 
     return ast::expression(std::make_unique<ast::call_expr>(
         callee, std::move(args), callee.line_, callee.column_));
+}
+
+ast::expression parser::finish_index(ast::expression object) {
+	const auto& bracket = prev();
+	auto index = expression();
+	consume(core::token_type::RIGHT_BRACKET, core::error_code::expected_right_bracket);
+	return ast::expression(std::make_unique<ast::index_expr>(
+		std::move(object), std::move(index), bracket.line_, bracket.column_));
 }
 
 void parser::synchronize() {

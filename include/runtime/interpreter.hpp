@@ -46,6 +46,8 @@ private:
     value evaluate_unary(const ast::unary_expr& expr);
 	value evaluate_postfix(const ast::postfix_expr& expr);
     value evaluate_call(const ast::call_expr& expr);
+	value evaluate_array_literal(const ast::array_literal_expr& expr);
+	value evaluate_index(const ast::index_expr& expr);
 
 	[[noreturn]] void error(core::error_code code, 
         size_t line = 0, size_t column = 0, std::string_view msg = {});

@@ -16,10 +16,11 @@ value::value() : data_(std::monostate{}) {}
 core::type value::type() const {
     return std::visit([](auto&& arg) -> core::type {
         using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, int64_t>)          return core::type::int_type();
-        else if constexpr (std::is_same_v<T, double>)      return core::type::double_type();
-        else if constexpr (std::is_same_v<T, bool>)        return core::type::bool_type();
-        else if constexpr (std::is_same_v<T, std::string>) return core::type::string_type();
+        if constexpr (std::is_same_v<T, int64_t>)                 return core::type::int_type();
+        else if constexpr (std::is_same_v<T, double>)             return core::type::double_type();
+        else if constexpr (std::is_same_v<T, bool>)               return core::type::bool_type();
+        else if constexpr (std::is_same_v<T, std::string>)        return core::type::string_type();
+		else if constexpr (std::is_same_v<T, std::vector<value>>) return core::type::array_type(core::type::unknown_type(), arg.size());
         else return core::type::void_type();
         }, data_);
 }
@@ -55,6 +56,16 @@ std::string value::to_string() const {
         else if constexpr (std::is_same_v<T, double>) return std::to_string(arg);
         else if constexpr (std::is_same_v<T, bool>) return arg ? "true" : "false";
         else if constexpr (std::is_same_v<T, std::string>) return arg;
+        else if constexpr (std::is_same_v<T, std::vector<value>>) {
+            std::string result = "{";
+            result.reserve(arg.size() * 16);
+            for (size_t i = 0; i < arg.size(); ++i) {
+                if (i > 0) result += ", ";
+                result += arg[i].to_string();
+            }
+            result += "}";
+            return result;
+        }
         else return "void";
         }, data_);
 }
@@ -63,6 +74,19 @@ std::optional<int64_t> value::as_int() const noexcept { return as<int64_t>(); }
 std::optional<double> value::as_double() const noexcept { return as<double>(); }
 std::optional<bool> value::as_bool() const noexcept { return as<bool>();}
 std::optional<std::string> value::as_string() const noexcept { return as<std::string>();}
+std::optional<std::vector<value>> value::as_array() const noexcept { return as<std::vector<value>>(); }
+
+size_t value::array_size() const {
+	return std::get<std::vector<value>>(data_).size();
+}
+
+const value& value::element_at(size_t index) const {
+	return std::get<std::vector<value>>(data_).at(index);
+}
+
+value& value::element_at(size_t index) {
+	return std::get<std::vector<value>>(data_).at(index);
+}
 
 value value::add(const value& other) const {
     auto lt = type();

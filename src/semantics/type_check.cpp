@@ -70,11 +70,17 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         auto init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
-        if (!stmt.type_.is_assignable_from(init_type)) {
-            reporter_.error(stmt.name_.line_, stmt.name_.column_,
-                core::error_code::type_mismatch_initialization, name);
-            return;
-        }
+		if (stmt.type_.is_array() && init_type.is_array()) {
+			if (!stmt.type_.is_assignable_from(init_type)) {
+				reporter_.error(stmt.name_.line_, stmt.name_.column_,
+					core::error_code::type_mismatch_initialization, name);
+				return;
+			}
+		} else if (!stmt.type_.is_assignable_from(init_type)) {
+			reporter_.error(stmt.name_.line_, stmt.name_.column_,
+				core::error_code::type_mismatch_initialization, name);
+			return;
+		}
     }
 
     symbols_.define(name, stmt.type_);
@@ -185,6 +191,8 @@ core::type type_checker::type_of(const ast::expression& expr) {
         [this](const std::unique_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
         [this](const std::unique_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
         [this](const std::unique_ptr<ast::call_expr>& e) { return type_of_call(*e); },
+		[this](const std::unique_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
+		[this](const std::unique_ptr<ast::index_expr>& e) { return type_of_index(*e); }
         }, expr);
 }
 
@@ -291,7 +299,8 @@ core::type type_checker::type_of_binary(const ast::binary_expr& expr) {
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
-    return std::holds_alternative<ast::variable_expr>(expr);
+    return std::holds_alternative<ast::variable_expr>(expr) ||
+        std::holds_alternative<std::unique_ptr<ast::index_expr>>(expr);
 }
 
 core::type type_checker::type_of_unary(const ast::unary_expr& expr) {
@@ -410,6 +419,44 @@ core::type type_checker::type_of_call(const ast::call_expr& expr) {
     }
 
     return func_type.return_type();
+}
+
+core::type type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {
+    if (expr.elements_.empty()) {
+        reporter_.error(expr.line_, expr.column_,
+            core::error_code::empty_array_literal);
+        return core::type::unknown_type();
+    }
+    auto elem_type = type_of(expr.elements_[0]);
+    if (elem_type.is_unknown()) return core::type::unknown_type();
+    for (size_t i = 1; i < expr.elements_.size(); i++) {
+        auto t = type_of(expr.elements_[i]);
+        if (t.is_unknown()) return core::type::unknown_type();
+        if (!elem_type.is_assignable_from(t)) {
+            reporter_.error(expr.line_, expr.column_,
+                core::error_code::array_literal_inconsistent_types);
+            return core::type::unknown_type();
+        }
+    }
+    auto result = core::type::array_type(elem_type, expr.elements_.size());
+    return result;
+}
+
+core::type type_checker::type_of_index(const ast::index_expr& expr) {
+    auto object_type = type_of(expr.object_);
+    auto index_type = type_of(expr.index_);
+    if (object_type.is_unknown() || index_type.is_unknown()) return core::type::unknown_type();
+    if (!object_type.is_array()) {
+        reporter_.error(expr.line_, expr.column_,
+            core::error_code::indexing_non_array);
+        return core::type::unknown_type();
+    }
+	if (!index_type.is_numeric()) {
+		reporter_.error(expr.line_, expr.column_,
+			core::error_code::indexing_non_numeric);
+		return core::type::unknown_type();
+	}
+	return object_type.element_type();
 }
 
 } // namespace semantics

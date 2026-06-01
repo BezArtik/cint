@@ -26,6 +26,8 @@ const char* token_type_name(core::token_type t) {
     case core::token_type::RIGHT_PAREN:   return "RIGHT_PAREN";
     case core::token_type::LEFT_BRACE:    return "LEFT_BRACE";
     case core::token_type::RIGHT_BRACE:   return "RIGHT_BRACE";
+	case core::token_type::LEFT_BRACKET:  return "LEFT_BRACKET";
+	case core::token_type::RIGHT_BRACKET: return "RIGHT_BRACKET";
     case core::token_type::COMMA:         return "COMMA";
     case core::token_type::DOT:           return "DOT";
     case core::token_type::SEMICOLON:     return "SEMICOLON";
@@ -120,6 +122,24 @@ void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
     }
 }
 
+void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint32_t level) {
+	std::cerr << indent_str(level)
+		<< "ArrayLiteral: [" << e->elements_.size() << " elements]"
+		<< " [line " << e->line_ << ":" << e->column_ << "]\n";
+	for (size_t i = 0; i < e->elements_.size(); ++i) {
+		std::cerr << indent_str(level + 1) << "Element " << i << ":\n";
+		print_expression(e->elements_[i], level + 2);
+	}
+}
+
+void print_index(const std::unique_ptr<ast::index_expr>& e, uint32_t level) {
+	std::cerr << indent_str(level)
+		<< "IndexExpr: [line " << e->line_ << ":" << e->column_ << "]\n";
+	std::cerr << indent_str(level + 1) << "Object:\n";
+	print_expression(e->object_, level + 2);
+	std::cerr << indent_str(level + 1) << "Index:\n";
+	print_expression(e->index_, level + 2);
+}
 
 void print_expression_stmt(const ast::expression_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "ExpressionStmt\n";
@@ -233,6 +253,7 @@ const char* type_name(const core::type& t) {
     if (t == core::type::string_type()) return "string";
     if (t == core::type::void_type())   return "void";
     if (t.is_function())                return "function";
+	if (t.is_array())                   return "array";
     if (t.is_unknown())                 return "unknown";
     return "???";
 }
@@ -245,6 +266,8 @@ void print_expression(const ast::expression& expr, uint32_t level) {
         [level](const std::unique_ptr<ast::unary_expr>& e) { print_unary(e, level); },
         [level](const std::unique_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
         [level](const std::unique_ptr<ast::call_expr>& e) { print_call(e, level); },
+		[level](const std::unique_ptr<ast::array_literal_expr>& e) { print_array_literal(e, level); },
+		[level](const std::unique_ptr<ast::index_expr>& e) { print_index(e, level); },
         }, expr);
 }
 

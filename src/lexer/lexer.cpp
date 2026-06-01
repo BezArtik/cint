@@ -33,6 +33,8 @@ void lexer::scan_token() {
     case ')': add_token(core::token_type::RIGHT_PAREN); break;
     case '{': add_token(core::token_type::LEFT_BRACE); break;
     case '}': add_token(core::token_type::RIGHT_BRACE); break;
+	case '[': add_token(core::token_type::LEFT_BRACKET); break;
+	case ']': add_token(core::token_type::RIGHT_BRACKET); break;
     case ',': add_token(core::token_type::COMMA); break;
     case '.': add_token(core::token_type::DOT); break;
     case '+': add_token(match('=') ? core::token_type::PLUS_EQUAL 

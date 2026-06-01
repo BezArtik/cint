@@ -9,7 +9,9 @@
 namespace core {
 
 enum class token_type : uint8_t {
-    LEFT_PAREN, RIGHT_PAREN, LEFT_BRACE, RIGHT_BRACE,
+    LEFT_PAREN, RIGHT_PAREN, 
+    LEFT_BRACE, RIGHT_BRACE,
+	LEFT_BRACKET, RIGHT_BRACKET,
     COMMA, DOT, SEMICOLON,
 
     PLUS, MINUS, STAR, SLASH, PERCENT,
@@ -47,6 +49,7 @@ public:
     static type unknown_type();
 
     static type function_type(type return_type, std::vector<type> param_types);
+	static type array_type(type element_type, size_t size = 0);
 
     bool is_primitive() const noexcept;
     bool is_numeric() const noexcept;
@@ -60,6 +63,11 @@ public:
     bool is_assignable_from(const type& source) const noexcept;
     type common_arithmetic_type(const type& other) const noexcept;
 
+	bool is_array() const noexcept;
+	const type& element_type() const;
+	size_t array_size() const;
+
+
     bool operator==(const type& other) const noexcept;
     bool operator!=(const type& other) const noexcept;
 
@@ -68,22 +76,30 @@ private:
     enum class kind : uint8_t {
         INT, DOUBLE, BOOL, STRING, VOID,
         FUNCTION,
+        ARRAY,
         UNKNOWN
     };
 
     struct function_info {
-        std::unique_ptr<type> return_type;
-        std::vector<type> param_types;
+        std::unique_ptr<type> return_type_;
+        std::vector<type> param_types_;
     };
 
+	struct array_info {
+        std::unique_ptr<type> element_type_;
+        size_t size_{};
+	};
+
     type(kind k);
-    type(kind k, function_info info);
+	template <typename Info>
+	type(kind k, Info info) : kind_(k), info_(std::move(info)) {}
     void swap(type& other) noexcept;
 
     kind kind_ = kind::UNKNOWN;
     std::variant<
         std::monostate,
-        function_info
+        function_info,
+		array_info
     > info_;
 };
 

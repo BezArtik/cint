@@ -104,18 +104,28 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
     else if (stmt.type_ == core::type::bool_type())   init_val = value(false);
     else if (stmt.type_ == core::type::string_type()) init_val = value(std::string(""));
     else if (stmt.type_.is_void())                    init_val = value();
+	else if (stmt.type_.is_array())                   init_val = value(std::vector<value>{});
     else error(core::error_code::unknown_type, stmt.name_.line_, stmt.name_.column_);
 
     if (stmt.initializer_) {
         auto init = evaluate(*stmt.initializer_);
-        if (stmt.type_.is_assignable_from(init.type())) {
+
+        if (stmt.type_.is_array() && init.as_array()) {
+            if (stmt.type_.array_size() > 0 &&
+                init.as_array()->size() != stmt.type_.array_size()) {
+                error(core::error_code::array_size_mismatch,
+                    stmt.name_.line_, stmt.name_.column_);
+            }
+            init_val = std::move(init);
+        } else if (stmt.type_.is_assignable_from(init.type())) {
             if (stmt.type_ == core::type::double_type() && init.type() == core::type::int_type()) {
                 init_val = value(static_cast<double>(init.as_int().value()));
             } else {
                 init_val = std::move(init);
             }
         } else {
-            error(core::error_code::type_mismatch_initialization, stmt.name_.line_, stmt.name_.column_, name);
+            error(core::error_code::type_mismatch_initialization,
+                stmt.name_.line_, stmt.name_.column_, name);
         }
     }
 
@@ -178,6 +188,8 @@ value interpreter::evaluate(const ast::expression& expr) {
         [this](const std::unique_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
         [this](const std::unique_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
         [this](const std::unique_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
+		[this](const std::unique_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
+		[this](const std::unique_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
         }, expr);
     if (debug_) {
         std::cerr << "  → ";
@@ -244,8 +256,37 @@ value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 }
 
 value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
-    const auto& var = std::get<ast::variable_expr>(expr.left_);
-    std::string name{ var.name_.lexeme_ };
+
+    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
+        const auto& var = std::get<ast::variable_expr>((*idx)->object_);
+        std::string name{ var.name_.lexeme_ };
+
+        auto arr_opt = current_env_->get(name);
+        if (!arr_opt) error(core::error_code::undefined_variable, 
+            expr.op_.line_, expr.op_.column_, name);
+
+        auto arr = std::move(*arr_opt);
+        auto index = evaluate((*idx)->index_);
+        auto right = evaluate(expr.right_);
+
+        auto i = index.as_int().value();
+        auto size = static_cast<int64_t>(arr.as_array()->size());
+
+        if (i < 0 || i >= size) {
+            error(core::error_code::index_out_of_bounds, (*idx)->line_, (*idx)->column_);
+        }
+
+        auto vec = std::move(*arr.as_array());
+        vec[static_cast<size_t>(i)] = std::move(right);
+        auto result = vec[static_cast<size_t>(i)];
+
+        current_env_->assign(name, value(std::move(vec)));
+
+        return result;
+    }
+
+    const auto* var = std::get_if<ast::variable_expr>(&expr.left_);
+    std::string name{ var->name_.lexeme_ };
     auto right = evaluate(expr.right_);
 
     if (expr.op_.type_ == core::token_type::EQUAL) {
@@ -254,7 +295,7 @@ value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
         return right;
     }
 
-    auto left = evaluate_variable(var);
+    auto left = evaluate_variable(*var);
     value result;
     try {
         switch (expr.op_.type_) {
@@ -423,6 +464,32 @@ value interpreter::evaluate_call(const ast::call_expr& expr) {
     }
 
     return result;
+}
+
+value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
+    std::vector<value> elements;
+    elements.reserve(expr.elements_.size());
+    std::ranges::transform(expr.elements_, std::back_inserter(elements),
+        [this](const auto& elem) { return evaluate(elem); });
+    return value(std::move(elements));
+}
+
+value interpreter::evaluate_index(const ast::index_expr& expr) {
+    auto obj = evaluate(expr.object_);
+    auto idx = evaluate(expr.index_);
+
+    if (!obj.as_array()) {
+        error(core::error_code::indexing_non_array, expr.line_, expr.column_);
+    }
+
+    auto i = idx.as_int().value();
+    auto size = static_cast<int64_t>(obj.as_array()->size());
+
+    if (i < 0 || i >= size) {
+        error(core::error_code::index_out_of_bounds, expr.line_, expr.column_);
+    }
+
+    return (*obj.as_array())[static_cast<size_t>(i)];
 }
 
 } // namespace runtime

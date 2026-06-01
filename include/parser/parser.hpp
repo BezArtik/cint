@@ -52,9 +52,11 @@ private:
     ast::expression factor();
     ast::expression unary();
     ast::expression postfix();
+	ast::expression array_literal();
 
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
+    ast::expression finish_index(ast::expression object);
 
     ast::func_param parse_param();
     void synchronize();

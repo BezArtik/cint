@@ -11,16 +11,22 @@
 namespace core {
 
 type::type(kind k) : kind_(k), info_(std::monostate{}) {}
-type::type(kind k, function_info info) : kind_(k), info_(std::move(info)) {}
 
 type::type(const type& other) : kind_(other.kind_) {
     if (kind_ == kind::FUNCTION) {
         const auto& src = std::get<function_info>(other.info_);
         info_ = function_info{
-            std::make_unique<type>(*src.return_type),
-            src.param_types
+            std::make_unique<type>(*src.return_type_),
+            src.param_types_
+        };
+    } else if (kind_ == kind::ARRAY) {
+        const auto& src = std::get<array_info>(other.info_);
+        info_ = array_info{
+            std::make_unique<type>(*src.element_type_),
+            src.size_
         };
     }
+
 }
 
 type& type::operator=(const type& other) {
@@ -42,15 +48,22 @@ type type::void_type() { return type(kind::VOID); }
 type type::unknown_type() { return type(kind::UNKNOWN); }
 
 type type::function_type(type return_type, std::vector<type> param_types) {
-	function_info info;
-	info.return_type = std::make_unique<type>(std::move(return_type));
-	info.param_types = std::move(param_types);
-	return type(kind::FUNCTION, std::move(info));
+    function_info info;
+    info.return_type_ = std::make_unique<type>(std::move(return_type));
+    info.param_types_ = std::move(param_types);
+    return type(kind::FUNCTION, std::move(info));
+}
+
+type type::array_type(type element_type, size_t size) {
+	array_info info;
+	info.element_type_ = std::make_unique<type>(std::move(element_type));
+	info.size_ = size;
+	return type(kind::ARRAY, std::move(info));
 }
 
 bool type::is_primitive() const noexcept {
     return kind_ == kind::INT || kind_ == kind::DOUBLE ||
-           kind_ == kind::BOOL || kind_ == kind::STRING;
+        kind_ == kind::BOOL || kind_ == kind::STRING;
 }
 
 bool type::is_numeric() const noexcept {
@@ -62,11 +75,11 @@ bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
 bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
 
 const type& type::return_type() const {
-    return *std::get<function_info>(info_).return_type;
+    return *std::get<function_info>(info_).return_type_;
 }
 
 const std::vector<type>& type::param_types() const {
-    return std::get<function_info>(info_).param_types;
+    return std::get<function_info>(info_).param_types_;
 }
 
 bool type::operator==(const type& other) const noexcept {
@@ -76,12 +89,16 @@ bool type::operator==(const type& other) const noexcept {
         const auto& lhs_info = std::get<function_info>(info_);
         const auto& rhs_info = std::get<function_info>(other.info_);
 
-        if (*lhs_info.return_type != *rhs_info.return_type) return false;
-        return lhs_info.param_types.size() == rhs_info.param_types.size() && 
-            std::ranges::equal(lhs_info.param_types, rhs_info.param_types);
+        if (*lhs_info.return_type_ != *rhs_info.return_type_) return false;
+        return lhs_info.param_types_.size() == rhs_info.param_types_.size() &&
+            std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
+    } else if (kind_ == kind::ARRAY) {
+        const auto& lhs = std::get<array_info>(info_);
+        const auto& rhs = std::get<array_info>(other.info_);
+        return *lhs.element_type_ == *rhs.element_type_ && lhs.size_ == rhs.size_;
     }
 
-    return true; 
+    return true;
 }
 
 bool type::operator!=(const type& other) const noexcept {
@@ -92,6 +109,11 @@ bool type::is_assignable_from(const type& source) const noexcept {
     if (*this == source) return true;
 
     if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
+    if (kind_ == kind::ARRAY && source.kind_ == kind::ARRAY) {
+        return element_type().is_assignable_from(source.element_type())
+            && (array_size() == 0 || source.array_size() == 0
+                || array_size() == source.array_size());
+    }
     return false;
 }
 
@@ -101,5 +123,16 @@ type type::common_arithmetic_type(const type& other) const noexcept {
     return int_type();
 }
 
+bool type::is_array() const noexcept {
+    return kind_ == kind::ARRAY;
+}
+
+const type& type::element_type() const {
+    return *std::get<array_info>(info_).element_type_;
+}
+
+size_t type::array_size() const {
+    return std::get<array_info>(info_).size_;
+}
 
 }
