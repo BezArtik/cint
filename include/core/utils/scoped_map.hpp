@@ -34,8 +34,8 @@ public:
 
     std::optional<T> get(const std::string& name) const {
         auto* scope = find_scope(name);
-        if (scope) return scope->bindings_.at(name);
-        return std::nullopt;
+		if (!scope) return std::nullopt;
+        return scope->bindings_.at(name);
     }
 
     bool contains_in_current_scope(const std::string& name) const {
@@ -44,16 +44,9 @@ public:
 
     bool assign(const std::string& name, T value) {
         auto* scope = find_scope(name);
-        if (scope) {
-            scope->bindings_[name] = std::move(value);
-            return true;
-        }
-        return false;
-    }
-
-    void update_if_exists(const std::string& name, std::function<void(T&)> updater) {
-        auto* scope = find_scope(name);
-        if (scope) updater(scope->bindings_.at(name));
+		if (!scope) { return false; }
+        scope->bindings_[name] = std::move(value);
+        return true;
     }
 
 private:
@@ -63,6 +56,7 @@ private:
     };
     std::vector<std::unique_ptr<scope>> scopes_;
 
+protected:
     scope* find_scope(const std::string& name) {
         auto it = std::find_if(scopes_.rbegin(), scopes_.rend(),
             [&](const auto& s) { return s->bindings_.contains(name); });
@@ -74,7 +68,6 @@ private:
             [&](const auto& s) { return s->bindings_.contains(name); });
         return it != scopes_.rend() ? it->get() : nullptr;
     }
-
 };
 
 }

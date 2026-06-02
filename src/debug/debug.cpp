@@ -116,7 +116,7 @@ void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
     }
 
     std::cerr << "\n";
-    for (size_t i = 0; i < e->args_.size(); ++i) {
+    for (uint32_t i = 0; i < e->args_.size(); ++i) {
         std::cerr << indent_str(level + 1) << "Arg " << i << ":\n";
         print_expression(e->args_[i], level + 2);
     }
@@ -126,7 +126,7 @@ void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint
 	std::cerr << indent_str(level)
 		<< "ArrayLiteral: [" << e->elements_.size() << " elements]"
 		<< " [line " << e->line_ << ":" << e->column_ << "]\n";
-	for (size_t i = 0; i < e->elements_.size(); ++i) {
+	for (uint32_t i = 0; i < e->elements_.size(); ++i) {
 		std::cerr << indent_str(level + 1) << "Element " << i << ":\n";
 		print_expression(e->elements_[i], level + 2);
 	}
@@ -324,7 +324,7 @@ void print_ast(const std::vector<std::unique_ptr<ast::statement>>& statements) {
 }
 
 
-void print_semantic_info(const std::vector<std::unique_ptr<ast::statement>>&) {
+void print_semantic_info() {
     std::cerr << "\n";
     std::cerr << "═══════════════════════════════════════════════════════\n";
     std::cerr << "  SEMANTIC ANALYSIS (Type Check Passed)\n";

@@ -15,7 +15,7 @@
 namespace runtime {
 
 struct return_exception {
-    value return_value_;
+    value return_value_{};
 };
 
 class interpreter {
@@ -49,8 +49,25 @@ private:
 	value evaluate_array_literal(const ast::array_literal_expr& expr);
 	value evaluate_index(const ast::index_expr& expr);
 
-	[[noreturn]] void error(core::error_code code, 
-        size_t line = 0, size_t column = 0, std::string_view msg = {});
+	value default_value(const core::type& type);
+
+    template <typename T, typename... Args>
+    [[noreturn]] void throw_error(core::error_code code, const T& t, Args&&... args) {
+        reporter_.error(t.line_, t.column_, code, std::forward<Args>(args)...);
+        throw core::interpret_error{ code };
+    }
+
+    template <typename T, typename... Args>
+    void report_error(core::error_code code, const T& t, Args&&... args) {
+        reporter_.error(t.line_, t.column_, code, std::forward<Args>(args)...);
+    }
+
+    template <typename T, typename... Args>
+    void error_if(bool condition, core::error_code code, const T& t, Args&&... args) {
+        if (condition) {
+            throw_error(code, t, std::forward<Args>(args)...);
+        }
+    }
 
     core::error_reporter& reporter_;
     std::unique_ptr<environment> global_env_;

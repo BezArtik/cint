@@ -59,7 +59,7 @@ std::string value::to_string() const {
         else if constexpr (std::is_same_v<T, std::vector<value>>) {
             std::string result = "{";
             result.reserve(arg.size() * 16);
-            for (size_t i = 0; i < arg.size(); ++i) {
+            for (uint32_t i = 0; i < arg.size(); ++i) {
                 if (i > 0) result += ", ";
                 result += arg[i].to_string();
             }
@@ -78,14 +78,6 @@ std::optional<std::vector<value>> value::as_array() const noexcept { return as<s
 
 size_t value::array_size() const {
 	return std::get<std::vector<value>>(data_).size();
-}
-
-const value& value::element_at(size_t index) const {
-	return std::get<std::vector<value>>(data_).at(index);
-}
-
-value& value::element_at(size_t index) {
-	return std::get<std::vector<value>>(data_).at(index);
 }
 
 value value::add(const value& other) const {

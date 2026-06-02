@@ -37,8 +37,8 @@ private:
 
     size_t start_ = 0;
     size_t current_ = 0;
-    size_t line_ = 1;
-    size_t column_ = 1;
+    uint32_t line_ = 1;
+    uint32_t column_ = 1;
 };
 
 } // namespace lexer

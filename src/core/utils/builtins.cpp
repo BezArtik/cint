@@ -24,7 +24,7 @@ std::vector<builtin_def> builtins() {
             type::void_type(),
             [](const auto& args) {
                 std::ostringstream oss;
-                for (size_t i = 0; i < args.size(); ++i) {
+                for (uint32_t i = 0; i < args.size(); ++i) {
                     if (i > 0) oss << " ";
                     oss << args[i].to_string();
                 }

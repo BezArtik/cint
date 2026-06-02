@@ -299,8 +299,13 @@ core::type type_checker::type_of_binary(const ast::binary_expr& expr) {
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
-    return std::holds_alternative<ast::variable_expr>(expr) ||
-        std::holds_alternative<std::unique_ptr<ast::index_expr>>(expr);
+    if (std::holds_alternative<ast::variable_expr>(expr)) {
+        return true;
+    }
+    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) {
+        return is_lvalue((*idx)->object_);
+    }
+    return false;
 }
 
 core::type type_checker::type_of_unary(const ast::unary_expr& expr) {

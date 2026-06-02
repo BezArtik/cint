@@ -22,7 +22,7 @@ void print_ast(const std::vector<std::unique_ptr<ast::statement>>& statements);
 void print_statement(const ast::statement& stmt, uint32_t level = 0);
 void print_expression(const ast::expression& expr, uint32_t level = 0);
 
-void print_semantic_info(const std::vector<std::unique_ptr<ast::statement>>& statements);
+void print_semantic_info();
 
 void print_value(const runtime::value& val, uint32_t indent = 0);
 void print_execution(const std::string& message, uint32_t indent = 0);

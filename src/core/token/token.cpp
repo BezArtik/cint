@@ -6,7 +6,7 @@
 
 namespace core {
 
-token::token(token_type type, std::string_view lex, size_t line, size_t column)
+token::token(token_type type, std::string_view lex, uint32_t line, uint32_t column)
     : type_(type), lexeme_(lex), line_(line), column_(column) {}
 
 std::optional<keyword_info> token::as_keyword() const {

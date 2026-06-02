@@ -7,6 +7,7 @@
 #include <utility>
 #include <algorithm>
 #include <ranges>
+#include <cassert>
 
 namespace core {
 
@@ -73,12 +74,15 @@ bool type::is_numeric() const noexcept {
 bool type::is_void() const noexcept { return kind_ == kind::VOID; }
 bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
 bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
+bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
 
 const type& type::return_type() const {
+	assert(is_function());
     return *std::get<function_info>(info_).return_type_;
 }
 
 const std::vector<type>& type::param_types() const {
+	assert(is_function());
     return std::get<function_info>(info_).param_types_;
 }
 
@@ -123,15 +127,13 @@ type type::common_arithmetic_type(const type& other) const noexcept {
     return int_type();
 }
 
-bool type::is_array() const noexcept {
-    return kind_ == kind::ARRAY;
-}
-
 const type& type::element_type() const {
+	assert(is_array());
     return *std::get<array_info>(info_).element_type_;
 }
 
 size_t type::array_size() const {
+	assert(is_array());
     return std::get<array_info>(info_).size_;
 }
 

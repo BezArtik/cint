@@ -16,10 +16,11 @@ void symbol_table::define_function(const std::string& name, core::type func_type
     scoped_map::define(name, std::move(info));
 }
 
-void symbol_table::mark_initialized(const std::string& name) {
-    update_if_exists(name, [](auto& info) {
-        info.initialized_ = true;
-        });
+bool symbol_table::mark_initialized(const std::string& name) {
+	auto* scope = find_scope(name);
+	if (!scope) { return false; }
+	scope->bindings_[name].initialized_ = true;
+	return true;
 }
 
 } // namespace semantics

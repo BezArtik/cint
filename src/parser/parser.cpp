@@ -103,11 +103,9 @@ ast::stmt_ptr parser::declaration() {
 }
 
 ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
-    std::optional<ast::expression> array_size;
-
     if (match({ core::token_type::LEFT_BRACKET })) {
         if (!check(core::token_type::RIGHT_BRACKET)) {
-            array_size = expression();
+			error(peek(), core::error_code::expected_right_bracket);
         }
         consume(core::token_type::RIGHT_BRACKET, core::error_code::expected_right_bracket);
 		type = core::type::array_type(type, 0);
@@ -417,7 +415,7 @@ ast::expression parser::primary() {
         return expr;
     }
 
-	if (match({ core::token_type::LEFT_BRACKET })) {
+	if (match({ core::token_type::LEFT_BRACE })) {
 		return array_literal();
 	}
 

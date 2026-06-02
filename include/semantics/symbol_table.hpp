@@ -21,18 +21,19 @@ enum class symbol_kind : uint8_t {
 };
 
 struct symbol_info {
-	core::type type_;
+	core::type type_{};
 	symbol_kind kind_{};
 	bool initialized_{};
 };
 
 class symbol_table : public core::scoped_map<symbol_info> {
-public:
     using core::scoped_map<symbol_info>::define;
+	using core::scoped_map<symbol_info>::find_scope;
+public:
 
     void define(const std::string& name, core::type type);
     void define_function(const std::string& name, core::type func_type);
-    void mark_initialized(const std::string& name);
+    bool mark_initialized(const std::string& name);
 };
 
 } // namespace semantics
