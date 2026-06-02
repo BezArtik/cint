@@ -4,6 +4,7 @@
 #pragma once
 #include "runtime/value.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/utils/builtins.hpp"
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -15,7 +16,6 @@
 namespace runtime {
 
 class environment {
-    using builtin_fn = std::function<value(const std::vector<value>&)>;
 public:
 
     environment() = default;
@@ -26,13 +26,13 @@ public:
     bool assign(const std::string& name, value val);
     std::optional<value> get(const std::string& name) const;
 
-    void define_builtin(const std::string& name, builtin_fn fn);
-    std::optional<builtin_fn> get_builtin(const std::string& name) const;
+    void define_builtin(const std::string& name, core::builtin_fn_ptr fn);
+    std::optional<core::builtin_fn_ptr> get_builtin(const std::string& name) const;
 
 private:
 
     core::scoped_map<value> values_;
-    std::unordered_map<std::string, builtin_fn> builtins_;
+    std::unordered_map<std::string, core::builtin_fn_ptr> builtins_;
 };
 
 } // namespace runtime

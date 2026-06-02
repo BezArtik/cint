@@ -2,6 +2,7 @@
 
 
 #include "runtime/environment.hpp"
+#include "core/utils/builtins.hpp"
 #include <optional>
 #include <stdexcept>
 
@@ -27,11 +28,11 @@ std::optional<value> environment::get(const std::string& name) const {
     return values_.get(name);
 }
 
-void environment::define_builtin(const std::string& name, builtin_fn fn) {
+void environment::define_builtin(const std::string& name, core::builtin_fn_ptr fn) {
     builtins_[name] = std::move(fn);
 }
 
-std::optional<environment::builtin_fn> environment::get_builtin(const std::string& name) const {
+std::optional<core::builtin_fn_ptr> environment::get_builtin(const std::string& name) const {
     auto found = builtins_.find(name);
     if (found != builtins_.end()) return found->second;
     return std::nullopt;

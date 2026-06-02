@@ -30,8 +30,8 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug)
     , current_env_(global_env_.get())
     , debug_(debug) {
 
-	for (const auto& def : core::builtins()) 
-		global_env_->define_builtin(def.name_, def.impl_);
+	for (const auto& def : core::builtins) 
+		global_env_->define_builtin(std::string{def.name_}, def.impl_);
 }
 
 interpreter::scope_guard::scope_guard(environment* env) : env_(env) {

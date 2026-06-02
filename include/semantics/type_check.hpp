@@ -21,8 +21,6 @@ public:
 
 private:
 
-    void register_builtins();
-
     void check_statement(const ast::statement& stmt);
     void check_expression_stmt(const ast::expression_stmt& stmt);
     void check_var_declaration(const ast::var_declaration& stmt);
@@ -48,13 +46,6 @@ private:
     core::error_reporter& reporter_;
     symbol_table symbols_;
     std::optional<core::type> curr_return_type_;
-
-	struct builtin_overload {
-		std::vector<core::type> param_types_;
-		core::type return_type_;
-	};
-
-	std::unordered_map<std::string, std::vector<builtin_overload>> builtins_;
 };
 
 } // namespace semantics

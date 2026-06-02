@@ -16,22 +16,11 @@
 
 namespace semantics {
 
-type_checker::type_checker(core::error_reporter& reporter)
-    : reporter_(reporter) {
-    register_builtins();
-}
+type_checker::type_checker(core::error_reporter& reporter): reporter_(reporter) {}
 
 bool type_checker::check(const std::vector<std::unique_ptr<ast::statement>>& statements) {
     for (const auto& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
-}
-
-void type_checker::register_builtins() {
-    for (const auto& def : core::builtins()) {
-        for (const auto& params : def.overloads_) {
-            builtins_[def.name_].push_back({ params, def.return_type_ });
-        }
-    }
 }
 
 void type_checker::check_statement(const ast::statement& stmt) {
@@ -371,23 +360,20 @@ core::type type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 core::type type_checker::type_of_call(const ast::call_expr& expr) {
     std::string name{ expr.callee_.lexeme_ };
 
-    if (auto it = builtins_.find(name); it != builtins_.end()) {
-        std::vector<core::type> arg_types;
-        arg_types.reserve(expr.args_.size());
-        std::ranges::transform(expr.args_, std::back_inserter(arg_types),
-            [this](const auto& arg) { return type_of(arg); });
+    std::vector<core::type> arg_types;
+    arg_types.reserve(expr.args_.size());
+    std::ranges::transform(expr.args_, std::back_inserter(arg_types),
+        [this](const auto& arg) { return type_of(arg); });
 
-        auto overload = std::ranges::find_if(it->second,
-            [&](const auto& o) {
-                return o.param_types_.size() == arg_types.size() &&
-                    std::ranges::equal(o.param_types_, arg_types,
-                        [](const auto& param, const auto& arg) {
-                            return param.is_assignable_from(arg);
-                        });
-            });
-
-        if (overload != it->second.end()) return overload->return_type_;
-
+    for (const auto& def : core::builtins) {
+        if (def.name_ != name) continue;
+        for (const auto& ov : def.overloads_) {
+            if (ov.param_types_.size() == arg_types.size() &&
+                std::ranges::equal(ov.param_types_, arg_types,
+                    [](const auto& p, const auto& a) { return p.is_assignable_from(a); })) {
+                return ov.return_type_;
+            }
+        }
         reporter_.error(expr.callee_.line_, expr.callee_.column_,
             core::error_code::no_matching_overload, name);
         return core::type::unknown_type();

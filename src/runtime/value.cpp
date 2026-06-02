@@ -59,7 +59,7 @@ std::string value::to_string() const {
         else if constexpr (std::is_same_v<T, std::vector<value>>) {
             std::string result = "{";
             result.reserve(arg.size() * 16);
-            for (uint32_t i = 0; i < arg.size(); ++i) {
+            for (size_t i = 0; i < arg.size(); ++i) {
                 if (i > 0) result += ", ";
                 result += arg[i].to_string();
             }
