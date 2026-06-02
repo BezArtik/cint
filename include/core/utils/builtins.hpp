@@ -1,11 +1,10 @@
-// core/utils/builtins.hpp (финальная версия, без дублирования)
+// core/utils/builtins.hpp
 
 #pragma once
 #include "core/token/token_types.hpp"
 #include <string_view>
 #include <array>
 #include <vector>
-#include <functional>
 
 namespace runtime { class value; }
 
