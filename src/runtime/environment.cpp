@@ -28,6 +28,10 @@ std::optional<value> environment::get(const std::string& name) const {
     return values_.get(name);
 }
 
+value* environment::get_mut(const std::string& name) {
+	return values_.get_mut(name);
+}
+
 void environment::define_builtin(const std::string& name, core::builtin_fn_ptr fn) {
     builtins_[name] = std::move(fn);
 }

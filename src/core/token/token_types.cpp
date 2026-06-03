@@ -71,6 +71,10 @@ bool type::is_numeric() const noexcept {
     return kind_ == kind::INT || kind_ == kind::DOUBLE;
 }
 
+bool type::is_int() const noexcept { return kind_ == kind::INT; }
+bool type::is_double() const noexcept { return kind_ == kind::DOUBLE; }
+bool type::is_bool() const noexcept { return kind_ == kind::BOOL; }
+bool type::is_string() const noexcept { return kind_ == kind::STRING; }
 bool type::is_void() const noexcept { return kind_ == kind::VOID; }
 bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
 bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }

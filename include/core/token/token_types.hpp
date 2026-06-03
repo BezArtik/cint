@@ -53,6 +53,10 @@ public:
 
     bool is_primitive() const noexcept;
     bool is_numeric() const noexcept;
+	bool is_int() const noexcept;
+	bool is_double() const noexcept;
+	bool is_bool() const noexcept;
+	bool is_string() const noexcept;
     bool is_void() const noexcept;
     bool is_unknown() const noexcept;
     bool is_function() const noexcept;

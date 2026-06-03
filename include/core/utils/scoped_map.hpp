@@ -38,6 +38,12 @@ public:
         return scope->bindings_.at(name);
     }
 
+    T* get_mut(const std::string& name) {
+        auto* scope = find_scope(name);
+        if (scope) return &scope->bindings_.at(name);
+        return nullptr;
+    }
+
     bool contains_in_current_scope(const std::string& name) const {
         return scopes_.back()->bindings_.contains(name);
     }

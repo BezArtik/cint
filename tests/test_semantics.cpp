@@ -68,7 +68,9 @@ INSTANTIATE_TEST_SUITE_P(basics, valid_program_test, ::testing::Values(
     valid_program_case{ "bool f() { return true || false; }",                                       "logical or" },
     valid_program_case{ "bool f() { return !true; }",                                               "not" },
     valid_program_case{ "int f() { int x = 0; ++x; return x; }",                                    "prefix inc" },
-    valid_program_case{ "int f() { int x = 0; x++; return x; }",                                    "postfix inc" }
+    valid_program_case{ "int f() { int x = 0; x++; return x; }",                                    "postfix inc" },
+	valid_program_case{ "int f() { return 1 + 2 * 3; }",                                            "precedence" },
+	valid_program_case{ "int f() { int arr[] = {1, 2, 3}; return arr[0] + arr[1] + arr[2]; }",     "array access" }
 ));
 
 

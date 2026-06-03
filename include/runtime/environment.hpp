@@ -25,6 +25,7 @@ public:
     void define(const std::string& name, value val);
     bool assign(const std::string& name, value val);
     std::optional<value> get(const std::string& name) const;
+	value* get_mut(const std::string& name);
 
     void define_builtin(const std::string& name, core::builtin_fn_ptr fn);
     std::optional<core::builtin_fn_ptr> get_builtin(const std::string& name) const;

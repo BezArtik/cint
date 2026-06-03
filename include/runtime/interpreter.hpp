@@ -40,6 +40,12 @@ private:
     value evaluate_literal(const ast::literal_expr& expr);
     value evaluate_variable(const ast::variable_expr& expr);
     value evaluate_assignment(const ast::binary_expr& expr);
+    value evaluate_simple_assignment(const ast::binary_expr& expr, 
+                                     const ast::variable_expr& var,
+                                     const std::string& name);
+    value evaluate_index_assignment(const ast::binary_expr& expr,
+                                    const ast::index_expr& idx,
+                                    const std::string& name);
     value evaluate_logical(const ast::binary_expr& expr);
     value evaluate_arithmetic(const ast::binary_expr& expr);
     value evaluate_binary(const ast::binary_expr& expr);

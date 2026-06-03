@@ -237,72 +237,76 @@ value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
     if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
         const auto& var = std::get<ast::variable_expr>((*idx)->object_);
         std::string name{ var.name_.lexeme_ };
-
-        auto arr_opt = current_env_->get(name);
-        error_if(!arr_opt, core::error_code::undefined_variable, expr, name);
-
-        auto arr = std::move(*arr_opt);
-        auto index_val = evaluate((*idx)->index_);
-        auto right = evaluate(expr.right_);
-
-        auto i = index_val.as_int().value();
-        auto size = static_cast<int64_t>(arr.as_array()->size());
-        error_if(i < 0 || i >= size, core::error_code::index_out_of_bounds, expr, name, i);
-
-        auto vec = std::move(*arr.as_array());
-        auto& element = vec[static_cast<uint32_t>(i)];
-
-        value result;
-        if (expr.op_.type_ == core::token_type::EQUAL) {
-            result = right;
-        } else {
-            const auto& left_val = element;
-            using op = core::token_type;
-            try {
-                switch (expr.op_.type_) {
-                case op::PLUS_EQUAL:    result = left_val.add(right); break;
-                case op::MINUS_EQUAL:   result = left_val.sub(right); break;
-                case op::STAR_EQUAL:    result = left_val.mul(right); break;
-                case op::SLASH_EQUAL:   result = left_val.div(right); break;
-                case op::PERCENT_EQUAL: result = left_val.mod(right); break;
-                default: throw_error(core::error_code::unsupported_binary_operator, expr, name);
-                }
-            } catch (const core::interpret_error& e) {
-                throw_error(e.code_, expr, name);
-            }
-        }
-        element = std::move(result);
-        current_env_->assign(name, value(std::move(vec)));
-        return element;
+        return evaluate_index_assignment(expr, **idx, name);
     }
 
     const auto& var = std::get<ast::variable_expr>(expr.left_);
     std::string name{ var.name_.lexeme_ };
+    return evaluate_simple_assignment(expr, var, name);
+}
+
+value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr,
+                                              const ast::variable_expr& var,
+                                              const std::string& name) {
     auto right = evaluate(expr.right_);
 
     if (expr.op_.type_ == core::token_type::EQUAL) {
-        error_if(!current_env_->assign(name, right), core::error_code::undefined_variable, expr, name);
+        current_env_->assign(name, right);
         return right;
     }
 
     auto left = evaluate_variable(var);
     value result;
-	using op = core::token_type;
-    try {
-        switch (expr.op_.type_) {
-        case op::PLUS_EQUAL:    result = left.add(right); break;
-        case op::MINUS_EQUAL:   result = left.sub(right); break;
-        case op::STAR_EQUAL:    result = left.mul(right); break;
-        case op::SLASH_EQUAL:   result = left.div(right); break;
-        case op::PERCENT_EQUAL: result = left.mod(right); break;
-        default: throw_error(core::error_code::unsupported_binary_operator, expr, name);
-        }
-    } catch (const core::interpret_error& e) {
-        throw_error(e.code_, expr, name);
+    using op = core::token_type;
+    switch (expr.op_.type_) {
+    case op::PLUS_EQUAL:    result = left.add(right); break;
+    case op::MINUS_EQUAL:   result = left.sub(right); break;
+    case op::STAR_EQUAL:    result = left.mul(right); break;
+    case op::SLASH_EQUAL:   result = left.div(right); break;
+    case op::PERCENT_EQUAL: result = left.mod(right); break;
+    default: break;
+    }
+    current_env_->assign(name, result);
+    return result;
+}
+
+value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
+                                             const ast::index_expr& idx,
+                                             const std::string& name) {
+    auto* arr_ptr = current_env_->get_mut(name);
+    if (!arr_ptr) {
+        throw_error(core::error_code::undefined_variable, expr, name);
     }
 
-	current_env_->assign(name, result);
-    return result;
+    auto index_val = evaluate(idx.index_);
+    auto right = evaluate(expr.right_);
+
+    auto i = index_val.as_int().value();
+    auto size = arr_ptr->as_array()->size();
+    error_if(i < 0 || i >= size, core::error_code::index_out_of_bounds, expr, name, i);
+
+    auto vec = std::move(*arr_ptr->as_array_mut());
+    auto& element = vec[static_cast<size_t>(i)];
+
+    value result;
+    if (expr.op_.type_ == core::token_type::EQUAL) {
+        result = std::move(right);
+    } else {
+        value left_val = element;
+        using op = core::token_type;
+        switch (expr.op_.type_) {
+        case op::PLUS_EQUAL:    result = left_val.add(right); break;
+        case op::MINUS_EQUAL:   result = left_val.sub(right); break;
+        case op::STAR_EQUAL:    result = left_val.mul(right); break;
+        case op::SLASH_EQUAL:   result = left_val.div(right); break;
+        case op::PERCENT_EQUAL: result = left_val.mod(right); break;
+        default: break;
+        }
+    }
+
+    element = std::move(result);
+    *arr_ptr = value(std::move(vec));
+    return element;
 }
 
 value interpreter::evaluate_logical(const ast::binary_expr& expr) {

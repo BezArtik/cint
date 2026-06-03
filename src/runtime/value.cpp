@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <charconv>
 #include <numeric>
+#include <iostream>
 
 namespace runtime {
 
@@ -16,20 +17,21 @@ value::value() : data_(std::monostate{}) {}
 core::type value::type() const {
     return std::visit([](auto&& arg) -> core::type {
         using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, int64_t>)                 return core::type::int_type();
-        else if constexpr (std::is_same_v<T, double>)             return core::type::double_type();
-        else if constexpr (std::is_same_v<T, bool>)               return core::type::bool_type();
-        else if constexpr (std::is_same_v<T, std::string>)        return core::type::string_type();
-		else if constexpr (std::is_same_v<T, std::vector<value>>) return core::type::array_type(core::type::unknown_type(), arg.size());
-        else return core::type::void_type();
+        using t = core::type;
+        if constexpr (std::is_same_v<T, int64_t>)                 return t::int_type();
+        else if constexpr (std::is_same_v<T, double>)             return t::double_type();
+        else if constexpr (std::is_same_v<T, bool>)               return t::bool_type();
+        else if constexpr (std::is_same_v<T, std::string>)        return t::string_type();
+		else if constexpr (std::is_same_v<T, std::vector<value>>) return t::array_type(t::unknown_type(), arg.size());
+        else return t::void_type();
         }, data_);
 }
 
-int64_t value::to_int() const {
+value::int_t value::to_int() const {
     if (auto i = as_int()) return *i;
-    if (auto d = as_double()) return static_cast<int64_t>(*d);
+    if (auto d = as_double()) return static_cast<int_t>(*d);
     if (auto s = as_string()) {
-        int64_t result;
+        int_t result;
         auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
         if (ec != std::errc{}) throw core::interpret_error{ core::error_code::invalid_conversion };
         return result;
@@ -37,11 +39,11 @@ int64_t value::to_int() const {
     throw core::interpret_error{ core::error_code::invalid_conversion };
 }
 
-double value::to_double() const {
-    if (auto i = as_int()) return static_cast<double>(*i);
+value::double_t value::to_double() const {
+    if (auto i = as_int()) return static_cast<double_t>(*i);
     if (auto d = as_double()) return *d;
     if (auto s = as_string()) {
-		double result;
+		double_t result;
 		auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
 		if (ec != std::errc{}) throw core::interpret_error{core::error_code::invalid_conversion};
 		return result;
@@ -52,11 +54,11 @@ double value::to_double() const {
 std::string value::to_string() const {
     return std::visit([](auto&& arg) -> std::string {
         using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, int64_t>) return std::to_string(arg);
-        else if constexpr (std::is_same_v<T, double>) return std::to_string(arg);
-        else if constexpr (std::is_same_v<T, bool>) return arg ? "true" : "false";
-        else if constexpr (std::is_same_v<T, std::string>) return arg;
-        else if constexpr (std::is_same_v<T, std::vector<value>>) {
+        if constexpr (std::is_same_v<T, int_t>) return std::to_string(arg);
+        else if constexpr (std::is_same_v<T, double_t>) return std::to_string(arg);
+        else if constexpr (std::is_same_v<T, bool_t>) return arg ? "true" : "false";
+        else if constexpr (std::is_same_v<T, string_t>) return arg;
+        else if constexpr (std::is_same_v<T, array_t>) {
             std::string result = "{";
             result.reserve(arg.size() * 16);
             for (size_t i = 0; i < arg.size(); ++i) {
@@ -70,22 +72,27 @@ std::string value::to_string() const {
         }, data_);
 }
 
-std::optional<int64_t> value::as_int() const noexcept { return as<int64_t>(); }
-std::optional<double> value::as_double() const noexcept { return as<double>(); }
-std::optional<bool> value::as_bool() const noexcept { return as<bool>();}
-std::optional<std::string> value::as_string() const noexcept { return as<std::string>();}
-std::optional<std::vector<value>> value::as_array() const noexcept { return as<std::vector<value>>(); }
-
-size_t value::array_size() const {
-	return std::get<std::vector<value>>(data_).size();
+std::optional<value::int_t> value::as_int() const noexcept { return as<int_t>(); }
+std::optional<value::double_t> value::as_double() const noexcept { return as<double_t>(); }
+std::optional<value::bool_t> value::as_bool() const noexcept { return as<bool_t>();}
+std::optional<value::string_t> value::as_string() const noexcept { return as<string_t>();}
+std::optional<value::array_t> value::as_array() const noexcept { return as<array_t>(); }
+value::array_t* value::as_array_mut() noexcept { return std::get_if<array_t>(&data_); }
+std::optional<value::array_t> value::take_array() noexcept {
+	if (auto* arr = as_array_mut()) {
+		return std::move(*arr);
+	}
+	return std::nullopt;
 }
+
+size_t value::array_size() const { return std::get<array_t>(data_).size(); }
 
 value value::add(const value& other) const {
     auto lt = type();
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
         throw core::interpret_error{ core::error_code::invalid_conversion };
-    if (lt == core::type::int_type() && rt == core::type::int_type())
+    if (lt.is_int() && rt.is_int())
         return value(*as_int() + *other.as_int());
     return value(to_double() + other.to_double());
 }
@@ -95,7 +102,7 @@ value value::sub(const value& other) const {
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
         throw core::interpret_error{ core::error_code::invalid_conversion };
-    if (lt == core::type::int_type() && rt == core::type::int_type())
+    if (lt.is_int() && rt.is_int())
         return value(*as_int() - *other.as_int());
     return value(to_double() - other.to_double());
 }
@@ -105,7 +112,7 @@ value value::mul(const value& other) const {
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
         throw core::interpret_error{ core::error_code::invalid_conversion };
-    if (lt == core::type::int_type() && rt == core::type::int_type())
+    if (lt.is_int() && rt.is_int())
         return value(*as_int() * *other.as_int());
     return value(to_double() * other.to_double());
 }
@@ -115,7 +122,7 @@ value value::div(const value& other) const {
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
         throw core::interpret_error{ core::error_code::invalid_conversion };
-    if (lt == core::type::int_type() && rt == core::type::int_type()) {
+    if (lt.is_int() && rt.is_int()) {
         if (*other.as_int() == 0) throw core::interpret_error{ core::error_code::division_by_zero };
         return value(*as_int() / *other.as_int());
     }
@@ -126,7 +133,7 @@ value value::div(const value& other) const {
 }
 
 value value::mod(const value& other) const {
-    if (type() != core::type::int_type() || other.type() != core::type::int_type())
+    if (!type().is_int() || !other.type().is_int())
         throw core::interpret_error{ core::error_code::modulo_requires_int };
     if (*other.as_int() == 0) throw core::interpret_error{ core::error_code::modulo_by_zero };
     return value(*as_int() % *other.as_int());
@@ -140,10 +147,10 @@ value value::eq(const value& other) const {
             return value(to_double() == other.to_double());
         return value(false);
     }
-    if (lt == core::type::int_type())    return value(*as_int() == *other.as_int());
-    if (lt == core::type::double_type()) return value(*as_double() == *other.as_double());
-    if (lt == core::type::bool_type())   return value(*as_bool() == *other.as_bool());
-    if (lt == core::type::string_type()) return value(*as_string() == *other.as_string());
+    if (lt.is_int())    return value(*as_int() == *other.as_int());
+    if (lt.is_double()) return value(*as_double() == *other.as_double());
+    if (lt.is_bool())   return value(*as_bool() == *other.as_bool());
+    if (lt.is_string()) return value(*as_string() == *other.as_string());
     return value(false);
 }
 
@@ -156,7 +163,7 @@ value value::lt(const value& other) const {
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
         throw core::interpret_error{ core::error_code::comparison_requires_numeric };
-    if (lt == core::type::int_type() && rt == core::type::int_type())
+    if (lt.is_int() && rt.is_int())
         return value(*as_int() < *other.as_int());
     return value(to_double() < other.to_double());
 }

@@ -10,7 +10,7 @@ set(INSTALL_GTEST OFF CACHE BOOL "Disable install" FORCE)
 
 FetchContent_Declare(
     GoogleTest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.zip
+    URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(GoogleTest)
