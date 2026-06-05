@@ -5,7 +5,7 @@
 #include "core/token/token_types.hpp"
 #include "core/token/keywords.hpp"
 #include "core/utils/overloaded.hpp"
-#include "runtime/value.hpp"
+#include "core/value.hpp"
 #include <iostream>
 #include <iomanip>
 #include <string>
@@ -334,7 +334,7 @@ void print_semantic_info() {
 }
 
 
-void print_value(const runtime::value& val, uint32_t indent) {
+void print_value(const core::value& val, uint32_t indent) {
     std::cerr << indent_str(indent);
 
     auto t = val.type();

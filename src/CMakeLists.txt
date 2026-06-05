@@ -10,9 +10,9 @@ target_sources(interpreter PRIVATE
     core/utils/builtins.cpp
     core/token/token_types.cpp
     core/token/token.cpp
+    core/value.cpp
     semantics/symbol_table.cpp
     semantics/type_check.cpp
-    runtime/value.cpp
     runtime/environment.cpp
     runtime/interpreter.cpp
     debug/debug.cpp

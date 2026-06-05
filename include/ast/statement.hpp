@@ -44,7 +44,8 @@ struct block_stmt {
     uint32_t column_{};
 
     block_stmt() = default;
-    block_stmt(uint32_t line, uint32_t column) : line_(line), column_(column) {}
+    block_stmt(std::vector<stmt_ptr> statements, uint32_t line, uint32_t column)
+        : statements_(std::move(statements)), line_(line), column_(column) {}
 };
 
 struct while_stmt {
@@ -54,8 +55,8 @@ struct while_stmt {
     uint32_t column_{};
 
     while_stmt(expression cond, stmt_ptr body, uint32_t line, uint32_t column)
-        : condition_(std::move(cond)), body_(std::move(body)), line_(line), column_(column) {
-    }
+        : condition_(std::move(cond)), body_(std::move(body)), 
+          line_(line), column_(column) {}
 };
 
 struct for_stmt {
@@ -71,8 +72,7 @@ struct for_stmt {
         uint32_t line, uint32_t column)
         : initializer_(std::move(init)), condition_(std::move(cond)),
         increment_(std::move(inc)), body_(std::move(body)),
-        line_(line), column_(column) {
-    }
+        line_(line), column_(column) {}
 };
 
 struct if_stmt {
@@ -85,17 +85,19 @@ struct if_stmt {
     if_stmt(expression cond, stmt_ptr then_branch,
         stmt_ptr else_branch, uint32_t line, uint32_t column)
         : condition_(std::move(cond)), then_branch_(std::move(then_branch)),
-        else_branch_(std::move(else_branch)), line_(line), column_(column) {
-    }
+          else_branch_(std::move(else_branch)), line_(line), column_(column) {}
 };
 
 struct return_stmt {
     core::token keyword_{};
     std::optional<expression> value_{};
+    uint32_t line_{};
+    uint32_t column_{};
 
-    return_stmt(const core::token& kw, std::optional<expression> val = std::nullopt)
-        : keyword_(kw), value_(std::move(val)) {
-    }
+    return_stmt(const core::token& kw, std::optional<expression> val = std::nullopt, 
+        uint32_t line = 0, uint32_t column = 0)
+        : keyword_(kw), value_(std::move(val)), 
+          line_(line), column_(column) {}
 };
 
 struct func_param {
@@ -112,10 +114,12 @@ struct func_declaration {
     core::token name_{};
     std::vector<func_param> params_{};
     std::unique_ptr<block_stmt> body_{};
+    uint32_t line_{};
+    uint32_t column_{};
 
     func_declaration(core::type ret_type, const core::token& n)
-        : return_type_(std::move(ret_type)), name_(n) {
-    }
+        : return_type_(std::move(ret_type)), name_(n), 
+          line_(n.line_), column_(n.column_) {}
 };
 
 struct statement {

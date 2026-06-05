@@ -91,12 +91,12 @@ print("text");
 ## Project Structure
 
 - `src/`
-    - `core/`          -- tokens, types, errors, utilities  
+    - `core/`          -- tokens, types, errors, utilities, values
     - `lexer/`         -- lexical analysis (source -> tokens)  
     - `ast/`           -- abstract syntax tree  
     - `parser/`        -- syntax analysis (tokens -> AST)  
     - `semantics/`     -- semantic analysis (type checking)  
-    - `runtime/`       -- values, environment, execution  
+    - `runtime/`       -- environment, execution  
     - `main.cpp`       -- entry point  
 - `samples/`           -- example programs  
 

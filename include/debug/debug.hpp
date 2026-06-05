@@ -11,7 +11,7 @@
 #include <cstdint>
 
 
-namespace runtime { class value; }
+namespace core { class value; }
 
 namespace debug {
 
@@ -24,7 +24,7 @@ void print_expression(const ast::expression& expr, uint32_t level = 0);
 
 void print_semantic_info();
 
-void print_value(const runtime::value& val, uint32_t indent = 0);
+void print_value(const core::value& val, uint32_t indent = 0);
 void print_execution(const std::string& message, uint32_t indent = 0);
 
 } // namespace debug

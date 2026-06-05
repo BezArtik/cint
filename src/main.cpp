@@ -8,7 +8,7 @@
 #include "ast/expression.hpp"
 #include "semantics/symbol_table.hpp"
 #include "semantics/type_check.hpp"
-#include "runtime/value.hpp"
+#include "core/value.hpp"
 #include "runtime/environment.hpp"
 #include "runtime/interpreter.hpp"
 #include "debug/debug.hpp"

@@ -16,19 +16,19 @@ void environment::pop_scope() {
     values_.pop();
 }
 
-void environment::define(const std::string& name, value val) {
+void environment::define(const std::string& name, core::value val) {
     values_.define(name, val);
 }
 
-bool environment::assign(const std::string& name, value val) {
+bool environment::assign(const std::string& name, core::value val) {
     return values_.assign(name, val);
 }
 
-std::optional<value> environment::get(const std::string& name) const {
+std::optional<core::value> environment::get(const std::string& name) const {
     return values_.get(name);
 }
 
-value* environment::get_mut(const std::string& name) {
+core::value* environment::get_mut(const std::string& name) {
 	return values_.get_mut(name);
 }
 

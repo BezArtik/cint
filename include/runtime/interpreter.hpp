@@ -2,7 +2,7 @@
 
 
 #pragma once
-#include "runtime/value.hpp"
+#include "core/value.hpp"
 #include "ast/statement.hpp"
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
@@ -15,7 +15,7 @@
 namespace runtime {
 
 struct return_exception {
-    value return_value_{};
+    core::value return_value_{};
 };
 
 class interpreter {
@@ -36,26 +36,26 @@ private:
     void execute_return_stmt(const ast::return_stmt& stmt);
     void execute_func_declaration(const ast::func_declaration& stmt);
 
-    value evaluate(const ast::expression& expr);
-    value evaluate_literal(const ast::literal_expr& expr);
-    value evaluate_variable(const ast::variable_expr& expr);
-    value evaluate_assignment(const ast::binary_expr& expr);
-    value evaluate_simple_assignment(const ast::binary_expr& expr, 
+    core::value evaluate(const ast::expression& expr);
+    core::value evaluate_literal(const ast::literal_expr& expr);
+    core::value evaluate_variable(const ast::variable_expr& expr);
+    core::value evaluate_assignment(const ast::binary_expr& expr);
+    core::value evaluate_simple_assignment(const ast::binary_expr& expr, 
                                      const ast::variable_expr& var,
                                      const std::string& name);
-    value evaluate_index_assignment(const ast::binary_expr& expr,
+    core::value evaluate_index_assignment(const ast::binary_expr& expr,
                                     const ast::index_expr& idx,
                                     const std::string& name);
-    value evaluate_logical(const ast::binary_expr& expr);
-    value evaluate_arithmetic(const ast::binary_expr& expr);
-    value evaluate_binary(const ast::binary_expr& expr);
-    value evaluate_unary(const ast::unary_expr& expr);
-	value evaluate_postfix(const ast::postfix_expr& expr);
-    value evaluate_call(const ast::call_expr& expr);
-	value evaluate_array_literal(const ast::array_literal_expr& expr);
-	value evaluate_index(const ast::index_expr& expr);
+    core::value evaluate_logical(const ast::binary_expr& expr);
+    core::value evaluate_arithmetic(const ast::binary_expr& expr);
+    core::value evaluate_binary(const ast::binary_expr& expr);
+    core::value evaluate_unary(const ast::unary_expr& expr);
+	core::value evaluate_postfix(const ast::postfix_expr& expr);
+    core::value evaluate_call(const ast::call_expr& expr);
+	core::value evaluate_array_literal(const ast::array_literal_expr& expr);
+	core::value evaluate_index(const ast::index_expr& expr);
 
-	value default_value(const core::type& type);
+	core::value default_value(const core::type& type);
 
     template <typename T, typename... Args>
     [[noreturn]] void throw_error(core::error_code code, const T& t, Args&&... args) {

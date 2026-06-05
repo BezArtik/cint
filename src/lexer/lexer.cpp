@@ -12,6 +12,9 @@
 
 namespace lexer {
 
+using tt = core::token_type;
+using err = core::error_code;
+
 lexer::lexer(std::string_view source, core::error_reporter& reporter)
     : source_(source), reporter_(reporter) {
 }
@@ -22,42 +25,40 @@ std::vector<core::token> lexer::scan_tokens() {
         scan_token();
     }
 
-    tokens_.emplace_back(core::token_type::END_OF_FILE, "", line_, column_);
+    tokens_.emplace_back(tt::END_OF_FILE, "", line_, column_);
     return tokens_;
 }
 
 void lexer::scan_token() {
     auto c = advance();
     switch (c) {
-    case '(': add_token(core::token_type::LEFT_PAREN); break;
-    case ')': add_token(core::token_type::RIGHT_PAREN); break;
-    case '{': add_token(core::token_type::LEFT_BRACE); break;
-    case '}': add_token(core::token_type::RIGHT_BRACE); break;
-	case '[': add_token(core::token_type::LEFT_BRACKET); break;
-	case ']': add_token(core::token_type::RIGHT_BRACKET); break;
-    case ',': add_token(core::token_type::COMMA); break;
-    case '.': add_token(core::token_type::DOT); break;
-    case '+': add_token(match('=') ? core::token_type::PLUS_EQUAL 
-        : match('+') ? core::token_type::INCREMENT : core::token_type::PLUS); break;
-    case '-': add_token(match('=') ? core::token_type::MINUS_EQUAL 
-        : match('-') ? core::token_type::DECREMENT : core::token_type::MINUS); break;
-    case '*': add_token(match('=') ? core::token_type::STAR_EQUAL : core::token_type::STAR); break;
-    case '%': add_token(match('=') ? core::token_type::PERCENT_EQUAL : core::token_type::PERCENT); break;
-	case ';': add_token(core::token_type::SEMICOLON); break;
+    case '(': add_token(tt::LEFT_PAREN); break;
+    case ')': add_token(tt::RIGHT_PAREN); break;
+    case '{': add_token(tt::LEFT_BRACE); break;
+    case '}': add_token(tt::RIGHT_BRACE); break;
+	case '[': add_token(tt::LEFT_BRACKET); break;
+	case ']': add_token(tt::RIGHT_BRACKET); break;
+    case ',': add_token(tt::COMMA); break;
+    case '.': add_token(tt::DOT); break;
+    case '+': add_token(match('=') ? tt::PLUS_EQUAL : match('+') ? tt::INCREMENT : tt::PLUS); break;
+    case '-': add_token(match('=') ? tt::MINUS_EQUAL : match('-') ? tt::DECREMENT : tt::MINUS); break;
+    case '*': add_token(match('=') ? tt::STAR_EQUAL : tt::STAR); break;
+    case '%': add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT); break;
+	case ';': add_token(tt::SEMICOLON); break;
 
-    case '!': add_token(match('=') ? core::token_type::BANG_EQUAL : core::token_type::BANG); break;
-    case '=': add_token(match('=') ? core::token_type::EQUAL_EQUAL : core::token_type::EQUAL); break;
-    case '<': add_token(match('=') ? core::token_type::LESS_EQUAL : core::token_type::LESS); break;
-    case '>': add_token(match('=') ? core::token_type::GREATER_EQUAL : core::token_type::GREATER); break;
+    case '!': add_token(match('=') ? tt::BANG_EQUAL : tt::BANG); break;
+    case '=': add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL); break;
+    case '<': add_token(match('=') ? tt::LESS_EQUAL : tt::LESS); break;
+    case '>': add_token(match('=') ? tt::GREATER_EQUAL : tt::GREATER); break;
         
-    case '&': add_token(match('&') ? core::token_type::AND : core::token_type::UNKNOWN); break;
-    case '|': add_token(match('|') ? core::token_type::OR : core::token_type::UNKNOWN); break;
+    case '&': add_token(match('&') ? tt::AND : tt::UNKNOWN); break;
+    case '|': add_token(match('|') ? tt::OR : tt::UNKNOWN); break;
 	
     case '/':
 		if (match('/')) {
 			while (peek() != '\n' && !is_at_end()) advance();
 		} else {
-			add_token(match('=') ? core::token_type::SLASH_EQUAL : core::token_type::SLASH);
+			add_token(match('=') ? tt::SLASH_EQUAL : tt::SLASH);
 		}
 		break;
 
@@ -78,7 +79,7 @@ void lexer::scan_token() {
         } else if (std::isalpha(c) || c == '_') {
             consume_identifier();
         } else {
-			reporter_.error(line_, column_, core::error_code::unexpected_character, c);
+			reporter_.error(line_, column_, err::unexpected_character, c);
         }
         break;
     }
@@ -90,8 +91,7 @@ void lexer::consume_identifier() {
     auto lexeme = source_.substr(start_, current_ - start_);
     auto kw = core::lookup_keyword(lexeme);
 
-    kw ? add_token(core::token_type::KEYWORD) 
-       : add_token(core::token_type::IDENTIFIER);
+    kw ? add_token(tt::KEYWORD) : add_token(tt::IDENTIFIER);
 }
 
 void lexer::consume_number() {
@@ -102,7 +102,7 @@ void lexer::consume_number() {
         while (std::isdigit(peek())) advance();
     }
 
-    add_token(core::token_type::NUMBER);
+    add_token(tt::NUMBER);
 }
 
 void lexer::consume_string() {
@@ -115,12 +115,12 @@ void lexer::consume_string() {
     }
 
     if (is_at_end()) {
-        reporter_.error(line_, column_, core::error_code::unterminated_string);
+        reporter_.error(line_, column_, err::unterminated_string);
         return;
     }
 
     advance(); 
-    add_token(core::token_type::STRING);
+    add_token(tt::STRING);
 }
 
 char lexer::advance() noexcept {
@@ -149,7 +149,7 @@ bool lexer::is_at_end() const noexcept {
     return current_ >= source_.length();
 }
 
-void lexer::add_token(core::token_type type) {
+void lexer::add_token(tt type) {
     auto text = source_.substr(start_, current_ - start_);
     tokens_.emplace_back(type, text, line_, column_);
 }

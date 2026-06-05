@@ -1,4 +1,4 @@
-// runtime/value.hpp
+// core/value.hpp
 
 
 #pragma once
@@ -8,15 +8,16 @@
 #include <optional>
 #include <cstdint>
 
-namespace runtime {
+namespace core {
 
 class value {
-	using int_t = int64_t;
+public:	
+    using int_t = int64_t;
 	using double_t = double;
 	using bool_t = bool;
 	using string_t = std::string;
 	using array_t = std::vector<value>;
-public:
+
     value();
 
     template <typename T>
@@ -71,4 +72,4 @@ private:
     > data_;
 };
 
-} // namespace runtime
+} // namespace core

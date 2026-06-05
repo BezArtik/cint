@@ -6,7 +6,7 @@
 #include "lexer/lexer.hpp"
 #include "semantics/type_check.hpp"
 #include "runtime/interpreter.hpp"
-#include "runtime/value.hpp"
+#include "core/value.hpp"
 #include "core/error/error_report.hpp"
 #include <string>
 #include <vector>

@@ -6,11 +6,11 @@
 #include <array>
 #include <vector>
 
-namespace runtime { class value; }
-
 namespace core {
 
-using builtin_fn_ptr = runtime::value(*)(const std::vector<runtime::value>&);
+class value;
+
+using builtin_fn_ptr = value(*)(const std::vector<value>&);
 
 struct builtin_overload {
     std::vector<type> param_types_;
@@ -35,12 +35,12 @@ inline core::type void_t() { return core::type::void_type(); }
 }
 
 namespace builtin_impl {
-runtime::value print(const std::vector<runtime::value>& args);
-runtime::value input(const std::vector<runtime::value>& args);
-runtime::value sqrt(const std::vector<runtime::value>& args);
-runtime::value sin(const std::vector<runtime::value>& args);
-runtime::value to_int(const std::vector<runtime::value>& args);
-runtime::value to_dbl(const std::vector<runtime::value>& args);
+value print(const std::vector<value>& args);
+value input(const std::vector<value>& args);
+value sqrt(const std::vector<value>& args);
+value sin(const std::vector<value>& args);
+value to_int(const std::vector<value>& args);
+value to_dbl(const std::vector<value>& args);
 }
 
 inline const std::array<builtin_def, 6> builtins = { {
