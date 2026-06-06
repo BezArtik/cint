@@ -32,11 +32,10 @@ private:
     void report(uint32_t line, uint32_t column, std::string_view kind, const std::string& msg);
 
     template<typename... Args>
-    static std::string format_message(error_code code, Args&&... args) {
-        auto it = error_messages.find(code);
-        if (it == error_messages.end()) return "Unknown error";
-		if constexpr (sizeof...(Args) == 0) return std::string{ it->second.format_ };
-        return std::vformat(it->second.format_, std::make_format_args(args...));
+    std::string format_message(error_code code, Args&&... args) {
+        auto format = get_error_message(code);
+        if constexpr (sizeof...(Args) == 0) return std::string{ format };
+        return std::vformat(format, std::make_format_args(args...));
     }
 };
 

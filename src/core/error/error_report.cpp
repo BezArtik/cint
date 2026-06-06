@@ -19,58 +19,47 @@ void error_reporter::report(uint32_t line, uint32_t column,
 
     if (source_.empty()) return;
 
-    std::string_view source_line;
-    uint32_t current_line = 1;
-    uint32_t start = 0;
-
-    for (size_t i = 0; i < source_.size(); ++i) {
-        if (source_[i] == '\n') {
-            if (current_line == line) {
-                source_line = source_.substr(start, i - start);
-                break;
-            }
-            current_line++;
-            start = i + 1;
-        }
+    auto remaining = source_;
+    for (uint32_t i = 1; i < line && !remaining.empty(); ++i) {
+        auto pos = remaining.find('\n');
+        if (pos == std::string_view::npos) return;
+        remaining = remaining.substr(pos + 1);
     }
 
-    if (current_line == line && source_line.empty()) {
-        source_line = source_.substr(start);
-    }
+    auto eof = remaining.find('\n');
+    auto source_line = (eof != std::string_view::npos)
+        ? remaining.substr(0, eof)
+        : remaining;
 
     if (source_line.empty()) return;
 
     constexpr size_t max_width = 80;
-    size_t display_start = 0;
+    auto display_line = source_line;
 
-    if (source_line.size() > max_width && column > max_width / 2) {
-        display_start = column - max_width / 2;
-        while (display_start > 0 && !std::isspace(source_line[display_start - 1])) {
-            display_start--;
+    if (display_line.size() > max_width && column > max_width / 2) {
+        size_t display_start = column - max_width / 2;
+
+        if (display_start > 0) {
+            auto space = display_line.rfind(' ', display_start - 1);
+            display_start = (space != std::string_view::npos) ? space + 1 : 0;
         }
-        source_line = source_line.substr(display_start);
-        source_line = source_line.substr(0, std::min(source_line.size(), max_width));
+
+        display_line = display_line.substr(display_start, max_width);
+    } else {
+        display_line = display_line.substr(0, max_width);
     }
 
-    std::cerr << std::format("  {:>4} | {}\n", line, source_line);
+    std::cerr << std::format("  {:>4} | {}\n", line, display_line);
 
-    auto caret_pos = column - display_start - 1;
-    if (caret_pos < source_line.size()) {
-        std::string caret(source_line.size(), ' ');
-        auto underscore_start = caret_pos;
-        auto underscore_end = caret_pos + 1;
+    auto caret_pos = column - (source_line.data() - display_line.data()) - 1;
+    if (caret_pos < display_line.size()) {
+        auto token_end = display_line.find_first_of(" ;()\t\n", caret_pos + 1);
+        if (token_end == std::string_view::npos) token_end = display_line.size();
 
-        while (underscore_end < source_line.size() &&
-            !std::isspace(source_line[underscore_end]) &&
-            source_line[underscore_end] != ';' &&
-            source_line[underscore_end] != ')') {
-            underscore_end++;
-        }
-
-        for (size_t i = 0; i < underscore_start; ++i) caret[i] = ' ';
-        caret[underscore_start] = '^';
-        for (size_t i = underscore_start + 1; i < underscore_end; ++i) caret[i] = '~';
-
+        std::string caret(display_line.size(), ' ');
+        caret[caret_pos] = '^';
+        for (size_t i = caret_pos + 1; i < token_end; ++i) caret[i] = '~';
+            
         std::cerr << std::format("       | {}\n", caret);
     }
 }
