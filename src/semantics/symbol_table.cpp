@@ -6,21 +6,28 @@
 
 namespace semantics {
 
+void symbol_table::push() { scopes_.push(); }
+void symbol_table::pop() { scopes_.pop(); }
+
 void symbol_table::define(const std::string& name, core::type type) {
-    symbol_info info{ std::move(type), symbol_kind::VARIABLE, false };
-    scoped_map::define(name, std::move(info));
+    scopes_.define(name, { type, symbol_kind::VARIABLE, false });
 }
 
 void symbol_table::define_function(const std::string& name, core::type func_type) {
-    symbol_info info{ std::move(func_type), symbol_kind::FUNCTION, true };
-    scoped_map::define(name, std::move(info));
+    scopes_.define(name, { func_type, symbol_kind::FUNCTION, true });
 }
 
-bool symbol_table::mark_initialized(const std::string& name) {
-	auto* scope = find_scope(name);
-	if (!scope) { return false; }
-	scope->bindings_[name].initialized_ = true;
-	return true;
+void symbol_table::mark_initialized(const std::string& name) {
+    auto* info = scopes_.get_mut(name);
+    if (info) info->initialized_ = true;
+}
+
+std::optional<symbol_info> symbol_table::get(const std::string& name) const {
+    return scopes_.get(name);
+}
+
+bool symbol_table::contains_in_current_scope(const std::string& name) const {
+    return scopes_.contains_in_current_scope(name);
 }
 
 } // namespace semantics

@@ -26,14 +26,19 @@ struct symbol_info {
 	bool initialized_{};
 };
 
-class symbol_table : public core::scoped_map<symbol_info> {
-    using core::scoped_map<symbol_info>::define;
-	using core::scoped_map<symbol_info>::find_scope;
+class symbol_table {
 public:
 
+    void push();
+    void pop();
     void define(const std::string& name, core::type type);
     void define_function(const std::string& name, core::type func_type);
-    bool mark_initialized(const std::string& name);
+    void mark_initialized(const std::string& name);
+    std::optional<symbol_info> get(const std::string& name) const;
+    bool contains_in_current_scope(const std::string& name) const;
+
+private:
+    core::scoped_map<symbol_info> scopes_;
 };
 
 } // namespace semantics
