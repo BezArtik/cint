@@ -23,7 +23,6 @@ enum class symbol_kind : uint8_t {
 struct symbol_info {
 	core::type type_{};
 	symbol_kind kind_{};
-	bool initialized_{};
 };
 
 class symbol_table {
@@ -33,7 +32,6 @@ public:
     void pop();
     void define(const std::string& name, core::type type);
     void define_function(const std::string& name, core::type func_type);
-    void mark_initialized(const std::string& name);
     std::optional<symbol_info> get(const std::string& name) const;
     bool contains_in_current_scope(const std::string& name) const;
 

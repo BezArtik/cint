@@ -22,6 +22,7 @@ public:
 
     template <typename T>
     value(T v) : data_(std::move(v)) {}
+    value(core::type element_type, array_t elements);
 
     core::type type() const;
 
@@ -62,12 +63,16 @@ public:
     value not_op() const;
 
 private:
+    struct array_info {
+        core::type element_type_;
+        array_t elements_;
+    };
     std::variant<
         int_t,
         double_t,
         bool_t,
         string_t,
-		array_t,
+		array_info,
         std::monostate
     > data_;
 };

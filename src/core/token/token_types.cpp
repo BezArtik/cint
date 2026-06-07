@@ -103,7 +103,8 @@ bool type::operator==(const type& other) const noexcept {
     } else if (kind_ == kind::ARRAY) {
         const auto& lhs = std::get<array_info>(info_);
         const auto& rhs = std::get<array_info>(other.info_);
-        return *lhs.element_type_ == *rhs.element_type_ && lhs.size_ == rhs.size_;
+        if (*lhs.element_type_ != *rhs.element_type_) return false;
+        return lhs.size_ == rhs.size_ || lhs.size_ == 0 || rhs.size_ == 0;
     }
 
     return true;

@@ -73,7 +73,6 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     }
 
     symbols_.define(name, stmt.type_);
-    if (stmt.initializer_) symbols_.mark_initialized(name);
 }
 
 void type_checker::check_block(const ast::block_stmt& stmt) {
@@ -154,7 +153,6 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     for (const auto& param : stmt.params_) {
         std::string param_name{ param.name_.lexeme_ };
         symbols_.define(param_name, param.type_);
-        symbols_.mark_initialized(param_name);
     }
 
     const auto& prev_return_type = curr_return_type_;
@@ -363,8 +361,8 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
 
     if (!object_type.is_array())
         return reporter_.error_type(expr, err::indexing_non_array);
-    if (!index_type.is_numeric())
-        return reporter_.error_type(expr, err::indexing_non_numeric);
+    if (!index_type.is_int())
+        return reporter_.error_type(expr, err::index_must_be_integer);
     return object_type.element_type();
 }
 

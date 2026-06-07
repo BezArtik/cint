@@ -10,16 +10,11 @@ void symbol_table::push() { scopes_.push(); }
 void symbol_table::pop() { scopes_.pop(); }
 
 void symbol_table::define(const std::string& name, core::type type) {
-    scopes_.define(name, { type, symbol_kind::VARIABLE, false });
+    scopes_.define(name, { type, symbol_kind::VARIABLE });
 }
 
 void symbol_table::define_function(const std::string& name, core::type func_type) {
-    scopes_.define(name, { func_type, symbol_kind::FUNCTION, true });
-}
-
-void symbol_table::mark_initialized(const std::string& name) {
-    auto* info = scopes_.get_mut(name);
-    if (info) info->initialized_ = true;
+    scopes_.define(name, { func_type, symbol_kind::FUNCTION });
 }
 
 std::optional<symbol_info> symbol_table::get(const std::string& name) const {

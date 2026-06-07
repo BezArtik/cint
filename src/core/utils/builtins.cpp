@@ -34,19 +34,11 @@ value sin(const std::vector<value>& args) {
 }
 
 value to_int(const std::vector<value>& args) {
-    const auto& a = args[0];
-    if (a.type() == type::int_type()) return a;
-    if (a.type() == type::double_type())
-        return value{ static_cast<value::int_t>(a.to_double()) };
-    return value{ static_cast<value::int_t>(std::stoll(a.to_string())) };
+    return args[0].to_int();
 }
 
 value to_dbl(const std::vector<value>& args) {
-    const auto& a = args[0];
-    if (a.type() == type::double_type()) return a;
-    if (a.type() == type::int_type())
-        return value{ static_cast<value::double_t>(a.to_int()) };
-    return value{ std::stod(a.to_string()) };
+    return args[0].to_double();
 }
 
 } // namespace core::builtin_impl

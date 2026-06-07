@@ -276,7 +276,9 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
     auto index_val = evaluate(idx.index_);
     auto right = evaluate(expr.right_);
 
-    auto i = index_val.as_int().value();
+    auto i_opt = index_val.as_int();
+    if (!i_opt) reporter_.error_throw(expr, err::index_must_be_integer);
+    auto i = *i_opt;
     auto size = arr_ptr->as_array()->size();
     if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds, name, i);
 
@@ -299,7 +301,7 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
     }
 
     element = std::move(result);
-    *arr_ptr = core::value(std::move(vec));
+    *arr_ptr = core::value(arr_ptr->type().element_type(), std::move(vec));
     return element;
 }
 
@@ -450,7 +452,8 @@ core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& e
     elements.reserve(expr.elements_.size());
     std::ranges::transform(expr.elements_, std::back_inserter(elements),
         [this](const auto& elem) { return evaluate(elem); });
-    return core::value(std::move(elements));
+    auto elem_type = elements.empty() ? core::type::unknown_type() : elements[0].type();
+    return core::value(elem_type, std::move(elements));
 }
 
 core::value interpreter::evaluate_index(const ast::index_expr& expr) {
@@ -459,7 +462,9 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
 
     if (!obj.as_array()) reporter_.error_throw(expr, err::indexing_non_array);
 
-    auto i = idx.as_int().value();
+    auto i_opt = idx.as_int();
+    if (!i_opt) reporter_.error_throw(expr, err::index_must_be_integer);
+    auto i = *i_opt;
     auto size = obj.as_array()->size();
 
     if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds);
@@ -473,7 +478,7 @@ core::value interpreter::default_value(const t& type) {
     if (type == t::bool_type())      return core::value(false);
     if (type == t::string_type())    return core::value(core::value::string_t(""));
     if (type.is_void())              return core::value();
-    if (type.is_array())             return core::value(core::value::array_t{});
+    if (type.is_array())             return core::value(type.element_type(), core::value::array_t{});
     if (type.is_unknown())           throw core::interpret_error{ err::unexpected_literal };
     return core::value();
 }

@@ -50,6 +50,7 @@ ERROR(empty_array_literal,				"Array literal cannot be empty")
 ERROR(array_literal_inconsistent_types, "Array literal has inconsistent element types")
 ERROR(indexing_non_array,				"Indexing operator applied to non-array type")
 ERROR(indexing_non_numeric,				"Array index must be of numeric type")
+ERROR(index_must_be_integer,            "Array index must be of integer type")
 
 // Runtime
 ERROR(division_by_zero,					"Division by zero")

@@ -16,6 +16,10 @@ using err = core::error_code;
 
 value::value() : data_(std::monostate{}) {}
 
+value::value(core::type element_type, array_t elements)
+    : data_(array_info{ std::move(element_type), std::move(elements) }) {
+}
+
 core::type value::type() const {
     return std::visit([](auto&& arg) -> core::type {
         using T = std::decay_t<decltype(arg)>;
@@ -24,7 +28,7 @@ core::type value::type() const {
         else if constexpr (std::is_same_v<T, double_t>)    return t::double_type();
         else if constexpr (std::is_same_v<T, bool_t>)      return t::bool_type();
         else if constexpr (std::is_same_v<T, string_t>)    return t::string_type();
-		else if constexpr (std::is_same_v<T, array_t>)     return t::array_type(t::unknown_type(), arg.size());
+		else if constexpr (std::is_same_v<T, array_info>)  return t::array_type(arg.element_type_, arg.elements_.size());
         else return t::void_type();
         }, data_);
 }
@@ -60,12 +64,13 @@ value::string_t value::to_string() const {
         else if constexpr (std::is_same_v<T, double_t>) return std::to_string(arg);
         else if constexpr (std::is_same_v<T, bool_t>) return arg ? "true" : "false";
         else if constexpr (std::is_same_v<T, string_t>) return arg;
-        else if constexpr (std::is_same_v<T, array_t>) {
+        else if constexpr (std::is_same_v<T, array_info>) {
             string_t result = "{";
-            result.reserve(arg.size() * 16);
-            for (size_t i = 0; i < arg.size(); ++i) {
+            const auto& elems = arg.elements_;
+            result.reserve(elems.size() * 16);
+            for (size_t i = 0; i < elems.size(); ++i) {
                 if (i > 0) result += ", ";
-                result += arg[i].to_string();
+                result += elems[i].to_string();
             }
             result += "}";
             return result;
@@ -78,22 +83,31 @@ std::optional<value::int_t> value::as_int() const noexcept { return as<int_t>();
 std::optional<value::double_t> value::as_double() const noexcept { return as<double_t>(); }
 std::optional<value::bool_t> value::as_bool() const noexcept { return as<bool_t>();}
 std::optional<value::string_t> value::as_string() const noexcept { return as<string_t>();}
-std::optional<value::array_t> value::as_array() const noexcept { return as<array_t>(); }
-value::array_t* value::as_array_mut() noexcept { return std::get_if<array_t>(&data_); }
+std::optional<value::array_t> value::as_array() const noexcept {
+    if (auto* p = std::get_if<array_info>(&data_))
+        return p->elements_;
+    return std::nullopt;
+}
+value::array_t* value::as_array_mut() noexcept {
+    if (auto* p = std::get_if<array_info>(&data_))
+        return &p->elements_;
+    return nullptr;
+}
 std::optional<value::array_t> value::take_array() noexcept {
-	if (auto* arr = as_array_mut()) {
-		return std::move(*arr);
-	}
-	return std::nullopt;
+    if (auto* p = std::get_if<array_info>(&data_))
+        return std::move(p->elements_);
+    return std::nullopt;
 }
 
-size_t value::array_size() const { return std::get<array_t>(data_).size(); }
+size_t value::array_size() const {
+    return std::get<array_info>(data_).elements_.size();
+}
 
 value value::add(const value& other) const {
     auto lt = type();
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::invalid_conversion };
+        throw core::interpret_error{ err::arithmetic_requires_numeric };
     if (lt.is_int() && rt.is_int())
         return value(*as_int() + *other.as_int());
     return value(to_double() + other.to_double());
@@ -103,7 +117,7 @@ value value::sub(const value& other) const {
     auto lt = type();
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::invalid_conversion };
+        throw core::interpret_error{ err::arithmetic_requires_numeric };
     if (lt.is_int() && rt.is_int())
         return value(*as_int() - *other.as_int());
     return value(to_double() - other.to_double());
@@ -113,7 +127,7 @@ value value::mul(const value& other) const {
     auto lt = type();
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::invalid_conversion };
+        throw core::interpret_error{ err::arithmetic_requires_numeric };
     if (lt.is_int() && rt.is_int())
         return value(*as_int() * *other.as_int());
     return value(to_double() * other.to_double());
@@ -123,7 +137,7 @@ value value::div(const value& other) const {
     auto lt = type();
     auto rt = other.type();
     if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::invalid_conversion };
+        throw core::interpret_error{ err::arithmetic_requires_numeric };
     if (lt.is_int() && rt.is_int()) {
         if (*other.as_int() == 0) throw core::interpret_error{ err::division_by_zero };
         return value(*as_int() / *other.as_int());

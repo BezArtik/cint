@@ -325,15 +325,6 @@ void print_ast(const std::vector<std::unique_ptr<ast::statement>>& statements) {
 }
 
 
-void print_semantic_info() {
-    std::cerr << "\n";
-    std::cerr << "═══════════════════════════════════════════════════════\n";
-    std::cerr << "  SEMANTIC ANALYSIS (Type Check Passed)\n";
-    std::cerr << "═══════════════════════════════════════════════════════\n\n";
-    std::cerr << "All types resolved successfully.\n\n";
-}
-
-
 void print_value(const core::value& val, uint32_t indent) {
     std::cerr << indent_str(indent);
 
