@@ -20,11 +20,11 @@
 #include <charconv>
 #include <utility>
 #include <algorithm>
-#include <cassert>
 
 namespace runtime {
 
 using tt = core::token_type;
+using t = core::type;
 using err = core::error_code;
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug)
@@ -33,8 +33,8 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug)
     , current_env_(global_env_.get())
     , debug_(debug) {
 
-	for (const auto& def : core::builtins) 
-		global_env_->define_builtin(std::string{def.name_}, def.impl_);
+    for (const auto& def : core::builtins)
+        global_env_->define_builtin(std::string{ def.name_ }, def.impl_);
 }
 
 interpreter::scope_guard::scope_guard(environment* env) : env_(env) {
@@ -70,7 +70,7 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
             }
         }
 
-    } catch (const core::interpret_error& e) {}
+    } catch (const core::interpret_error&) {}
 }
 
 void interpreter::execute(const ast::statement& stmt) {
@@ -80,7 +80,7 @@ void interpreter::execute(const ast::statement& stmt) {
         [this](const ast::var_declaration& s) { execute_var_declaration(s); },
         [this](const ast::block_stmt& s) { execute_block(s); },
         [this](const ast::while_stmt& s) { execute_while(s); },
-		[this](const ast::for_stmt& s) { execute_for(s); },
+        [this](const ast::for_stmt& s) { execute_for(s); },
         [this](const ast::if_stmt& s) { execute_if(s); },
         [this](const ast::return_stmt& s) { execute_return_stmt(s); },
         [this](const ast::func_declaration& s) { execute_func_declaration(s); },
@@ -96,8 +96,8 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
     if (debug_) {
         debug::print_execution("var " + name + " : " + std::string(debug::type_name(stmt.type_)));
     }
-        
-	auto init_val = default_value(stmt.type_);
+
+    auto init_val = default_value(stmt.type_);
 
     if (stmt.initializer_) {
         auto init = evaluate(*stmt.initializer_);
@@ -105,7 +105,7 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         if (stmt.type_.is_array() && init.as_array()) {
             init_val = std::move(init);
         } else if (stmt.type_.is_assignable_from(init.type())) {
-            if (stmt.type_ == core::type::double_type() && init.type() == core::type::int_type()) {
+            if (stmt.type_ == t::double_type() && init.type() == t::int_type()) {
                 init_val = core::value(static_cast<double>(init.as_int().value()));
             } else {
                 init_val = std::move(init);
@@ -130,16 +130,16 @@ void interpreter::execute_while(const ast::while_stmt& stmt) {
 }
 
 void interpreter::execute_for(const ast::for_stmt& stmt) {
-	scope_guard guard(current_env_);
-	if (stmt.initializer_) execute(*stmt.initializer_);
-	while (true) {
-		if (stmt.condition_) {
-			auto cond = evaluate(*stmt.condition_);
-			if (!cond.as_bool().value()) break;
-		}
-		execute(*stmt.body_);
-		if (stmt.increment_) evaluate(*stmt.increment_);
-	}
+    scope_guard guard(current_env_);
+    if (stmt.initializer_) execute(*stmt.initializer_);
+    while (true) {
+        if (stmt.condition_) {
+            auto cond = evaluate(*stmt.condition_);
+            if (!cond.as_bool().value()) break;
+        }
+        execute(*stmt.body_);
+        if (stmt.increment_) evaluate(*stmt.increment_);
+    }
 }
 
 void interpreter::execute_if(const ast::if_stmt& stmt) {
@@ -153,7 +153,7 @@ void interpreter::execute_if(const ast::if_stmt& stmt) {
 
 void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
-	stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = core::value();
+    stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = core::value();
     throw return_exception{ std::move(ret_val) };
 }
 
@@ -170,8 +170,8 @@ core::value interpreter::evaluate(const ast::expression& expr) {
         [this](const std::unique_ptr<ast::unary_expr>& e)         { return evaluate_unary(*e); },
         [this](const std::unique_ptr<ast::postfix_expr>& e)       { return evaluate_postfix(*e); },
         [this](const std::unique_ptr<ast::call_expr>& e)          { return evaluate_call(*e); },
-		[this](const std::unique_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
-		[this](const std::unique_ptr<ast::index_expr>& e)         { return evaluate_index(*e); },
+        [this](const std::unique_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
+        [this](const std::unique_ptr<ast::index_expr>& e)         { return evaluate_index(*e); },
         }, expr);
     if (debug_) {
         std::cerr << "  → ";
@@ -187,12 +187,12 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         if (token.is_double_literal()) {
             core::value::double_t d;
             auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), d);
-            error_if(ec != std::errc(), err::unexpected_literal, token);
+            if (ec != std::errc{}) reporter_.error_throw(token, err::unexpected_literal);
             return core::value(d);
         } else {
             core::value::int_t i;
             auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), i);
-            error_if(ec != std::errc(), err::unexpected_literal, token);
+            if (ec != std::errc{}) reporter_.error_throw(token, err::unexpected_literal);
             return core::value(i);
         }
     }
@@ -206,13 +206,13 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         if (kw && kw->lexeme_ == "true")  return core::value(true);
         if (kw && kw->lexeme_ == "false") return core::value(false);
     }
-    throw_error(err::unexpected_literal, token);
+    reporter_.error_throw(token, err::unexpected_literal);
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
     std::string name{ expr.name_.lexeme_ };
     auto val = current_env_->get(name);
-    error_if(!val, err::undefined_variable, expr, name);
+    if (!val) reporter_.error_throw(expr, err::undefined_variable, name);
     return *val;
 }
 
@@ -244,8 +244,8 @@ core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
 }
 
 core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr,
-                                                    const ast::variable_expr& var,
-                                                    const std::string& name) {
+    const ast::variable_expr& var,
+    const std::string& name) {
     auto right = evaluate(expr.right_);
 
     if (expr.op_.type_ == tt::EQUAL) {
@@ -268,17 +268,17 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
 }
 
 core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
-                                                   const ast::index_expr& idx,
-                                                   const std::string& name) {
+    const ast::index_expr& idx,
+    const std::string& name) {
     auto* arr_ptr = current_env_->get_mut(name);
-    if (!arr_ptr) throw_error(err::undefined_variable, expr, name);
-        
+    if (!arr_ptr) reporter_.error_throw(expr, err::undefined_variable, name);
+
     auto index_val = evaluate(idx.index_);
     auto right = evaluate(expr.right_);
 
     auto i = index_val.as_int().value();
     auto size = arr_ptr->as_array()->size();
-    error_if(i < 0 || i >= size, err::index_out_of_bounds, expr, name, i);
+    if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds, name, i);
 
     auto vec = std::move(*arr_ptr->as_array_mut());
     auto& element = vec[i];
@@ -330,10 +330,10 @@ core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
         case tt::LESS_EQUAL:    return left.le(right);
         case tt::GREATER:       return left.gt(right);
         case tt::GREATER_EQUAL: return left.ge(right);
-        default: throw_error(err::unsupported_binary_operator, expr, expr.op_.lexeme_);
+        default: reporter_.error_throw(expr, err::unsupported_binary_operator, expr.op_.lexeme_);  
         }
     } catch (const core::interpret_error& e) {
-        throw_error(e.code_, expr, expr.op_.lexeme_);
+        reporter_.error_throw(expr, e.code_, expr.op_.lexeme_);
     }
 }
 
@@ -342,7 +342,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
 
     switch (expr.op_.type_) {
     case tt::MINUS: {
-        if (operand.type() == core::type::int_type())
+        if (operand.type() == t::int_type())
             return core::value(-operand.as_int().value());
         return core::value(-operand.as_double().value());
     }
@@ -356,19 +356,19 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
         auto old_val = evaluate_variable(var);
 
         core::value new_val;
-        if (old_val.type() == core::type::int_type()) {
+        if (old_val.type() == t::int_type()) {
             auto v = old_val.as_int().value();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
         } else {
             auto v = old_val.as_double().value();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
         }
-        error_if(!current_env_->assign(name, new_val), err::undefined_variable, expr, name);
+        current_env_->assign(name, new_val);
         return new_val;
     }
 
     default:
-        throw_error(err::unsupported_unary_operator, expr, expr.op_.lexeme_);
+        reporter_.error_throw(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
     }
 }
 
@@ -378,7 +378,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
     auto old_val = evaluate_variable(var);
 
     core::value new_val;
-    if (old_val.type() == core::type::int_type()) {
+    if (old_val.type() == t::int_type()) {
         auto v = old_val.as_int().value();
         new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
     } else {
@@ -396,7 +396,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto func_it = functions_.find(name);
 
     if (!builtin && func_it == functions_.end()) {
-        report_error(err::undefined_function, expr, name);
+        reporter_.error(expr, err::undefined_function, name);
         return core::value();
     }
 
@@ -406,7 +406,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     try {
         std::ranges::transform(expr.args_, std::back_inserter(args),
             [this](const auto& arg) { return evaluate(arg); });
-    } catch (const core::interpret_error& e) {
+    } catch (const core::interpret_error&) {
         return core::value();
     }
 
@@ -421,10 +421,9 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     const auto& func = *func_it->second;
 
     if (args.size() != func.params_.size()) {
-        throw_error(err::argument_count_mismatch, expr, name,
+        reporter_.error_throw(expr, err::argument_count_mismatch, name,
             std::to_string(func.params_.size()),
             std::to_string(args.size()));
-        return core::value();
     }
 
     scope_guard guard(current_env_);
@@ -440,7 +439,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         for (const auto& s : func.body_->statements_) execute(*s);
     } catch (const return_exception& ret) {
         result = ret.return_value_;
-    } catch (const core::interpret_error& e) {
+    } catch (const core::interpret_error&) {
         return core::value();
     }
     return result;
@@ -458,25 +457,25 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     auto obj = evaluate(expr.object_);
     auto idx = evaluate(expr.index_);
 
-    error_if(!obj.as_array(), err::indexing_non_array, expr);
+    if (!obj.as_array()) reporter_.error_throw(expr, err::indexing_non_array);
 
     auto i = idx.as_int().value();
-    auto size = static_cast<int64_t>(obj.as_array()->size());
+    auto size = obj.as_array()->size();
 
-    error_if(i < 0 || i >= size, err::index_out_of_bounds, expr);
+    if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds);
 
-    return (*obj.as_array())[static_cast<size_t>(i)];
+    return (*obj.as_array())[i];
 }
 
-core::value interpreter::default_value(const core::type& type) {
-    if (type == core::type::int_type())         return core::value(int64_t{ 0 });
-    if (type == core::type::double_type())      return core::value(0.0);
-    if (type == core::type::bool_type())        return core::value(false);
-    if (type == core::type::string_type())      return core::value(std::string(""));
-    if (type.is_void())                         return core::value();
-    if (type.is_array())                        return core::value(std::vector<core::value>{});
-	if (type.is_unknown()) throw core::interpret_error{ err::unexpected_literal };
-	return core::value();
+core::value interpreter::default_value(const t& type) {
+    if (type == t::int_type())       return core::value(core::value::int_t{ 0 });
+    if (type == t::double_type())    return core::value(0.0);
+    if (type == t::bool_type())      return core::value(false);
+    if (type == t::string_type())    return core::value(core::value::string_t(""));
+    if (type.is_void())              return core::value();
+    if (type.is_array())             return core::value(core::value::array_t{});
+    if (type.is_unknown())           throw core::interpret_error{ err::unexpected_literal };
+    return core::value();
 }
 
 } // namespace runtime

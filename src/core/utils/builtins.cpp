@@ -2,7 +2,7 @@
 
 
 #include "core/utils/builtins.hpp"
-#include "core/value.hpp"
+#include "core/value/value.hpp"
 #include <cmath>
 #include <iostream>
 #include <sstream>
@@ -20,7 +20,7 @@ value print(const std::vector<value>& args) {
 }
 
 value input(const std::vector<value>&) {
-    std::string line;
+    value::string_t line;
     std::getline(std::cin, line);
     return value{ std::move(line) };
 }
@@ -37,15 +37,15 @@ value to_int(const std::vector<value>& args) {
     const auto& a = args[0];
     if (a.type() == type::int_type()) return a;
     if (a.type() == type::double_type())
-        return value{ static_cast<int64_t>(a.to_double()) };
-    return value{ static_cast<int64_t>(std::stoll(a.to_string())) };
+        return value{ static_cast<value::int_t>(a.to_double()) };
+    return value{ static_cast<value::int_t>(std::stoll(a.to_string())) };
 }
 
 value to_dbl(const std::vector<value>& args) {
     const auto& a = args[0];
     if (a.type() == type::double_type()) return a;
     if (a.type() == type::int_type())
-        return value{ static_cast<double>(a.to_int()) };
+        return value{ static_cast<value::double_t>(a.to_int()) };
     return value{ std::stod(a.to_string()) };
 }
 

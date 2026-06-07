@@ -24,14 +24,14 @@ struct builtin_def {
 };
 
 namespace builtin_sig {
-inline std::vector<core::type> sig() { return {}; }
+inline std::vector<type> sig() { return {}; }
 template<typename... Types>
-std::vector<core::type> sig(Types... types) { return { types... }; }
-inline core::type i() { return core::type::int_type(); }
-inline core::type d() { return core::type::double_type(); }
-inline core::type b() { return core::type::bool_type(); }
-inline core::type s() { return core::type::string_type(); }
-inline core::type void_t() { return core::type::void_type(); }
+std::vector<type> sig(Types... types) { return { types... }; }
+inline type i() { return type::int_type(); }
+inline type d() { return type::double_type(); }
+inline type b() { return type::bool_type(); }
+inline type s() { return type::string_type(); }
+inline type void_t() { return type::void_type(); }
 }
 
 namespace builtin_impl {
@@ -43,8 +43,8 @@ value to_int(const std::vector<value>& args);
 value to_dbl(const std::vector<value>& args);
 }
 
-inline const std::array<builtin_def, 6> builtins = { {
-    {
+inline const std::array builtins = {
+    builtin_def{
         "print",
         {{
             {builtin_sig::sig(builtin_sig::i()), builtin_sig::void_t()},
@@ -55,14 +55,14 @@ inline const std::array<builtin_def, 6> builtins = { {
         }},
         builtin_impl::print
     },
-    {
+    builtin_def{
         "input",
         {{
             {builtin_sig::sig(), builtin_sig::s()}
         }},
         builtin_impl::input
     },
-    {
+    builtin_def{
         "sqrt",
         {{
             {builtin_sig::sig(builtin_sig::d()), builtin_sig::d()},
@@ -70,7 +70,7 @@ inline const std::array<builtin_def, 6> builtins = { {
         }},
         builtin_impl::sqrt
     },
-    {
+    builtin_def{
         "sin",
         {{
             {builtin_sig::sig(builtin_sig::d()), builtin_sig::d()},
@@ -78,7 +78,7 @@ inline const std::array<builtin_def, 6> builtins = { {
         }},
         builtin_impl::sin
     },
-    {
+    builtin_def{
         "to_int",
         {{
             {builtin_sig::sig(builtin_sig::i()), builtin_sig::i()},
@@ -87,7 +87,7 @@ inline const std::array<builtin_def, 6> builtins = { {
         }},
         builtin_impl::to_int
     },
-    {
+    builtin_def{
         "to_double",
         {{
             {builtin_sig::sig(builtin_sig::d()), builtin_sig::d()},
@@ -96,6 +96,6 @@ inline const std::array<builtin_def, 6> builtins = { {
         }},
         builtin_impl::to_dbl
     }
-} };
+};
 
 } // namespace core

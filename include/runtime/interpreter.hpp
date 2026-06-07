@@ -2,7 +2,7 @@
 
 
 #pragma once
-#include "core/value.hpp"
+#include "core/value/value.hpp"
 #include "ast/statement.hpp"
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
@@ -56,24 +56,6 @@ private:
 	core::value evaluate_index(const ast::index_expr& expr);
 
 	core::value default_value(const core::type& type);
-
-    template <typename T, typename... Args>
-    [[noreturn]] void throw_error(core::error_code code, const T& t, Args&&... args) {
-        reporter_.error(t.line_, t.column_, code, std::forward<Args>(args)...);
-        throw core::interpret_error{ code };
-    }
-
-    template <typename T, typename... Args>
-    void report_error(core::error_code code, const T& t, Args&&... args) {
-        reporter_.error(t.line_, t.column_, code, std::forward<Args>(args)...);
-    }
-
-    template <typename T, typename... Args>
-    void error_if(bool condition, core::error_code code, const T& t, Args&&... args) {
-        if (condition) {
-            throw_error(code, t, std::forward<Args>(args)...);
-        }
-    }
 
     core::error_reporter& reporter_;
     std::unique_ptr<environment> global_env_;

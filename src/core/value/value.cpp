@@ -1,7 +1,7 @@
 // core/value.cpp
 
 
-#include "core/value.hpp"
+#include "core/value/value.hpp"
 #include "core/token/token_types.hpp"
 #include "core/error/error_codes.hpp"
 #include <stdexcept>
@@ -53,15 +53,15 @@ value::double_t value::to_double() const {
     throw core::interpret_error{ err::invalid_conversion };
 }
 
-std::string value::to_string() const {
-    return std::visit([](auto&& arg) -> std::string {
+value::string_t value::to_string() const {
+    return std::visit([](auto&& arg) -> string_t {
         using T = std::decay_t<decltype(arg)>;
         if constexpr (std::is_same_v<T, int_t>) return std::to_string(arg);
         else if constexpr (std::is_same_v<T, double_t>) return std::to_string(arg);
         else if constexpr (std::is_same_v<T, bool_t>) return arg ? "true" : "false";
         else if constexpr (std::is_same_v<T, string_t>) return arg;
         else if constexpr (std::is_same_v<T, array_t>) {
-            std::string result = "{";
+            string_t result = "{";
             result.reserve(arg.size() * 16);
             for (size_t i = 0; i < arg.size(); ++i) {
                 if (i > 0) result += ", ";
@@ -128,8 +128,8 @@ value value::div(const value& other) const {
         if (*other.as_int() == 0) throw core::interpret_error{ err::division_by_zero };
         return value(*as_int() / *other.as_int());
     }
-    double rhs = other.to_double();
-    if (std::abs(rhs) < std::numeric_limits<double>::epsilon()) 
+    auto rhs = other.to_double();
+    if (std::abs(rhs) < std::numeric_limits<double_t>::epsilon()) 
         throw core::interpret_error{err::division_by_zero};
     return value(to_double() / rhs);
 }

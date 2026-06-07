@@ -24,7 +24,7 @@ public:
         scopes_.push_back(std::make_unique<scope>());
     }
 
-    void pop() {
+    void pop() noexcept {
         if (scopes_.size() > 1) scopes_.pop_back();
     }
 
@@ -44,13 +44,13 @@ public:
         return nullptr;
     }
 
-    bool contains_in_current_scope(const std::string& name) const {
+    bool contains_in_current_scope(const std::string& name) const noexcept {
         return scopes_.back()->bindings_.contains(name);
     }
 
     bool assign(const std::string& name, T value) {
         auto* scope = find_scope(name);
-		if (!scope) { return false; }
+		if (!scope) return false; 
         scope->bindings_[name] = std::move(value);
         return true;
     }
@@ -62,7 +62,6 @@ private:
     };
     std::vector<std::unique_ptr<scope>> scopes_;
 
-protected:
     scope* find_scope(const std::string& name) {
         auto it = std::find_if(scopes_.rbegin(), scopes_.rend(),
             [&](const auto& s) { return s->bindings_.contains(name); });

@@ -2,7 +2,7 @@
 
 
 #include <gtest/gtest.h>
-#include "core/value.hpp"
+#include "core/value/value.hpp"
 #include "core/token/token_types.hpp"
 #include "core/error/error_codes.hpp"
 #include <string>

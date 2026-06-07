@@ -3,6 +3,7 @@
 
 #pragma once
 #include "core/error/error_codes.hpp"
+#include "core/token/token_types.hpp"
 #include <string_view>
 #include <string>
 #include <format>
@@ -19,8 +20,27 @@ public:
     template<typename... Args>
     void error(uint32_t line, uint32_t column, error_code code, Args&&... args) {
         had_error_ = true;
-        auto msg = format_message(code, std::forward<Args>(args)...);
-        report(line, column, "Error", msg);
+        report(line, column, "Error", format_message(code, std::forward<Args>(args)...));
+    }
+
+    template<typename T, typename... Args>
+    void error(const T& t, core::error_code code, Args&&... args) {
+        had_error_ = true;
+        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
+    }
+
+    template<typename T, typename... Args>
+    [[nodiscard]] core::type error_type(const T& t, core::error_code code, Args&&... args) {
+        had_error_ = true;
+        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
+        return core::type::unknown_type();
+    }
+
+    template<typename T, typename... Args>
+    [[noreturn]] void error_throw(const T& t, core::error_code code, Args&&... args) {
+        had_error_ = true;
+        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
+        throw core::interpret_error{ code };
     }
 
     bool has_error() const noexcept;

@@ -6,11 +6,11 @@ target_sources(interpreter PRIVATE
     lexer/lexer.cpp
     parser/parser.cpp
     core/error/error_report.cpp
-    core/token/keywords.cpp
+    
     core/utils/builtins.cpp
     core/token/token_types.cpp
     core/token/token.cpp
-    core/value.cpp
+    core/value/value.cpp
     semantics/symbol_table.cpp
     semantics/type_check.cpp
     runtime/environment.cpp

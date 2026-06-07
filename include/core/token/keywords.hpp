@@ -34,6 +34,9 @@ inline const std::array keyword_table{
     keyword_info{"false",   type::bool_type(),   false, false},
 };
 
-std::optional<keyword_info> lookup_keyword(std::string_view lexeme);
+inline std::optional<keyword_info> lookup_keyword(std::string_view lexeme) {
+    auto it = std::ranges::find(keyword_table, lexeme, &keyword_info::lexeme_);
+    return it != keyword_table.end() ? std::make_optional(*it) : std::nullopt;
+}
 
 } // namespace core
