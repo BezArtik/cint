@@ -79,23 +79,32 @@ value::string_t value::to_string() const {
         }, data_);
 }
 
+value::bool_t value::to_bool() const {
+    return std::visit([](auto&& arg) -> bool_t {
+        using T = std::decay_t<decltype(arg)>;
+        if constexpr (std::is_same_v<T, int_t>)               return arg != 0;
+        else if constexpr (std::is_same_v<T, double_t>)       return arg != 0.0;
+        else if constexpr (std::is_same_v<T, bool_t>)         return arg;
+        else if constexpr (std::is_same_v<T, string_t>)       return !arg.empty();
+        else if constexpr (std::is_same_v<T, array_info>)     return !arg.elements_.empty();
+        else if constexpr (std::is_same_v<T, std::monostate>) throw core::interpret_error{ err::invalid_conversion };
+        }, data_);
+}
+
 std::optional<value::int_t> value::as_int() const noexcept { return as<int_t>(); }
 std::optional<value::double_t> value::as_double() const noexcept { return as<double_t>(); }
 std::optional<value::bool_t> value::as_bool() const noexcept { return as<bool_t>();}
 std::optional<value::string_t> value::as_string() const noexcept { return as<string_t>();}
 std::optional<value::array_t> value::as_array() const noexcept {
-    if (auto* p = std::get_if<array_info>(&data_))
-        return p->elements_;
+    if (auto* p = std::get_if<array_info>(&data_)) return p->elements_;
     return std::nullopt;
 }
 value::array_t* value::as_array_mut() noexcept {
-    if (auto* p = std::get_if<array_info>(&data_))
-        return &p->elements_;
+    if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
     return nullptr;
 }
 std::optional<value::array_t> value::take_array() noexcept {
-    if (auto* p = std::get_if<array_info>(&data_))
-        return std::move(p->elements_);
+    if (auto* p = std::get_if<array_info>(&data_)) return std::move(p->elements_);
     return std::nullopt;
 }
 
@@ -104,43 +113,28 @@ size_t value::array_size() const {
 }
 
 value value::add(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::arithmetic_requires_numeric };
-    if (lt.is_int() && rt.is_int())
-        return value(*as_int() + *other.as_int());
+    if (type().is_int() && other.type().is_int())
+        return value(to_int() + other.to_int());
     return value(to_double() + other.to_double());
 }
 
 value value::sub(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::arithmetic_requires_numeric };
-    if (lt.is_int() && rt.is_int())
-        return value(*as_int() - *other.as_int());
+    if (type().is_int() && other.type().is_int())
+        return value(to_int() - other.to_int());
     return value(to_double() - other.to_double());
 }
 
 value value::mul(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::arithmetic_requires_numeric };
-    if (lt.is_int() && rt.is_int())
-        return value(*as_int() * *other.as_int());
+    if (type().is_int() && other.type().is_int())
+        return value(to_int() * other.to_int());
     return value(to_double() * other.to_double());
 }
 
 value value::div(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::arithmetic_requires_numeric };
-    if (lt.is_int() && rt.is_int()) {
-        if (*other.as_int() == 0) throw core::interpret_error{ err::division_by_zero };
-        return value(*as_int() / *other.as_int());
+    if (type().is_int() && other.type().is_int()) {
+        auto rhs = other.to_int();
+        if (rhs == 0) throw core::interpret_error{ err::division_by_zero };
+        return value(to_int() / rhs);
     }
     auto rhs = other.to_double();
     if (std::abs(rhs) < std::numeric_limits<double_t>::epsilon()) 
@@ -149,10 +143,11 @@ value value::div(const value& other) const {
 }
 
 value value::mod(const value& other) const {
-    if (!type().is_int() || !other.type().is_int())
-        throw core::interpret_error{ err::modulo_requires_int };
-    if (*other.as_int() == 0) throw core::interpret_error{ err::modulo_by_zero };
-    return value(*as_int() % *other.as_int());
+    auto li = as_int();
+    auto ri = other.as_int();
+    if (!li || !ri) throw core::interpret_error{ err::modulo_requires_int };
+    if (*ri == 0) throw core::interpret_error{ err::modulo_by_zero };
+    return value(*li % *ri);
 }
 
 value value::eq(const value& other) const {
@@ -163,10 +158,10 @@ value value::eq(const value& other) const {
             return value(to_double() == other.to_double());
         return value(false);
     }
-    if (lt.is_int())    return value(*as_int() == *other.as_int());
-    if (lt.is_double()) return value(*as_double() == *other.as_double());
-    if (lt.is_bool())   return value(*as_bool() == *other.as_bool());
-    if (lt.is_string()) return value(*as_string() == *other.as_string());
+    if (lt.is_int())    return value(to_int() == other.to_int());
+    if (lt.is_double()) return value(to_double() == other.to_double());
+    if (lt.is_bool())   return value(to_bool() == other.to_bool());
+    if (lt.is_string()) return value(to_string() == other.to_string());
     return value(false);
 }
 
@@ -175,12 +170,8 @@ value value::neq(const value& other) const {
 }
 
 value value::lt(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (!lt.is_numeric() || !rt.is_numeric())
-        throw core::interpret_error{ err::comparison_requires_numeric };
-    if (lt.is_int() && rt.is_int())
-        return value(*as_int() < *other.as_int());
+    if (type().is_int() && other.type().is_int())
+        return value(to_double() < other.to_int());
     return value(to_double() < other.to_double());
 }
 
@@ -197,20 +188,15 @@ value value::ge(const value& other) const {
 }
 
 value value::and_op(const value& other) const {
-    if (auto b1 = as_bool())
-        if (auto b2 = other.as_bool()) return value(*b1 && *b2);
-    throw core::interpret_error{ err::logical_requires_bool };
+    return value(to_bool() && other.to_bool());
 }
 
 value value::or_op(const value& other) const {
-    if (auto b1 = as_bool())
-        if (auto b2 = other.as_bool()) return value(*b1 || *b2);
-    throw core::interpret_error{ err::logical_requires_bool };
+    return value(to_bool() || other.to_bool());
 }
 
 value value::not_op() const {
-    if (auto b = as_bool()) return value(!*b);
-    throw core::interpret_error{ err::logical_requires_bool };
+    return value(!to_bool());
 }
 
 

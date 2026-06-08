@@ -11,6 +11,8 @@
 
 namespace tests {
 
+using tt = core::token_type;
+
 class lexer_harness {
 public:
     lexer_harness(std::string source)
@@ -31,7 +33,7 @@ private:
     std::vector<core::token> tokens_;
 };
 
-void expect_token(const core::token& tok, core::token_type type,
+void expect_token(const core::token& tok, tt type,
     std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
     if (!lexeme.empty()) {
@@ -42,12 +44,12 @@ void expect_token(const core::token& tok, core::token_type type,
 
 void expect_eof(const lexer_harness& h, size_t index) {
     ASSERT_LT(index, h.size());
-    EXPECT_EQ(h[index].type_, core::token_type::END_OF_FILE);
+    EXPECT_EQ(h[index].type_, tt::END_OF_FILE);
 }
 
 struct single_token_case {
     std::string_view source_;
-    core::token_type expected_type_;
+    tt expected_type_;
     std::string_view expected_lexeme_;
 };
 
@@ -62,41 +64,41 @@ TEST_P(single_token_test, recognized) {
 }
 
 INSTANTIATE_TEST_SUITE_P(ops_and_punct, single_token_test, ::testing::Values(
-    single_token_case{ "(",  core::token_type::LEFT_PAREN },
-    single_token_case{ ")",  core::token_type::RIGHT_PAREN },
-    single_token_case{ "{",  core::token_type::LEFT_BRACE },
-    single_token_case{ "}",  core::token_type::RIGHT_BRACE },
-    single_token_case{ ",",  core::token_type::COMMA },
-    single_token_case{ ".",  core::token_type::DOT },
-    single_token_case{ ";",  core::token_type::SEMICOLON },
+    single_token_case{ "(",  tt::LEFT_PAREN },
+    single_token_case{ ")",  tt::RIGHT_PAREN },
+    single_token_case{ "{",  tt::LEFT_BRACE },
+    single_token_case{ "}",  tt::RIGHT_BRACE },
+    single_token_case{ ",",  tt::COMMA },
+    single_token_case{ ".",  tt::DOT },
+    single_token_case{ ";",  tt::SEMICOLON },
 
-    single_token_case{ "+",  core::token_type::PLUS },
-    single_token_case{ "-",  core::token_type::MINUS },
-    single_token_case{ "*",  core::token_type::STAR },
-    single_token_case{ "/",  core::token_type::SLASH },
-    single_token_case{ "%",  core::token_type::PERCENT },
+    single_token_case{ "+",  tt::PLUS },
+    single_token_case{ "-",  tt::MINUS },
+    single_token_case{ "*",  tt::STAR },
+    single_token_case{ "/",  tt::SLASH },
+    single_token_case{ "%",  tt::PERCENT },
 
-    single_token_case{ "!",  core::token_type::BANG },
-    single_token_case{ "=",  core::token_type::EQUAL },
+    single_token_case{ "!",  tt::BANG },
+    single_token_case{ "=",  tt::EQUAL },
 
-    single_token_case{ "==", core::token_type::EQUAL_EQUAL },
-    single_token_case{ "!=", core::token_type::BANG_EQUAL },
-    single_token_case{ "<",  core::token_type::LESS },
-    single_token_case{ "<=", core::token_type::LESS_EQUAL },
-    single_token_case{ ">",  core::token_type::GREATER },
-    single_token_case{ ">=", core::token_type::GREATER_EQUAL },
+    single_token_case{ "==", tt::EQUAL_EQUAL },
+    single_token_case{ "!=", tt::BANG_EQUAL },
+    single_token_case{ "<",  tt::LESS },
+    single_token_case{ "<=", tt::LESS_EQUAL },
+    single_token_case{ ">",  tt::GREATER },
+    single_token_case{ ">=", tt::GREATER_EQUAL },
 
-    single_token_case{ "++", core::token_type::INCREMENT },
-    single_token_case{ "--", core::token_type::DECREMENT },
+    single_token_case{ "++", tt::INCREMENT },
+    single_token_case{ "--", tt::DECREMENT },
 
-    single_token_case{ "+=", core::token_type::PLUS_EQUAL },
-    single_token_case{ "-=", core::token_type::MINUS_EQUAL },
-    single_token_case{ "*=", core::token_type::STAR_EQUAL },
-    single_token_case{ "/=", core::token_type::SLASH_EQUAL },
-    single_token_case{ "%=", core::token_type::PERCENT_EQUAL },
+    single_token_case{ "+=", tt::PLUS_EQUAL },
+    single_token_case{ "-=", tt::MINUS_EQUAL },
+    single_token_case{ "*=", tt::STAR_EQUAL },
+    single_token_case{ "/=", tt::SLASH_EQUAL },
+    single_token_case{ "%=", tt::PERCENT_EQUAL },
 
-    single_token_case{ "&&", core::token_type::AND },
-    single_token_case{ "||", core::token_type::OR }
+    single_token_case{ "&&", tt::AND },
+    single_token_case{ "||", tt::OR }
 ));
 
 
@@ -111,7 +113,7 @@ TEST_P(keyword_test, recognized) {
     const auto& tc = GetParam();
     lexer_harness h(std::string{ tc.source_ });
     ASSERT_GE(h.size(), 2);
-    expect_token(h[0], core::token_type::KEYWORD, tc.lexeme_);
+    expect_token(h[0], tt::KEYWORD, tc.lexeme_);
     EXPECT_TRUE(h[0].is_keyword());
     expect_eof(h, 1);
 }
@@ -144,7 +146,7 @@ TEST_P(number_test, recognized) {
     const auto& tc = GetParam();
     lexer_harness h(std::string{ tc.source_ });
     ASSERT_GE(h.size(), 2);
-    expect_token(h[0], core::token_type::NUMBER, tc.lexeme_);
+    expect_token(h[0], tt::NUMBER, tc.lexeme_);
     EXPECT_EQ(h[0].is_double_literal(), tc.is_double_);
     expect_eof(h, 1);
 }
@@ -173,7 +175,7 @@ TEST_P(string_test, recognized) {
     const auto& tc = GetParam();
     lexer_harness h(std::string{ tc.source_ });
     ASSERT_GE(h.size(), 2);
-    expect_token(h[0], core::token_type::STRING, tc.expected_lexeme_);
+    expect_token(h[0], tt::STRING, tc.expected_lexeme_);
     EXPECT_TRUE(h[0].is_string_literal());
     expect_eof(h, 1);
 }
@@ -191,7 +193,7 @@ TEST_P(identifier_test, recognized) {
     auto id = GetParam();
     lexer_harness h(std::string{ id });
     ASSERT_GE(h.size(), 2);
-    expect_token(h[0], core::token_type::IDENTIFIER, id);
+    expect_token(h[0], tt::IDENTIFIER, id);
     EXPECT_TRUE(h[0].is_identifier());
     expect_eof(h, 1);
 }
@@ -203,7 +205,7 @@ INSTANTIATE_TEST_SUITE_P(various, identifier_test, ::testing::Values(
 
 struct token_sequence {
     std::string_view source_;
-    std::vector<core::token_type> expected_types_;
+    std::vector<tt> expected_types_;
     std::vector<std::string_view> expected_lexemes_;
 };
 
@@ -226,24 +228,18 @@ TEST_P(sequence_test, Recognized) {
 INSTANTIATE_TEST_SUITE_P(declarations, sequence_test, ::testing::Values(
     token_sequence{
         "int x = 42;",
-        {core::token_type::KEYWORD, core::token_type::IDENTIFIER,
-            core::token_type::EQUAL,   core::token_type::NUMBER,
-            core::token_type::SEMICOLON},
+        {tt::KEYWORD, tt::IDENTIFIER, tt::EQUAL,   tt::NUMBER, tt::SEMICOLON},
         {"int", "x", "=", "42", ";"}
     },
     token_sequence{
         "double pi = 3.14;",
-        {core::token_type::KEYWORD, core::token_type::IDENTIFIER,
-            core::token_type::EQUAL,   core::token_type::NUMBER,
-            core::token_type::SEMICOLON},
+        {tt::KEYWORD, tt::IDENTIFIER, tt::EQUAL,   tt::NUMBER, tt::SEMICOLON},
         {"double", "pi", "=", "3.14", ";"}
     },
     token_sequence{
         "if (x < 10) { }",
-        {core::token_type::KEYWORD,   core::token_type::LEFT_PAREN,
-            core::token_type::IDENTIFIER,core::token_type::LESS,
-            core::token_type::NUMBER,    core::token_type::RIGHT_PAREN,
-            core::token_type::LEFT_BRACE,core::token_type::RIGHT_BRACE},
+        {tt::KEYWORD,   tt::LEFT_PAREN, tt::IDENTIFIER,tt::LESS, tt::NUMBER, 
+        tt::RIGHT_PAREN, tt::LEFT_BRACE,tt::RIGHT_BRACE},
         {"if", "(", "x", "<", "10", ")", "{", "}"}
     }
 ));
@@ -251,8 +247,8 @@ INSTANTIATE_TEST_SUITE_P(declarations, sequence_test, ::testing::Values(
 TEST(lexer_test, line_comment) {
     lexer_harness h("42 // comment\n43");
     ASSERT_EQ(h.size(), 3);
-    expect_token(h[0], core::token_type::NUMBER, "42");
-    expect_token(h[1], core::token_type::NUMBER, "43");
+    expect_token(h[0], tt::NUMBER, "42");
+    expect_token(h[1], tt::NUMBER, "43");
     expect_eof(h, 2);
 }
 

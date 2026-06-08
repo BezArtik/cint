@@ -31,13 +31,14 @@ inline std::string_view get_error_message(error_code code) {
     return it != error_table.end() ? it->format_ : "Unknown error";
 }
 
-struct parse_error : std::runtime_error {
-    parse_error() : std::runtime_error("Parse error") {}
+struct parse_error : std::exception {
+    const char* what() const noexcept override { return "Syntax error"; }
 };
 
-struct interpret_error : std::runtime_error {
+struct interpret_error : std::exception {
     error_code code_;
-    interpret_error(error_code c)
-        : std::runtime_error("Interpret error"), code_(c) {}
+    interpret_error(error_code c) noexcept : code_(c) {}
+    const char* what() const noexcept override { return "Runtime error"; }
 };
+
 } // namespace core

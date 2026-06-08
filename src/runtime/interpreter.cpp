@@ -101,15 +101,12 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
 
     if (stmt.initializer_) {
         auto init = evaluate(*stmt.initializer_);
-
-        if (stmt.type_.is_array() && init.as_array()) {
+        if (stmt.type_.is_int() && init.type().is_double()) {
+            init_val = core::value(static_cast<core::value::int_t>(init.to_double()));
+        } else if (stmt.type_.is_double() && init.type().is_int()) {
+            init_val = core::value(static_cast<double>(init.to_int()));
+        } else {
             init_val = std::move(init);
-        } else if (stmt.type_.is_assignable_from(init.type())) {
-            if (stmt.type_ == t::double_type() && init.type() == t::int_type()) {
-                init_val = core::value(static_cast<double>(init.as_int().value()));
-            } else {
-                init_val = std::move(init);
-            }
         }
     }
 
@@ -124,7 +121,7 @@ void interpreter::execute_block(const ast::block_stmt& stmt) {
 void interpreter::execute_while(const ast::while_stmt& stmt) {
     while (true) {
         auto cond = evaluate(stmt.condition_);
-        if (!cond.as_bool().value()) break;
+        if (!cond.to_bool()) break;
         execute(*stmt.body_);
     }
 }
@@ -135,7 +132,7 @@ void interpreter::execute_for(const ast::for_stmt& stmt) {
     while (true) {
         if (stmt.condition_) {
             auto cond = evaluate(*stmt.condition_);
-            if (!cond.as_bool().value()) break;
+            if (!cond.to_bool()) break;
         }
         execute(*stmt.body_);
         if (stmt.increment_) evaluate(*stmt.increment_);
@@ -233,14 +230,16 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 
 core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
     if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
-        const auto& var = std::get<ast::variable_expr>((*idx)->object_);
-        std::string name{ var.name_.lexeme_ };
+        const auto* var = std::get_if<ast::variable_expr>(&(*idx)->object_);
+        if (!var) reporter_.error_throw(expr, err::compound_requires_lvalue);
+        std::string name{ var->name_.lexeme_ };
         return evaluate_index_assignment(expr, **idx, name);
     }
 
-    const auto& var = std::get<ast::variable_expr>(expr.left_);
-    std::string name{ var.name_.lexeme_ };
-    return evaluate_simple_assignment(expr, var, name);
+    const auto* var = std::get_if<ast::variable_expr>(&expr.left_);
+    if (!var) reporter_.error_throw(expr, err::compound_requires_lvalue);
+    std::string name{ var->name_.lexeme_ };
+    return evaluate_simple_assignment(expr, *var, name);
 }
 
 core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr,
@@ -308,12 +307,12 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
 core::value interpreter::evaluate_logical(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
     if (expr.op_.type_ == tt::AND) {
-        if (!left.as_bool().value()) return core::value(false);
+        if (!left.to_bool()) return core::value(false);
     } else {
-        if (left.as_bool().value()) return core::value(true);
+        if (left.to_bool()) return core::value(true);
     }
     auto right = evaluate(expr.right_);
-    return core::value(right.as_bool().value());
+    return core::value(right.to_bool());
 }
 
 core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
@@ -345,8 +344,8 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     switch (expr.op_.type_) {
     case tt::MINUS: {
         if (operand.type() == t::int_type())
-            return core::value(-operand.as_int().value());
-        return core::value(-operand.as_double().value());
+            return core::value(-operand.to_int());
+        return core::value(-operand.to_double());
     }
     case tt::BANG:
         return operand.not_op();
@@ -359,10 +358,10 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
 
         core::value new_val;
         if (old_val.type() == t::int_type()) {
-            auto v = old_val.as_int().value();
+            auto v = old_val.to_int();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
         } else {
-            auto v = old_val.as_double().value();
+            auto v = old_val.to_double();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
         }
         current_env_->assign(name, new_val);
@@ -381,10 +380,10 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 
     core::value new_val;
     if (old_val.type() == t::int_type()) {
-        auto v = old_val.as_int().value();
+        auto v = old_val.to_int();
         new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
     } else {
-        auto v = old_val.as_double().value();
+        auto v = old_val.to_double();
         new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
     }
     current_env_->assign(name, new_val);
@@ -415,8 +414,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     if (builtin) {
         try {
             return (*builtin)(args);
-        } catch (const core::interpret_error&) {
-            return core::value();
+        } catch (const core::interpret_error& e) {
+            reporter_.error_throw(expr, e.code_, name);
         }
     }
 

@@ -13,6 +13,8 @@
 
 namespace tests {
 
+using t = core::type;
+
 class parser_harness {
 public:
     parser_harness(std::string source)
@@ -74,7 +76,7 @@ TEST(parser_test, empty_program) {
 struct var_decl_case {
     std::string_view source_;
     std::string_view expected_name_;
-    core::type expected_type_;
+    t expected_type_;
     bool has_initializer_;
     std::string_view init_lexeme_;
 };
@@ -99,16 +101,16 @@ TEST_P(var_decl_test, parsed) {
 }
 
 INSTANTIATE_TEST_SUITE_P(without_init, var_decl_test, ::testing::Values(
-    var_decl_case{ "int x;",      "x",    core::type::int_type(),    false },
-    var_decl_case{ "double pi;",  "pi",   core::type::double_type(), false },
-    var_decl_case{ "bool flag;",  "flag", core::type::bool_type(),   false },
-    var_decl_case{ "string s;",   "s",    core::type::string_type(), false }
+    var_decl_case{ "int x;",      "x",    t::int_type(),    false },
+    var_decl_case{ "double pi;",  "pi",   t::double_type(), false },
+    var_decl_case{ "bool flag;",  "flag", t::bool_type(),   false },
+    var_decl_case{ "string s;",   "s",    t::string_type(), false }
 ));
 
 INSTANTIATE_TEST_SUITE_P(with_init, var_decl_test, ::testing::Values(
-    var_decl_case{ "int x = 42;",       "x",  core::type::int_type(),    true, "42" },
-    var_decl_case{ "double pi = 3.14;", "pi", core::type::double_type(), true, "3.14" },
-    var_decl_case{ "bool f = true;",    "f",  core::type::bool_type(),   true, "true" }
+    var_decl_case{ "int x = 42;",       "x",  t::int_type(),    true, "42" },
+    var_decl_case{ "double pi = 3.14;", "pi", t::double_type(), true, "3.14" },
+    var_decl_case{ "bool f = true;",    "f",  t::bool_type(),   true, "true" }
 ));
 
 
@@ -218,7 +220,7 @@ INSTANTIATE_TEST_SUITE_P(prefix, unary_test, ::testing::Values(
 struct func_case {
     std::string_view source_;
     std::string_view name_;
-    core::type return_type_;
+    t return_type_;
     size_t param_count_;
 };
 
@@ -237,10 +239,10 @@ TEST_P(func_decl_test, parsed) {
 }
 
 INSTANTIATE_TEST_SUITE_P(various, func_decl_test, ::testing::Values(
-    func_case{ "int main() { return 0; }",        "main", core::type::int_type(),    0 },
-    func_case{ "void foo() { }",                  "foo",  core::type::void_type(),   0 },
-    func_case{ "int add(int a, int b) { }",       "add",  core::type::int_type(),    2 },
-    func_case{ "double f(int x, double y) { }",   "f",    core::type::double_type(), 2 }
+    func_case{ "int main() { return 0; }",        "main", t::int_type(),    0 },
+    func_case{ "void foo() { }",                  "foo",  t::void_type(),   0 },
+    func_case{ "int add(int a, int b) { }",       "add",  t::int_type(),    2 },
+    func_case{ "double f(int x, double y) { }",   "f",    t::double_type(), 2 }
 ));
 
 

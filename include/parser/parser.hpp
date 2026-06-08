@@ -85,11 +85,6 @@ private:
         return std::make_unique<ast::statement>(std::forward<Stmt>(stmt));
     }
 
-    static bool can_start_statement(const core::token& t);
-    static bool is_type_keyword(const core::keyword_info& kw);
-
-	[[noreturn]] void error(const core::token& token, core::error_code code);
-
     const std::vector<core::token>& tokens_;
     core::error_reporter& reporter_;
     size_t current_ = 0;

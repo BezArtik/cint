@@ -14,11 +14,6 @@ namespace parser {
 using tt = core::token_type;
 using err = core::error_code;
 
-[[noreturn]] void parser::error(const core::token& token, err code) {
-    reporter_.error(token.line_, token.column_, code);
-    throw core::parse_error{};
-}
-
 parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter)
     : tokens_(tokens), reporter_(reporter) {
 }
@@ -44,7 +39,7 @@ bool parser::match(std::initializer_list<tt> types) noexcept {
 
 const core::token& parser::consume(tt type, err code) {
     if (check(type)) return advance();
-    error(peek(), code);
+    reporter_.error(peek(), code);
 }
 
 bool parser::check(tt type) const noexcept {
@@ -61,21 +56,12 @@ bool parser::is_at_end() const noexcept { return peek().type_ == tt::END_OF_FILE
 const core::token& parser::peek() const noexcept { return tokens_[current_]; }
 const core::token& parser::prev() const noexcept { return tokens_[current_ - 1]; }
 
-bool parser::can_start_statement(const core::token& t) {
-    auto kw = t.as_keyword();
-    return kw.has_value() && kw->can_start_statement_;
-}
-
-bool parser::is_type_keyword(const core::keyword_info& kw) {
-    return kw.is_type_;
-}
-
 ast::stmt_ptr parser::declaration() {
     try {
         if (match({ tt::KEYWORD })) {
             auto kw = prev().as_keyword();
 
-            if (!kw || !is_type_keyword(*kw)) {
+            if (!kw || !kw->is_type_) {
                 current_--;
                 return statement();
             }
@@ -99,7 +85,7 @@ ast::stmt_ptr parser::declaration() {
 ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
     if (match({ tt::LEFT_BRACKET })) {
         if (!check(tt::RIGHT_BRACKET)) {
-			error(peek(), err::expected_right_bracket);
+			reporter_.error(peek(), err::expected_right_bracket);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
 		type = core::type::array_type(type, 0);
@@ -138,12 +124,12 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 
 ast::func_param parser::parse_param() {
     if (!match({ tt::KEYWORD })) {
-        error(peek(), err::expected_type);
+        reporter_.error(peek(), err::expected_type);
     }
 
     auto kw = prev().as_keyword();
-    if (!kw || !is_type_keyword(*kw) || kw->semantic_type_.is_void()) {
-        error(prev(), err::expected_type);
+    if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) {
+        reporter_.error(prev(), err::expected_type);
     }
 
     const auto& type = kw->semantic_type_;
@@ -154,7 +140,7 @@ ast::func_param parser::parse_param() {
 ast::stmt_ptr parser::statement() {
     if (match({ tt::KEYWORD })) {
         auto kw = prev().as_keyword();
-        if (!kw) error(prev(), err::unexpected_token);
+        if (!kw) reporter_.error(prev(), err::unexpected_token);
 
         const auto& lex = kw->lexeme_;
 
@@ -190,7 +176,7 @@ ast::stmt_ptr parser::for_statement() {
     if (match({ tt::SEMICOLON })) {}
     else if (match({ tt::KEYWORD })) {
         const auto& kw = prev().as_keyword();
-        if (kw && is_type_keyword(*kw)) {
+        if (kw && kw->is_type_) {
             const auto& type = kw->semantic_type_;
             initializer = var_declaration(type, consume(tt::IDENTIFIER, err::expected_identifier));
         } else {
@@ -362,7 +348,7 @@ ast::expression parser::primary() {
         if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) {
             return make_expr_val<ast::literal_expr>( prev());
         }
-        error(prev(), err::expected_expression);
+        reporter_.error(prev(), err::expected_expression);
     }
 
     if (match({ tt::IDENTIFIER })) {
@@ -380,7 +366,7 @@ ast::expression parser::primary() {
 
 	if (match({ tt::LEFT_BRACE })) return array_literal();
 		
-    error(peek(), err::expected_expression);
+    reporter_.error(peek(), err::expected_expression);
 }
 
 ast::expression parser::finish_call(const core::token& callee) {
@@ -409,7 +395,8 @@ void parser::synchronize() {
 
     while (!is_at_end()) {
         if (prev().type_ == tt::SEMICOLON) return;
-        if (can_start_statement(peek())) return;
+        auto kw = peek().as_keyword();
+        if (kw && kw->can_start_statement_) return;
         advance();
     }
 }

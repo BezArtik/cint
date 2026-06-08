@@ -29,6 +29,7 @@ public:
     int_t to_int() const;
     double_t to_double() const;
     string_t to_string() const;
+    bool_t to_bool() const;
 
     template <typename T>
     std::optional<T> as() const noexcept {

@@ -3,7 +3,7 @@
 
 #pragma once
 #include "core/error/error_codes.hpp"
-#include "core/token/token_types.hpp"
+#include "core/token/token.hpp"
 #include <string_view>
 #include <string>
 #include <format>
@@ -41,6 +41,12 @@ public:
         had_error_ = true;
         report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
         throw core::interpret_error{ code };
+    }
+
+    [[noreturn]] void error(const core::token& token, core::error_code code) {
+        had_error_ = true;
+        report(token.line_, token.column_, "Error", format_message(code));
+        throw core::parse_error{};
     }
 
     bool has_error() const noexcept;
