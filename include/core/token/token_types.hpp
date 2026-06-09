@@ -5,31 +5,50 @@
 #include <vector>
 #include <memory>
 #include <variant>
+#include <string_view>
+#include <array>
 
 namespace core {
 
+#define TOKEN_TYPES(X) \
+    X(LEFT_PAREN)       X(RIGHT_PAREN)      \
+    X(LEFT_BRACE)       X(RIGHT_BRACE)      \
+    X(LEFT_BRACKET)     X(RIGHT_BRACKET)    \
+    X(COMMA)            X(DOT)              \
+    X(SEMICOLON)                            \
+    X(PLUS)             X(MINUS)            \
+    X(STAR)                                 \
+    X(SLASH)            X(PERCENT)          \
+    X(BANG)             X(EQUAL)            \
+    X(BANG_EQUAL)       X(EQUAL_EQUAL)      \
+    X(GREATER)          X(GREATER_EQUAL)    \
+    X(LESS)             X(LESS_EQUAL)       \
+    X(INCREMENT)        X(DECREMENT)        \
+    X(PLUS_EQUAL)       X(MINUS_EQUAL)      \
+    X(STAR_EQUAL)       X(SLASH_EQUAL)      \
+    X(PERCENT_EQUAL)                        \
+    X(AND)              X(OR)               \
+    X(IDENTIFIER)       X(STRING)           \
+    X(NUMBER)                               \
+    X(KEYWORD)          X(END_OF_FILE)      \
+    X(UNKNOWN)
+
+
 enum class token_type : uint8_t {
-    LEFT_PAREN, RIGHT_PAREN, 
-    LEFT_BRACE, RIGHT_BRACE,
-	LEFT_BRACKET, RIGHT_BRACKET,
-    COMMA, DOT, SEMICOLON,
-
-    PLUS, MINUS, STAR, SLASH, PERCENT,
-    BANG, EQUAL,
-    BANG_EQUAL, EQUAL_EQUAL,
-    GREATER, GREATER_EQUAL, LESS, LESS_EQUAL,
-    INCREMENT, DECREMENT,
-    PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, SLASH_EQUAL, PERCENT_EQUAL,
-
-    AND, OR,
-
-    IDENTIFIER, STRING, NUMBER,
-
-    KEYWORD,
-
-    END_OF_FILE,
-    UNKNOWN
+#define X(name) name,
+        TOKEN_TYPES(X)
+#undef X
 };
+
+inline constexpr std::array token_type_names = {
+#define X(name) std::string_view(#name),
+    TOKEN_TYPES(X)
+#undef X
+};
+
+constexpr std::string_view to_string(token_type t) {
+    return token_type_names[static_cast<size_t>(t)];
+}
 
 
 class type {

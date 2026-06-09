@@ -29,11 +29,11 @@ class symbol_table {
 public:
 
     void push();
-    void pop();
-    void define(const std::string& name, core::type type);
-    void define_function(const std::string& name, core::type func_type);
-    std::optional<symbol_info> get(const std::string& name) const;
-    bool contains_in_current_scope(const std::string& name) const;
+    void pop() noexcept;
+    void define(std::string_view name, core::type type);
+    void define_function(std::string_view name, core::type func_type);
+    std::optional<symbol_info> get(std::string_view name) const;
+    bool contains_in_current_scope(std::string_view name) const;
 
 private:
     core::scoped_map<symbol_info> scopes_;

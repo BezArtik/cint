@@ -20,52 +20,6 @@ std::string indent_str(uint32_t level) {
     return std::string(static_cast<size_t>(level) * 2, ' ');
 }
 
-const char* token_type_name(core::token_type t) {
-	using tp = core::token_type;
-    switch (t) {
-    case tp::LEFT_PAREN:    return "LEFT_PAREN";
-    case tp::RIGHT_PAREN:   return "RIGHT_PAREN";
-    case tp::LEFT_BRACE:    return "LEFT_BRACE";
-    case tp::RIGHT_BRACE:   return "RIGHT_BRACE";
-	case tp::LEFT_BRACKET:  return "LEFT_BRACKET";
-	case tp::RIGHT_BRACKET: return "RIGHT_BRACKET";
-    case tp::COMMA:         return "COMMA";
-    case tp::DOT:           return "DOT";
-    case tp::SEMICOLON:     return "SEMICOLON";
-    case tp::PLUS:          return "PLUS";
-    case tp::MINUS:         return "MINUS";
-    case tp::STAR:          return "STAR";
-    case tp::SLASH:         return "SLASH";
-    case tp::PERCENT:       return "PERCENT";
-    case tp::BANG:          return "BANG";
-    case tp::EQUAL:         return "EQUAL";
-    case tp::BANG_EQUAL:    return "BANG_EQUAL";
-    case tp::EQUAL_EQUAL:   return "EQUAL_EQUAL";
-    case tp::GREATER:       return "GREATER";
-    case tp::GREATER_EQUAL: return "GREATER_EQUAL";
-    case tp::LESS:          return "LESS";
-    case tp::LESS_EQUAL:    return "LESS_EQUAL";
-    case tp::INCREMENT:     return "INCREMENT";
-    case tp::DECREMENT:     return "DECREMENT";
-    case tp::PLUS_EQUAL:    return "PLUS_EQUAL";
-    case tp::MINUS_EQUAL:   return "MINUS_EQUAL";
-    case tp::STAR_EQUAL:    return "STAR_EQUAL";
-    case tp::SLASH_EQUAL:   return "SLASH_EQUAL";
-    case tp::PERCENT_EQUAL: return "PERCENT_EQUAL";
-    case tp::AND:           return "AND";
-    case tp::OR:            return "OR";
-    case tp::IDENTIFIER:    return "IDENTIFIER";
-    case tp::STRING:        return "STRING";
-    case tp::NUMBER:        return "NUMBER";
-    case tp::KEYWORD:       return "KEYWORD";
-    case tp::END_OF_FILE:   return "EOF";
-    case tp::UNKNOWN:       return "UNKNOWN";
-    default:                return "???";
-    }
-}
-
-
-
 void print_literal(const ast::literal_expr& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Literal: " << e.value_.lexeme_
@@ -303,7 +257,7 @@ void print_tokens(const std::vector<core::token>& tokens) {
         if (lexeme.empty()) lexeme = "(empty)";
 
         std::cerr << std::left
-            << std::setw(20) << token_type_name(tok.type_)
+            << std::setw(20) << core::to_string(tok.type_)
             << std::setw(20) << lexeme
             << tok.loc_.line_ << ":" << tok.loc_.column_ << "\n";
     }

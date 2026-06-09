@@ -5,7 +5,8 @@
 #include "core/value/value.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/utils/builtins.hpp"
-#include <string>
+#include "core/utils/hash.hpp"
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -21,19 +22,20 @@ public:
     environment() = default;
 
     void push_scope();
-    void pop_scope();
-    void define(const std::string& name, core::value val);
-    bool assign(const std::string& name, core::value val);
-    std::optional<core::value> get(const std::string& name) const;
-	core::value* get_mut(const std::string& name);
-
-    void define_builtin(const std::string& name, core::builtin_fn_ptr fn);
-    std::optional<core::builtin_fn_ptr> get_builtin(const std::string& name) const;
+    void pop_scope() noexcept;
+    void define(std::string_view name, core::value val);
+    bool assign(std::string_view name, core::value val);
+    std::optional<core::value> get(std::string_view name) const;
+	core::value* get_mut(std::string_view name);
+    void define_builtin(std::string_view name, core::builtin_fn_ptr fn);
+    std::optional<core::builtin_fn_ptr> get_builtin(std::string_view name) const;
 
 private:
 
     core::scoped_map<core::value> values_;
-    std::unordered_map<std::string, core::builtin_fn_ptr> builtins_;
+    std::unordered_map<std::string, core::builtin_fn_ptr, 
+        core::string_hash, std::equal_to<>
+    > builtins_;
 };
 
 } // namespace runtime

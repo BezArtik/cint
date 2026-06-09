@@ -12,31 +12,31 @@ void environment::push_scope() {
     values_.push();
 }
 
-void environment::pop_scope() {
+void environment::pop_scope() noexcept {
     values_.pop();
 }
 
-void environment::define(const std::string& name, core::value val) {
+void environment::define(std::string_view name, core::value val) {
     values_.define(name, val);
 }
 
-bool environment::assign(const std::string& name, core::value val) {
+bool environment::assign(std::string_view name, core::value val) {
     return values_.assign(name, val);
 }
 
-std::optional<core::value> environment::get(const std::string& name) const {
+std::optional<core::value> environment::get(std::string_view name) const {
     return values_.get(name);
 }
 
-core::value* environment::get_mut(const std::string& name) {
+core::value* environment::get_mut(std::string_view name) {
 	return values_.get_mut(name);
 }
 
-void environment::define_builtin(const std::string& name, core::builtin_fn_ptr fn) {
-    builtins_[name] = std::move(fn);
+void environment::define_builtin(std::string_view name, core::builtin_fn_ptr fn) {
+    builtins_.emplace(name, std::move(fn));
 }
 
-std::optional<core::builtin_fn_ptr> environment::get_builtin(const std::string& name) const {
+std::optional<core::builtin_fn_ptr> environment::get_builtin(std::string_view name) const {
     auto found = builtins_.find(name);
     if (found != builtins_.end()) return found->second;
     return std::nullopt;

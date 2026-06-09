@@ -4,6 +4,7 @@
 #include "core/value/value.hpp"
 #include "core/token/token_types.hpp"
 #include "core/error/error_codes.hpp"
+#include "core/utils/overloaded.hpp"
 #include <stdexcept>
 #include <cstdint>
 #include <charconv>
@@ -21,15 +22,13 @@ value::value(core::type element_type, array_t elements)
 }
 
 core::type value::type() const {
-    return std::visit([](auto&& arg) -> core::type {
-        using T = std::decay_t<decltype(arg)>;
-        using t = core::type;
-        if constexpr (std::is_same_v<T, int_t>)            return t::int_type();
-        else if constexpr (std::is_same_v<T, double_t>)    return t::double_type();
-        else if constexpr (std::is_same_v<T, bool_t>)      return t::bool_type();
-        else if constexpr (std::is_same_v<T, string_t>)    return t::string_type();
-		else if constexpr (std::is_same_v<T, array_info>)  return t::array_type(arg.element_type_, arg.elements_.size());
-        else return t::void_type();
+    return std::visit(overloaded{
+        [](int_t)               { return type::int_type(); },
+        [](double_t)            { return type::double_type(); },
+        [](bool_t)              { return type::bool_type(); },
+        [](const string_t&)     { return type::string_type(); },
+        [](const array_info& a) { return type::array_type(a.element_type_, a.elements_.size()); },
+        [](std::monostate)      { return type::void_type(); }
         }, data_);
 }
 
@@ -58,36 +57,33 @@ value::double_t value::to_double() const {
 }
 
 value::string_t value::to_string() const {
-    return std::visit([](auto&& arg) -> string_t {
-        using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, int_t>) return std::to_string(arg);
-        else if constexpr (std::is_same_v<T, double_t>) return std::to_string(arg);
-        else if constexpr (std::is_same_v<T, bool_t>) return arg ? "true" : "false";
-        else if constexpr (std::is_same_v<T, string_t>) return arg;
-        else if constexpr (std::is_same_v<T, array_info>) {
+    return std::visit(overloaded{
+        [](int_t v)             { return std::to_string(v); },
+        [](double_t v)          { return std::to_string(v); },
+        [](bool_t v)            { return string_t(v ? "true" : "false"); },
+        [](const string_t& v)   { return v; },
+        [](const array_info& a) {
             string_t result = "{";
-            const auto& elems = arg.elements_;
-            result.reserve(elems.size() * 16);
-            for (size_t i = 0; i < elems.size(); ++i) {
+            result.reserve(a.elements_.size() * 16);
+            for (size_t i = 0; i < a.elements_.size(); ++i) {
                 if (i > 0) result += ", ";
-                result += elems[i].to_string();
+                result += a.elements_[i].to_string();
             }
             result += "}";
             return result;
-        }
-        else return "void";
+        },
+        [](std::monostate)      { return string_t("void"); }
         }, data_);
 }
 
 value::bool_t value::to_bool() const {
-    return std::visit([](auto&& arg) -> bool_t {
-        using T = std::decay_t<decltype(arg)>;
-        if constexpr (std::is_same_v<T, int_t>)               return arg != 0;
-        else if constexpr (std::is_same_v<T, double_t>)       return arg != 0.0;
-        else if constexpr (std::is_same_v<T, bool_t>)         return arg;
-        else if constexpr (std::is_same_v<T, string_t>)       return !arg.empty();
-        else if constexpr (std::is_same_v<T, array_info>)     return !arg.elements_.empty();
-        else if constexpr (std::is_same_v<T, std::monostate>) throw core::interpret_error{ err::invalid_conversion };
+    return std::visit(core::overloaded{
+        [](int_t v)                  { return v != 0; },
+        [](double_t v)               { return v != 0.0; },
+        [](bool_t v)                 { return v; },
+        [](const string_t& v)        { return !v.empty(); },
+        [](const array_info& a)      { return !a.elements_.empty(); },
+        [](std::monostate) -> bool_t { throw core::interpret_error{ err::invalid_conversion }; }
         }, data_);
 }
 

@@ -155,8 +155,7 @@ void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
-    std::string name{ stmt.name_.lexeme_ };
-    functions_[name] = &stmt;
+    functions_.emplace(stmt.name_.lexeme_, &stmt);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
@@ -207,9 +206,8 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
-    std::string name{ expr.name_.lexeme_ };
-    auto val = current_env_->get(name);
-    if (!val) reporter_.interpret_error(expr, err::undefined_variable, name);
+    auto val = current_env_->get(expr.name_.lexeme_);
+    if (!val) reporter_.interpret_error(expr, err::undefined_variable, expr.name_.lexeme_);
     return *val;
 }
 
@@ -232,23 +230,20 @@ core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
     if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
         const auto* var = std::get_if<ast::variable_expr>(&(*idx)->object_);
         if (!var) reporter_.interpret_error(expr, err::compound_requires_lvalue);
-        std::string name{ var->name_.lexeme_ };
-        return evaluate_index_assignment(expr, **idx, name);
+        return evaluate_index_assignment(expr, **idx);
     }
 
     const auto* var = std::get_if<ast::variable_expr>(&expr.left_);
     if (!var) reporter_.interpret_error(expr, err::compound_requires_lvalue);
-    std::string name{ var->name_.lexeme_ };
-    return evaluate_simple_assignment(expr, *var, name);
+    return evaluate_simple_assignment(expr, *var);
 }
 
 core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr,
-    const ast::variable_expr& var,
-    const std::string& name) {
+                                                    const ast::variable_expr& var) {
     auto right = evaluate(expr.right_);
 
     if (expr.op_.type_ == tt::EQUAL) {
-        current_env_->assign(name, right);
+        current_env_->assign(var.name_.lexeme_, right);
         return right;
     }
 
@@ -262,13 +257,13 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
     case tt::PERCENT_EQUAL: result = left.mod(right); break;
     default: break;
     }
-    current_env_->assign(name, result);
+    current_env_->assign(var.name_.lexeme_, result);
     return result;
 }
 
 core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
-    const ast::index_expr& idx,
-    const std::string& name) {
+                                                   const ast::index_expr& idx) {
+    auto name = expr.op_.lexeme_;
     auto* arr_ptr = current_env_->get_mut(name);
     if (!arr_ptr) reporter_.interpret_error(expr, err::undefined_variable, name);
 
@@ -353,7 +348,6 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     case tt::INCREMENT:
     case tt::DECREMENT: {
         const auto& var = std::get<ast::variable_expr>(expr.operand_);
-        std::string name{ var.name_.lexeme_ };
         auto old_val = evaluate_variable(var);
 
         core::value new_val;
@@ -364,7 +358,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
             auto v = old_val.to_double();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
         }
-        current_env_->assign(name, new_val);
+        current_env_->assign(var.name_.lexeme_, new_val);
         return new_val;
     }
 
@@ -375,7 +369,6 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
 
 core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
     const auto& var = std::get<ast::variable_expr>(expr.operand_);
-    std::string name{ var.name_.lexeme_ };
     auto old_val = evaluate_variable(var);
 
     core::value new_val;
@@ -386,12 +379,12 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
         auto v = old_val.to_double();
         new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
     }
-    current_env_->assign(name, new_val);
+    current_env_->assign(var.name_.lexeme_, new_val);
     return old_val;
 }
 
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
-    std::string name{ expr.callee_.lexeme_ };
+    auto name = expr.callee_.lexeme_;
 
     auto builtin = current_env_->get_builtin(name);
     auto func_it = functions_.find(name);
@@ -430,8 +423,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     scope_guard guard(current_env_);
 
     for (size_t i = 0; i < func.params_.size(); ++i) {
-        std::string param_name{ func.params_[i].name_.lexeme_ };
-        current_env_->define(param_name, std::move(args[i]));
+        current_env_->define(func.params_[i].name_.lexeme_, std::move(args[i]));
     }
 
     auto result = default_value(func.return_type_);

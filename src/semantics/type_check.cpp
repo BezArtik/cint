@@ -45,7 +45,7 @@ void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
 }
 
 void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
-    std::string name{ stmt.name_.lexeme_ };
+    auto name = stmt.name_.lexeme_;
 
     if (stmt.type_.is_void()) {
         reporter_.error(stmt, err::void_variable);
@@ -133,7 +133,7 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
-    std::string name{ stmt.name_.lexeme_ };
+    auto name = stmt.name_.lexeme_;
 
     if (symbols_.contains_in_current_scope(name)) {
         reporter_.error(stmt, err::redeclaration_function, name);
@@ -151,8 +151,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     symbols_.push();
 
     for (const auto& param : stmt.params_) {
-        std::string param_name{ param.name_.lexeme_ };
-        symbols_.define(param_name, param.type_);
+        symbols_.define(param.name_.lexeme_, param.type_);
     }
 
     const auto& prev_return_type = curr_return_type_;
@@ -193,7 +192,7 @@ t type_checker::type_of_literal(const ast::literal_expr& expr) {
 }
 
 t type_checker::type_of_variable(const ast::variable_expr& expr_) {
-    std::string name{ expr_.name_.lexeme_ };
+    auto name = expr_.name_.lexeme_;
     auto info = symbols_.get(name);
     if (!info) {
         reporter_.error(expr_, err::undefined_variable, name);
@@ -326,7 +325,7 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 }
 
 t type_checker::type_of_call(const ast::call_expr& expr) {
-    std::string name{ expr.callee_.lexeme_ };
+    auto name = expr.callee_.lexeme_;
 
     std::vector<t> arg_types;
     arg_types.reserve(expr.args_.size());

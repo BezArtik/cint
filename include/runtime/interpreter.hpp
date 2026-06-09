@@ -6,6 +6,7 @@
 #include "ast/statement.hpp"
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
+#include "core/utils/hash.hpp"
 #include "runtime/environment.hpp"
 #include <memory>
 #include <vector>
@@ -22,7 +23,7 @@ class interpreter {
 public:
     interpreter(core::error_reporter& reporter, bool debug = false);
 
-    void interpret(const std::vector<std::unique_ptr<ast::statement>>& statements);
+    void interpret(const std::vector<ast::stmt_ptr>& statements);
 
 private:
 
@@ -41,11 +42,9 @@ private:
     core::value evaluate_variable(const ast::variable_expr& expr);
     core::value evaluate_assignment(const ast::binary_expr& expr);
     core::value evaluate_simple_assignment(const ast::binary_expr& expr, 
-                                     const ast::variable_expr& var,
-                                     const std::string& name);
+                                     const ast::variable_expr& var);                         
     core::value evaluate_index_assignment(const ast::binary_expr& expr,
-                                    const ast::index_expr& idx,
-                                    const std::string& name);
+                                    const ast::index_expr& idx);                           
     core::value evaluate_logical(const ast::binary_expr& expr);
     core::value evaluate_arithmetic(const ast::binary_expr& expr);
     core::value evaluate_binary(const ast::binary_expr& expr);
@@ -60,7 +59,10 @@ private:
     core::error_reporter& reporter_;
     std::unique_ptr<environment> global_env_;
     environment* current_env_;
-    std::unordered_map<std::string, const ast::func_declaration*> functions_;
+    std::unordered_map<
+        std::string, const ast::func_declaration*,
+        core::string_hash, std::equal_to<>
+    > functions_;
     bool debug_ = false;
 
     class scope_guard {
