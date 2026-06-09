@@ -63,20 +63,18 @@ private:
 
     template <typename T, typename Loc, typename... Args>
     ast::expression make_expr(const Loc& loc, Args&&... args) {
-        return ast::expression(
-            std::make_unique<T>(std::forward<Args>(args)..., loc.line_, loc.column_)
-        );
+        return ast::expression(std::make_unique<T>(std::forward<Args>(args)..., loc.loc_));
     }
 
     template <typename T, typename... Args>
     ast::expression make_expr_val(const core::token& tok, Args&&... args) {
-        T val(std::forward<Args>(args)..., tok, tok.line_, tok.column_);
+        T val(std::forward<Args>(args)..., tok, tok.loc_);
         return ast::expression(std::move(val));
     }
 
     template <typename Stmt, typename Loc, typename... Args>
     ast::stmt_ptr make_stmt(const Loc& loc, Args&&... args) {
-        Stmt s(std::forward<Args>(args)..., loc.line_, loc.column_);
+        Stmt s(std::forward<Args>(args)..., loc.loc_);
         return std::make_unique<ast::statement>(std::move(s));
     }
 

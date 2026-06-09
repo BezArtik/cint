@@ -25,7 +25,7 @@ std::vector<core::token> lexer::scan_tokens() {
         scan_token();
     }
 
-    tokens_.emplace_back(tt::END_OF_FILE, "", line_, column_);
+    tokens_.emplace_back(tt::END_OF_FILE, "", loc_);
     return tokens_;
 }
 
@@ -67,8 +67,8 @@ void lexer::scan_token() {
     case '\t': break;
 
     case '\n':
-        line_++;
-        column_ = 0;
+        loc_.line_++;
+        loc_.column_ = 0;
         break;
 
     case '"': consume_string(); break;
@@ -79,7 +79,7 @@ void lexer::scan_token() {
         } else if (std::isalpha(c) || c == '_') {
             consume_identifier();
         } else {
-			reporter_.error(line_, column_, err::unexpected_character, c);
+			reporter_.error(loc_, err::unexpected_character, c);
         }
         break;
     }
@@ -108,14 +108,14 @@ void lexer::consume_number() {
 void lexer::consume_string() {
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
-            line_++;
-            column_ = 1;
+            loc_.line_++;
+            loc_.column_ = 1;
         }
         advance();
     }
 
     if (is_at_end()) {
-        reporter_.error(line_, column_, err::unterminated_string);
+        reporter_.error(loc_, err::unterminated_string);
         return;
     }
 
@@ -124,7 +124,7 @@ void lexer::consume_string() {
 }
 
 char lexer::advance() noexcept {
-    column_++;
+    loc_.column_++;
     return source_[current_++];
 }
 
@@ -141,7 +141,7 @@ char lexer::peek_next() const noexcept {
 bool lexer::match(char expected) noexcept {
     if (is_at_end() || source_[current_] != expected) return false;
     current_++;
-    column_++;
+    loc_.column_++;
     return true;
 }
 
@@ -151,7 +151,7 @@ bool lexer::is_at_end() const noexcept {
 
 void lexer::add_token(tt type) {
     auto text = source_.substr(start_, current_ - start_);
-    tokens_.emplace_back(type, text, line_, column_);
+    tokens_.emplace_back(type, text, loc_);
 }
 
 

@@ -254,15 +254,15 @@ TEST(lexer_test, line_comment) {
 
 TEST(lexer_test, line_numbers) {
     lexer_harness h("int\nx\n=");
-    EXPECT_EQ(h[0].line_, 1);
-    EXPECT_EQ(h[1].line_, 2);
-    EXPECT_EQ(h[2].line_, 3);
+    EXPECT_EQ(h[0].loc_.line_, 1);
+    EXPECT_EQ(h[1].loc_.line_, 2);
+    EXPECT_EQ(h[2].loc_.line_, 3);
 }
 
 TEST(lexer_test, column_numbers) {
     lexer_harness h("int x");
-    EXPECT_EQ(h[0].column_, 4);
-    EXPECT_EQ(h[1].column_, 6);
+    EXPECT_EQ(h[0].loc_.column_, 4);
+    EXPECT_EQ(h[1].loc_.column_, 6);
 }
 
 TEST(LexerTest, unterminated_string) {

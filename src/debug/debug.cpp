@@ -69,19 +69,19 @@ const char* token_type_name(core::token_type t) {
 void print_literal(const ast::literal_expr& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Literal: " << e.value_.lexeme_
-        << " [line " << e.line_ << ":" << e.column_ << "]\n";
+        << " [line " << e.loc_.line_ << ":" << e.loc_.column_ << "]\n";
 }
 
 void print_variable(const ast::variable_expr& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Variable: " << e.name_.lexeme_
-        << " [line " << e.line_ << ":" << e.column_ << "]\n";
+        << " [line " << e.loc_.line_ << ":" << e.loc_.column_ << "]\n";
 }
 
 void print_binary(const std::unique_ptr<ast::binary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Binary: " << e->op_.lexeme_
-        << " [line " << e->line_ << ":" << e->column_ << "]\n";
+        << " [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
 
     std::cerr << indent_str(level + 1) << "Left:\n";
     print_expression(e->left_, level + 2);
@@ -93,7 +93,7 @@ void print_binary(const std::unique_ptr<ast::binary_expr>& e, uint32_t level) {
 void print_unary(const std::unique_ptr<ast::unary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Unary: " << e->op_.lexeme_
-        << " [line " << e->line_ << ":" << e->column_ << "]\n";
+        << " [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
 
     print_expression(e->operand_, level + 1);
 }
@@ -101,7 +101,7 @@ void print_unary(const std::unique_ptr<ast::unary_expr>& e, uint32_t level) {
 void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Postfix: " << e->op_.lexeme_
-        << " [line " << e->line_ << ":" << e->column_ << "]\n";
+        << " [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
 
     print_expression(e->operand_, level + 1);
 }
@@ -109,7 +109,7 @@ void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, uint32_t level) 
 void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
     std::cerr << indent_str(level)
         << "Call: " << e->callee_.lexeme_
-        << " [line " << e->line_ << ":" << e->column_ << "]";
+        << " [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]";
 
     if (e->args_.empty()) {
         std::cerr << " (no args)\n";
@@ -126,7 +126,7 @@ void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
 void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint32_t level) {
 	std::cerr << indent_str(level)
 		<< "ArrayLiteral: [" << e->elements_.size() << " elements]"
-		<< " [line " << e->line_ << ":" << e->column_ << "]\n";
+		<< " [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
 	for (size_t i = 0; i < e->elements_.size(); ++i) {
 		std::cerr << indent_str(level + 1) << "Element " << i << ":\n";
 		print_expression(e->elements_[i], level + 2);
@@ -135,7 +135,7 @@ void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint
 
 void print_index(const std::unique_ptr<ast::index_expr>& e, uint32_t level) {
 	std::cerr << indent_str(level)
-		<< "IndexExpr: [line " << e->line_ << ":" << e->column_ << "]\n";
+		<< "IndexExpr: [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
 	std::cerr << indent_str(level + 1) << "Object:\n";
 	print_expression(e->object_, level + 2);
 	std::cerr << indent_str(level + 1) << "Index:\n";
@@ -305,7 +305,7 @@ void print_tokens(const std::vector<core::token>& tokens) {
         std::cerr << std::left
             << std::setw(20) << token_type_name(tok.type_)
             << std::setw(20) << lexeme
-            << tok.line_ << ":" << tok.column_ << "\n";
+            << tok.loc_.line_ << ":" << tok.loc_.column_ << "\n";
     }
 
     std::cerr << "\n";

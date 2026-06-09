@@ -32,89 +32,72 @@ using expression = std::variant<
 
 struct literal_expr {
     core::token value_{};
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    literal_expr(const core::token& value, uint32_t line, uint32_t column)
-        : value_(value), line_(line), column_(column) {
-    }
+    literal_expr(const core::token& value, core::location loc)
+        : value_(value), loc_(loc) {}
 };
 
 struct variable_expr {
     core::token name_{};
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    variable_expr(const core::token& name, uint32_t line, uint32_t column)
-        : name_(name), line_(line), column_(column) {
-    }
+    variable_expr(const core::token& name, core::location loc)
+        : name_(name), loc_(loc) {}
 };
 
 struct binary_expr {
     expression left_; 
     core::token op_{};
     expression right_;
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    binary_expr(expression left, const core::token& op, expression right, uint32_t line, uint32_t column)
-        : left_(std::move(left)), op_(op), right_(std::move(right)), line_(line), column_(column) {
-    }
+    binary_expr(expression left, const core::token& op, expression right, core::location loc)
+        : left_(std::move(left)), op_(op), right_(std::move(right)), loc_(loc) {}
 };
 
 struct unary_expr {
     core::token op_{};
     expression operand_;
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    unary_expr(const core::token& op, expression operand, uint32_t line, uint32_t column)
-        : op_(op), operand_(std::move(operand)), line_(line), column_(column) {
-    }
+    unary_expr(const core::token& op, expression operand, core::location loc)
+        : op_(op), operand_(std::move(operand)), loc_(loc) {}
 };
 
 struct postfix_expr {
     expression operand_;
     core::token op_{};
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    postfix_expr(expression operand, core::token op, uint32_t line, uint32_t column)
-        : operand_(std::move(operand)), op_(op), line_(line), column_(column) {
-    }
+    postfix_expr(expression operand, core::token op, core::location loc)
+        : operand_(std::move(operand)), op_(op), loc_(loc) {}
 };
 
 struct call_expr {
     core::token callee_{};
     std::vector<expression> args_{};
-    uint32_t line_{};
-    uint32_t column_{};
+    core::location loc_{};
 
-    call_expr(const core::token& callee, std::vector<expression> args,
-        uint32_t line, uint32_t column)
-        : callee_(callee), args_(std::move(args)), line_(line), column_(column) {
-    }
+    call_expr(const core::token& callee, std::vector<expression> args, core::location loc)
+        : callee_(callee), args_(std::move(args)), loc_(loc) {}
 };
 
 struct array_literal_expr {
 	std::vector<expression> elements_{};
-	uint32_t line_{};
-	uint32_t column_{};
+    core::location loc_{};
 
-	array_literal_expr(std::vector<expression> elements, uint32_t line, uint32_t column)
-		: elements_(std::move(elements)), line_(line), column_(column) {
-	}
+	array_literal_expr(std::vector<expression> elements, core::location loc)
+		: elements_(std::move(elements)), loc_(loc) {}
 };
 
 struct index_expr {
     expression object_;
     expression index_;
-	uint32_t line_{};
-	uint32_t column_{};
+    core::location loc_{};
 
-	index_expr(expression object, expression index, uint32_t line, uint32_t column)
-		: object_(std::move(object)), index_(std::move(index)), line_(line), column_(column) {
-	}
+	index_expr(expression object, expression index, core::location loc)
+        : object_(std::move(object)), index_(std::move(index)), loc_(loc) {}
 };
 
 } // namespace ast

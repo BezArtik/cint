@@ -13,14 +13,18 @@ namespace core {
 struct keyword_info;
 enum class token_type : uint8_t;
 
+struct location {
+    uint32_t line_{};
+    uint32_t column_{};
+};
+
 struct token {
     token_type type_{};
     std::string_view lexeme_;
-    uint32_t line_{};
-    uint32_t column_{};
+    location loc_{};
 
     token() = default;
-    token(token_type type, std::string_view lex, uint32_t line, uint32_t column);
+    token(token_type type, std::string_view lex, location loc);
 
     bool is_keyword() const noexcept;
     bool is_double_literal() const noexcept;

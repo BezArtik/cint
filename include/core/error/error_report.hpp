@@ -18,24 +18,24 @@ public:
     error_reporter(std::string_view source = {});
 
     template<typename... Args>
-    void error(uint32_t line, uint32_t column, error_code code, Args&&... args) {
+    void error(location loc, error_code code, Args&&... args) {
         had_error_ = true;
-        report(line, column, "Error", format_message(code, std::forward<Args>(args)...));
+        report(loc, "Error", format_message(code, std::forward<Args>(args)...));
     }
 
     template<typename T, typename... Args>
     void error(const T& t, core::error_code code, Args&&... args) {
-        error(t.line_, t.column_, code, std::forward<Args>(args)...);
+        error(t.loc_, code, std::forward<Args>(args)...);
     }
 
     template<typename T, typename... Args>
     [[noreturn]] void interpret_error(const T& t, core::error_code code, Args&&... args) {
-        error(t.line_, t.column_, code, std::forward<Args>(args)...);
+        error(t.loc_, code, std::forward<Args>(args)...);
         throw core::interpret_error{ code };
     }
 
     [[noreturn]] void parse_error(const core::token& token, core::error_code code) {
-        error(token.line_, token.column_, code);
+        error(token.loc_, code);
         throw core::parse_error{};
     }
 
@@ -45,7 +45,7 @@ private:
     bool had_error_ = false;
     std::string_view source_;
 
-    void report(uint32_t line, uint32_t column, std::string_view kind, const std::string& msg);
+    void report(location loc, std::string_view kind, const std::string& msg);
 
     template<typename... Args>
     std::string format_message(error_code code, Args&&... args) {
