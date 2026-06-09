@@ -39,7 +39,7 @@ bool parser::match(std::initializer_list<tt> types) noexcept {
 
 const core::token& parser::consume(tt type, err code) {
     if (check(type)) return advance();
-    reporter_.error(peek(), code);
+    reporter_.parse_error(peek(), code);
 }
 
 bool parser::check(tt type) const noexcept {
@@ -85,7 +85,7 @@ ast::stmt_ptr parser::declaration() {
 ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
     if (match({ tt::LEFT_BRACKET })) {
         if (!check(tt::RIGHT_BRACKET)) {
-			reporter_.error(peek(), err::expected_right_bracket);
+			reporter_.parse_error(peek(), err::expected_right_bracket);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
 		type = core::type::array_type(type, 0);
@@ -124,12 +124,12 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 
 ast::func_param parser::parse_param() {
     if (!match({ tt::KEYWORD })) {
-        reporter_.error(peek(), err::expected_type);
+        reporter_.parse_error(peek(), err::expected_type);
     }
 
     auto kw = prev().as_keyword();
     if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) {
-        reporter_.error(prev(), err::expected_type);
+        reporter_.parse_error(prev(), err::expected_type);
     }
 
     const auto& type = kw->semantic_type_;
@@ -140,7 +140,7 @@ ast::func_param parser::parse_param() {
 ast::stmt_ptr parser::statement() {
     if (match({ tt::KEYWORD })) {
         auto kw = prev().as_keyword();
-        if (!kw) reporter_.error(prev(), err::unexpected_token);
+        if (!kw) reporter_.parse_error(prev(), err::unexpected_token);
 
         const auto& lex = kw->lexeme_;
 
@@ -348,7 +348,7 @@ ast::expression parser::primary() {
         if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) {
             return make_expr_val<ast::literal_expr>( prev());
         }
-        reporter_.error(prev(), err::expected_expression);
+        reporter_.parse_error(prev(), err::expected_expression);
     }
 
     if (match({ tt::IDENTIFIER })) {
@@ -366,7 +366,7 @@ ast::expression parser::primary() {
 
 	if (match({ tt::LEFT_BRACE })) return array_literal();
 		
-    reporter_.error(peek(), err::expected_expression);
+    reporter_.parse_error(peek(), err::expected_expression);
 }
 
 ast::expression parser::finish_call(const core::token& callee) {

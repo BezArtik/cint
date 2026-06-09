@@ -188,13 +188,17 @@ t type_checker::type_of_literal(const ast::literal_expr& expr) {
         if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) return t::bool_type();
     }
 
-    return reporter_.error_type(expr, err::unexpected_literal);
+    reporter_.error(expr, err::unexpected_literal);
+    return t::unknown_type();
 }
 
 t type_checker::type_of_variable(const ast::variable_expr& expr_) {
     std::string name{ expr_.name_.lexeme_ };
     auto info = symbols_.get(name);
-    if (!info) return reporter_.error_type(expr_, err::undefined_variable, name);
+    if (!info) {
+        reporter_.error(expr_, err::undefined_variable, name);
+        return t::unknown_type();
+    }
     return info->type_;
 }
 
@@ -206,26 +210,34 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
     auto op = expr.op_.type_;
 
     if (op == tt::EQUAL) {
-        if (!left.is_assignable_from(right) || !is_lvalue(expr.left_))
-            return reporter_.error_type(expr, err::type_mismatch_assignment);
+        if (!left.is_assignable_from(right) || !is_lvalue(expr.left_)) {
+            reporter_.error(expr, err::type_mismatch_assignment);
+            return t::unknown_type();
+        }
         return left;
     }
 
     if (op == tt::PLUS_EQUAL || op == tt::MINUS_EQUAL ||
         op == tt::STAR_EQUAL || op == tt::SLASH_EQUAL ||
         op == tt::PERCENT_EQUAL) {
-        if (!is_lvalue(expr.left_))
-            return reporter_.error_type(expr, err::compound_requires_lvalue);
-        if (!left.is_numeric() || !right.is_numeric())
-            return reporter_.error_type(expr, err::compound_requires_numeric);
+        if (!is_lvalue(expr.left_)) {
+            reporter_.error(expr, err::compound_requires_lvalue);
+            return t::unknown_type();
+        }
+        if (!left.is_numeric() || !right.is_numeric()) {
+            reporter_.error(expr, err::compound_requires_numeric);
+            return t::unknown_type();
+        }
         return left;
     }
 
     if (op == tt::PLUS || op == tt::MINUS ||
         op == tt::STAR || op == tt::SLASH ||
         op == tt::PERCENT) {
-        if (!left.is_numeric() || !right.is_numeric())
-            return reporter_.error_type(expr, err::arithmetic_requires_numeric);
+        if (!left.is_numeric() || !right.is_numeric()) {
+            reporter_.error(expr, err::arithmetic_requires_numeric);
+            return t::unknown_type();
+        }
         return (left == t::int_type() && right == t::int_type())
             ? t::int_type() : t::double_type();
     }
@@ -233,18 +245,23 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
     if (op == tt::EQUAL_EQUAL || op == tt::BANG_EQUAL ||
         op == tt::LESS || op == tt::LESS_EQUAL ||
         op == tt::GREATER || op == tt::GREATER_EQUAL) {
-        if (!left.is_numeric() || !right.is_numeric())
-            return reporter_.error_type(expr, err::comparison_requires_numeric);
+        if (!left.is_numeric() || !right.is_numeric()) {
+            reporter_.error(expr, err::comparison_requires_numeric);
+            return t::unknown_type();
+        }
         return t::bool_type();
     }
 
     if (op == tt::AND || op == tt::OR) {
-        if (left != t::bool_type() || right != t::bool_type())
-            return reporter_.error_type(expr, err::logical_requires_bool);
+        if (left != t::bool_type() || right != t::bool_type()) {
+            reporter_.error(expr, err::logical_requires_bool);
+            return t::unknown_type();
+        }
         return t::bool_type();
     }
 
-    return reporter_.error_type(expr, err::unsupported_binary_operator);
+    reporter_.error(expr, err::unsupported_binary_operator);
+    return t::unknown_type();
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
@@ -262,36 +279,49 @@ t type_checker::type_of_unary(const ast::unary_expr& expr) {
     auto op = expr.op_.type_;
 
     if (op == tt::MINUS) {
-        if (!operand_type.is_numeric())
-            return reporter_.error_type(expr, err::unary_minus_requires_numeric);
+        if (!operand_type.is_numeric()) {
+            reporter_.error(expr, err::unary_minus_requires_numeric);
+            return t::unknown_type();
+        }
         return operand_type;
     }
 
     if (op == tt::INCREMENT || op == tt::DECREMENT) {
-        if (!operand_type.is_numeric())
-            return reporter_.error_type(expr, err::increment_requires_numeric);
-        if (!is_lvalue(expr.operand_))
-            return reporter_.error_type(expr, err::increment_requires_lvalue);
+        if (!operand_type.is_numeric()) {
+            reporter_.error(expr, err::increment_requires_numeric);
+            return t::unknown_type();
+        }
+        if (!is_lvalue(expr.operand_)) {
+            reporter_.error(expr, err::increment_requires_lvalue);
+            return t::unknown_type();
+        }
         return operand_type;
     }
 
     if (op == tt::BANG) {
-        if (operand_type != t::bool_type())
-            return reporter_.error_type(expr, err::not_requires_bool);
+        if (operand_type != t::bool_type()) {
+            reporter_.error(expr, err::not_requires_bool);
+            return t::unknown_type();
+        }
         return t::bool_type();
     }
 
-    return reporter_.error_type(expr, err::unsupported_unary_operator);
+    reporter_.error(expr, err::unsupported_unary_operator);
+    return t::unknown_type();
 }
 
 t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
     auto operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
-    if (!operand_type.is_numeric())
-        return reporter_.error_type(expr, err::increment_requires_numeric);
-    if (!is_lvalue(expr.operand_))
-        return reporter_.error_type(expr, err::increment_requires_lvalue);
+    if (!operand_type.is_numeric()) {
+        reporter_.error(expr, err::increment_requires_numeric);
+        return t::unknown_type();
+    }
+    if (!is_lvalue(expr.operand_)) {
+        reporter_.error(expr, err::increment_requires_lvalue);
+        return t::unknown_type();
+    }
     return operand_type;
 }
 
@@ -312,26 +342,31 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
                 return ov.return_type_;
             }
         }
-        return reporter_.error_type(expr, err::no_matching_overload, name);
+        reporter_.error(expr, err::no_matching_overload, name);
+        return t::unknown_type();
     }
 
     auto info = symbols_.get(name);
-    if (!info || info->kind_ != symbol_kind::FUNCTION)
-        return reporter_.error_type(expr, err::undefined_function, name);
+    if (!info || info->kind_ != symbol_kind::FUNCTION) {
+        reporter_.error(expr, err::undefined_function, name);
+        return t::unknown_type();
+    }
 
     const auto& func_type = info->type_;
     const auto& param_types = func_type.param_types();
 
     if (expr.args_.size() != param_types.size()) {
-        return reporter_.error_type(expr, err::argument_count_mismatch, name,
+        reporter_.error(expr, err::argument_count_mismatch, name,
             param_types.size(), expr.args_.size());
+        return t::unknown_type();
     }
 
     for (size_t i = 0; i < expr.args_.size(); i++) {
         auto arg_type = type_of(expr.args_[i]);
         if (arg_type.is_unknown()) return t::unknown_type();
         if (!param_types[i].is_assignable_from(arg_type)) {
-            return reporter_.error_type(expr, err::argument_type_mismatch, i + 1, name);
+            reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
+            return t::unknown_type();
         }
     }
 
@@ -339,8 +374,10 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
 }
 
 t type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {
-    if (expr.elements_.empty())
-        return reporter_.error_type(expr, err::empty_array_literal);
+    if (expr.elements_.empty()) {
+        reporter_.error(expr, err::empty_array_literal);
+        return t::unknown_type();
+    }
 
     auto elem_type = type_of(expr.elements_[0]);
     if (elem_type.is_unknown()) return t::unknown_type();
@@ -348,8 +385,10 @@ t type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {
     for (size_t i = 1; i < expr.elements_.size(); i++) {
         auto el_type = type_of(expr.elements_[i]);
         if (el_type.is_unknown()) return t::unknown_type();
-        if (!elem_type.is_assignable_from(el_type))
-            return reporter_.error_type(expr, err::array_literal_inconsistent_types);
+        if (!elem_type.is_assignable_from(el_type)) {
+            reporter_.error(expr, err::array_literal_inconsistent_types);
+            return t::unknown_type();
+        }
     }
     return t::array_type(elem_type, expr.elements_.size());
 }
@@ -359,10 +398,14 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
     auto index_type = type_of(expr.index_);
     if (object_type.is_unknown() || index_type.is_unknown()) return t::unknown_type();
 
-    if (!object_type.is_array())
-        return reporter_.error_type(expr, err::indexing_non_array);
-    if (!index_type.is_int())
-        return reporter_.error_type(expr, err::index_must_be_integer);
+    if (!object_type.is_array()) {
+        reporter_.error(expr, err::indexing_non_array);
+        return t::unknown_type();
+    }
+    if (!index_type.is_int()) {
+        reporter_.error(expr, err::index_must_be_integer);
+        return t::unknown_type();
+    }
     return object_type.element_type();
 }
 

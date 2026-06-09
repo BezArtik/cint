@@ -184,12 +184,12 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         if (token.is_double_literal()) {
             core::value::double_t d;
             auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), d);
-            if (ec != std::errc{}) reporter_.error_throw(token, err::unexpected_literal);
+            if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
             return core::value(d);
         } else {
             core::value::int_t i;
             auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), i);
-            if (ec != std::errc{}) reporter_.error_throw(token, err::unexpected_literal);
+            if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
             return core::value(i);
         }
     }
@@ -203,13 +203,13 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         if (kw && kw->lexeme_ == "true")  return core::value(true);
         if (kw && kw->lexeme_ == "false") return core::value(false);
     }
-    reporter_.error_throw(token, err::unexpected_literal);
+    reporter_.interpret_error(token, err::unexpected_literal);
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
     std::string name{ expr.name_.lexeme_ };
     auto val = current_env_->get(name);
-    if (!val) reporter_.error_throw(expr, err::undefined_variable, name);
+    if (!val) reporter_.interpret_error(expr, err::undefined_variable, name);
     return *val;
 }
 
@@ -231,13 +231,13 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
     if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
         const auto* var = std::get_if<ast::variable_expr>(&(*idx)->object_);
-        if (!var) reporter_.error_throw(expr, err::compound_requires_lvalue);
+        if (!var) reporter_.interpret_error(expr, err::compound_requires_lvalue);
         std::string name{ var->name_.lexeme_ };
         return evaluate_index_assignment(expr, **idx, name);
     }
 
     const auto* var = std::get_if<ast::variable_expr>(&expr.left_);
-    if (!var) reporter_.error_throw(expr, err::compound_requires_lvalue);
+    if (!var) reporter_.interpret_error(expr, err::compound_requires_lvalue);
     std::string name{ var->name_.lexeme_ };
     return evaluate_simple_assignment(expr, *var, name);
 }
@@ -270,16 +270,16 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
     const ast::index_expr& idx,
     const std::string& name) {
     auto* arr_ptr = current_env_->get_mut(name);
-    if (!arr_ptr) reporter_.error_throw(expr, err::undefined_variable, name);
+    if (!arr_ptr) reporter_.interpret_error(expr, err::undefined_variable, name);
 
     auto index_val = evaluate(idx.index_);
     auto right = evaluate(expr.right_);
 
     auto i_opt = index_val.as_int();
-    if (!i_opt) reporter_.error_throw(expr, err::index_must_be_integer);
+    if (!i_opt) reporter_.interpret_error(expr, err::index_must_be_integer);
     auto i = *i_opt;
     auto size = arr_ptr->as_array()->size();
-    if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds, name, i);
+    if (i < 0 || i >= size) reporter_.interpret_error(expr, err::index_out_of_bounds, name, i);
 
     auto vec = std::move(*arr_ptr->as_array_mut());
     auto& element = vec[i];
@@ -331,10 +331,10 @@ core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
         case tt::LESS_EQUAL:    return left.le(right);
         case tt::GREATER:       return left.gt(right);
         case tt::GREATER_EQUAL: return left.ge(right);
-        default: reporter_.error_throw(expr, err::unsupported_binary_operator, expr.op_.lexeme_);  
+        default: reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);  
         }
     } catch (const core::interpret_error& e) {
-        reporter_.error_throw(expr, e.code_, expr.op_.lexeme_);
+        reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_);
     }
 }
 
@@ -369,7 +369,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     }
 
     default:
-        reporter_.error_throw(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
+        reporter_.interpret_error(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
     }
 }
 
@@ -415,14 +415,14 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         try {
             return (*builtin)(args);
         } catch (const core::interpret_error& e) {
-            reporter_.error_throw(expr, e.code_, name);
+            reporter_.interpret_error(expr, e.code_, name);
         }
     }
 
     const auto& func = *func_it->second;
 
     if (args.size() != func.params_.size()) {
-        reporter_.error_throw(expr, err::argument_count_mismatch, name,
+        reporter_.interpret_error(expr, err::argument_count_mismatch, name,
             std::to_string(func.params_.size()),
             std::to_string(args.size()));
     }
@@ -459,14 +459,14 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     auto obj = evaluate(expr.object_);
     auto idx = evaluate(expr.index_);
 
-    if (!obj.as_array()) reporter_.error_throw(expr, err::indexing_non_array);
+    if (!obj.as_array()) reporter_.interpret_error(expr, err::indexing_non_array);
 
     auto i_opt = idx.as_int();
-    if (!i_opt) reporter_.error_throw(expr, err::index_must_be_integer);
+    if (!i_opt) reporter_.interpret_error(expr, err::index_must_be_integer);
     auto i = *i_opt;
     auto size = obj.as_array()->size();
 
-    if (i < 0 || i >= size) reporter_.error_throw(expr, err::index_out_of_bounds);
+    if (i < 0 || i >= size) reporter_.interpret_error(expr, err::index_out_of_bounds);
 
     return (*obj.as_array())[i];
 }

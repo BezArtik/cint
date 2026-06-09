@@ -25,27 +25,17 @@ public:
 
     template<typename T, typename... Args>
     void error(const T& t, core::error_code code, Args&&... args) {
-        had_error_ = true;
-        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
+        error(t.line_, t.column_, code, std::forward<Args>(args)...);
     }
 
     template<typename T, typename... Args>
-    [[nodiscard]] core::type error_type(const T& t, core::error_code code, Args&&... args) {
-        had_error_ = true;
-        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
-        return core::type::unknown_type();
-    }
-
-    template<typename T, typename... Args>
-    [[noreturn]] void error_throw(const T& t, core::error_code code, Args&&... args) {
-        had_error_ = true;
-        report(t.line_, t.column_, "Error", format_message(code, std::forward<Args>(args)...));
+    [[noreturn]] void interpret_error(const T& t, core::error_code code, Args&&... args) {
+        error(t.line_, t.column_, code, std::forward<Args>(args)...);
         throw core::interpret_error{ code };
     }
 
-    [[noreturn]] void error(const core::token& token, core::error_code code) {
-        had_error_ = true;
-        report(token.line_, token.column_, "Error", format_message(code));
+    [[noreturn]] void parse_error(const core::token& token, core::error_code code) {
+        error(token.line_, token.column_, code);
         throw core::parse_error{};
     }
 
