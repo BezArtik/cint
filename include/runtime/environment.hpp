@@ -29,6 +29,7 @@ public:
 	core::value* get_mut(std::string_view name);
     void define_builtin(std::string_view name, core::builtin_fn_ptr fn);
     std::optional<core::builtin_fn_ptr> get_builtin(std::string_view name) const;
+    bool contains_in_current_scope(std::string_view name) const noexcept;
 
 private:
 

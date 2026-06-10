@@ -42,4 +42,8 @@ std::optional<core::builtin_fn_ptr> environment::get_builtin(std::string_view na
     return std::nullopt;
 }
 
+bool environment::contains_in_current_scope(std::string_view name) const noexcept {
+    return values_.contains_in_current_scope(name);
+}
+
 } // namespace runtime

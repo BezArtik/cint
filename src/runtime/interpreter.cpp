@@ -34,7 +34,7 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug)
     , debug_(debug) {
 
     for (const auto& def : core::builtins)
-        global_env_->define_builtin(std::string{ def.name_ }, def.impl_);
+        global_env_->define_builtin(def.name_, def.impl_);
 }
 
 interpreter::scope_guard::scope_guard(environment* env) : env_(env) {
@@ -73,6 +73,16 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
     } catch (const core::interpret_error&) {}
 }
 
+bool interpreter::block_has_declarations(const ast::block_stmt& block) const noexcept {
+    for (const auto& stmt : block.statements_) {
+        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) return true;  
+        if (auto* inner = std::get_if<ast::block_stmt>(&stmt->data_)) {
+            if (block_has_declarations(*inner)) return true;
+        }
+    }
+    return false;
+}
+
 void interpreter::execute(const ast::statement& stmt) {
     if (debug_) debug::print_execution("Executing statement...");
     std::visit(core::overloaded{
@@ -92,10 +102,7 @@ void interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
 }
 
 void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
-    std::string name{ stmt.name_.lexeme_ };
-    if (debug_) {
-        debug::print_execution("var " + name + " : " + std::string(debug::type_name(stmt.type_)));
-    }
+    auto name = stmt.name_.lexeme_;
 
     auto init_val = default_value(stmt.type_);
 
@@ -110,19 +117,33 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         }
     }
 
-    current_env_->define(name, std::move(init_val));
+    if (current_env_->contains_in_current_scope(name)) {
+        current_env_->assign(name, std::move(init_val));
+    } else {
+        current_env_->define(name, std::move(init_val));
+    }
 }
 
-void interpreter::execute_block(const ast::block_stmt& stmt) {
-    scope_guard guard(current_env_);
+void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
+    std::optional<scope_guard> guard;
+    if (create_scope) guard.emplace(current_env_);
     for (const auto& s : stmt.statements_) execute(*s);
 }
 
+void interpreter::execute_loop_body(const ast::statement& body) {
+    if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
+        execute_block(*block, false);
+    } else {
+        execute(body);
+    }
+}
+
 void interpreter::execute_while(const ast::while_stmt& stmt) {
+    scope_guard guard(current_env_);
     while (true) {
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
-        execute(*stmt.body_);
+        execute_loop_body(*stmt.body_);
     }
 }
 
@@ -134,17 +155,26 @@ void interpreter::execute_for(const ast::for_stmt& stmt) {
             auto cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        execute(*stmt.body_);
+        execute_loop_body(*stmt.body_);
         if (stmt.increment_) evaluate(*stmt.increment_);
     }
 }
 
 void interpreter::execute_if(const ast::if_stmt& stmt) {
     auto cond = evaluate(stmt.condition_);
+
+    auto execute_branch = [this](const ast::statement& branch) {
+        if (auto* block = std::get_if<ast::block_stmt>(&branch.data_)) {
+            execute_block(*block, block_has_declarations(*block));
+        } else {
+            execute(branch);
+        }
+    };
+
     if (cond.as_bool().value_or(false)) {
-        execute(*stmt.then_branch_);
+        execute_branch(*stmt.then_branch_);
     } else if (stmt.else_branch_) {
-        execute(*stmt.else_branch_);
+        execute_branch(*stmt.else_branch_);
     }
 }
 
