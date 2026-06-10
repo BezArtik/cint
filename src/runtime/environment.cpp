@@ -46,4 +46,7 @@ bool environment::contains_in_current_scope(std::string_view name) const noexcep
     return values_.contains_in_current_scope(name);
 }
 
+core::scoped_map<core::value>& environment::scopes() { return values_; }
+const core::scoped_map<core::value>& environment::scopes() const { return values_; }
+
 } // namespace runtime

@@ -5,9 +5,10 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/utils/overloaded.hpp"
+#include "core/utils/builtins.hpp"
+#include "core/utils/scoped_map.hpp"
 #include "core/token/token_types.hpp"
 #include "core/token/keywords.hpp"
-#include "core/utils/builtins.hpp"
 #include "core/error/error_codes.hpp"
 #include <string>
 #include <algorithm>
@@ -25,6 +26,18 @@ type_checker::type_checker(core::error_reporter& reporter) : reporter_(reporter)
 bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
     for (const auto& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
+}
+
+bool type_checker::block_has_declarations(const ast::block_stmt& block) const noexcept {
+    for (const auto& stmt : block.statements_) {
+        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) {
+            return true;
+        }
+        if (auto* inner = std::get_if<ast::block_stmt>(&stmt->data_)) {
+            if (block_has_declarations(*inner)) return true;
+        }
+    }
+    return false;
 }
 
 void type_checker::check_statement(const ast::statement& stmt) {
@@ -75,10 +88,10 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     symbols_.define(name, stmt.type_);
 }
 
-void type_checker::check_block(const ast::block_stmt& stmt) {
-    symbols_.push();
+void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
+    std::optional<core::scope_guard<symbol_info>> guard;
+    if (create_scope) guard.emplace(symbols_.scopes());
     for (const auto& s : stmt.statements_) check_statement(*s);
-    symbols_.pop();
 }
 
 void type_checker::check_while(const ast::while_stmt& stmt) {
@@ -86,11 +99,19 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
     if (cond_type != t::bool_type() && !cond_type.is_unknown()) {
         reporter_.error(stmt, err::condition_not_bool);
     }
-    check_statement(*stmt.body_);
+
+    core::scope_guard guard(symbols_.scopes());
+
+    if (auto* block = std::get_if<ast::block_stmt>(&stmt.body_->data_)) {
+        check_block(*block, false);
+    } else {
+        check_statement(*stmt.body_);
+    }
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
-    symbols_.push();
+    core::scope_guard guard(symbols_.scopes());
+
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
         auto cond_type = type_of(*stmt.condition_);
@@ -99,8 +120,12 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
         }
     }
     if (stmt.increment_) type_of(*stmt.increment_);
-    check_statement(*stmt.body_);
-    symbols_.pop();
+
+    if (auto* block = std::get_if<ast::block_stmt>(&stmt.body_->data_)) {
+        check_block(*block, false);
+    } else {
+        check_statement(*stmt.body_);
+    }
 }
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
@@ -108,8 +133,17 @@ void type_checker::check_if(const ast::if_stmt& stmt) {
     if (cond_type != t::bool_type() && !cond_type.is_unknown()) {
         reporter_.error(stmt, err::condition_not_bool);
     }
-    check_statement(*stmt.then_branch_);
-    if (stmt.else_branch_) check_statement(*stmt.else_branch_);
+
+    auto check_branch = [this](const ast::statement& branch) {
+        if (auto* block = std::get_if<ast::block_stmt>(&branch.data_)) {
+            check_block(*block, block_has_declarations(*block));
+        } else {
+            check_statement(branch);
+        }
+    };
+
+    check_branch(*stmt.then_branch_);
+    if (stmt.else_branch_) check_branch(*stmt.else_branch_);
 }
 
 void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
@@ -148,7 +182,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     auto func_type = t::function_type(stmt.return_type_, param_types);
     symbols_.define_function(name, func_type);
 
-    symbols_.push();
+    core::scope_guard guard(symbols_.scopes());
 
     for (const auto& param : stmt.params_) {
         symbols_.define(param.name_.lexeme_, param.type_);
@@ -160,7 +194,6 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     for (const auto& s : stmt.body_->statements_) check_statement(*s);
 
     curr_return_type_ = prev_return_type;
-    symbols_.pop();
 }
 
 t type_checker::type_of(const ast::expression& expr) {

@@ -18,7 +18,7 @@ namespace debug {
 void print_tokens(const std::vector<core::token>& tokens);
 const char* type_name(const core::type& t);
 
-void print_ast(const std::vector<std::unique_ptr<ast::statement>>& statements);
+void print_ast(const std::vector<ast::stmt_ptr>& statements);
 void print_statement(const ast::statement& stmt, uint32_t level = 0);
 void print_expression(const ast::expression& expr, uint32_t level = 0);
 

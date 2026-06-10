@@ -25,4 +25,7 @@ bool symbol_table::contains_in_current_scope(std::string_view name) const {
     return scopes_.contains_in_current_scope(name);
 }
 
+core::scoped_map<symbol_info>& symbol_table::scopes() { return scopes_; }
+const core::scoped_map<symbol_info>& symbol_table::scopes() const { return scopes_; }
+
 } // namespace semantics

@@ -7,13 +7,14 @@
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
 #include "core/utils/hash.hpp"
-#include "runtime/environment.hpp"
 #include <memory>
 #include <vector>
 #include <unordered_map>
 #include <string>
 
 namespace runtime {
+
+class environment;
 
 struct return_exception {
     core::value return_value_{};
@@ -66,16 +67,6 @@ private:
         core::string_hash, std::equal_to<>
     > functions_;
     bool debug_ = false;
-
-    class scope_guard {
-	public:
-        scope_guard(environment* env);
-        ~scope_guard();
-		scope_guard(const scope_guard&) = delete;
-		scope_guard& operator=(const scope_guard&) = delete;
-    private:
-		environment* env_;
-    };
 };
 
 } // namespace runtime

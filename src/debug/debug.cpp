@@ -285,20 +285,15 @@ void print_value(const core::value& val, uint32_t indent) {
     auto t = val.type();
 
     if (t.is_int()) {
-        std::cerr << "int: " << val.as_int().value() << "\n";
+        std::cerr << "int: " << val.to_int() << "\n";
     } else if (t.is_double()) {
-        std::cerr << "double: " << val.as_double().value() << "\n";
+        std::cerr << "double: " << val.to_double() << "\n";
     } else if (t.is_bool()) {
-        std::cerr << "bool: " << (val.as_bool().value() ? "true" : "false") << "\n";
+        std::cerr << "bool: " << (val.to_bool() ? "true" : "false") << "\n";
     } else if (t.is_string()) {
-        std::cerr << "string: \"" << val.as_string().value() << "\"\n";
+        std::cerr << "string: \"" << val.to_string() << "\"\n";
     } else if (t.is_array()) {
-		std::cerr << "array: [size=" << val.array_size() << "]\n";
-		auto elements = val.as_array().value();
-		for (size_t i = 0; i < elements.size(); ++i) {
-			std::cerr << indent_str(indent + 1) << "Element " << i << ":\n";
-			print_value(elements[i], indent + 2);
-		}
+        std::cerr << "array: \"" << val.to_string() << "\"\n";
     } else if (t.is_void()) {
         std::cerr << "void\n";
     } else {

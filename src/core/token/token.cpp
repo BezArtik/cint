@@ -3,6 +3,7 @@
 #include "core/token/token.hpp"
 #include "core/token/keywords.hpp"
 #include <optional>
+#include <string_view>
 
 namespace core {
 

@@ -8,8 +8,6 @@
 #include <vector>
 #include <memory>
 #include <optional>
-#include <functional>
-#include <stdexcept>
 #include <algorithm>
 
 namespace core {
@@ -81,6 +79,21 @@ private:
             [&](const auto& s) { return s->bindings_.contains(name); });
         return it != scopes_.rend() ? it->get() : nullptr;
     }
+};
+
+template<typename T>
+class scope_guard {
+public:
+    scope_guard(scoped_map<T>& map) : map_(map) {
+        map_.push();
+    }
+    ~scope_guard() noexcept {
+        map_.pop();
+    }
+    scope_guard(const scope_guard&) = delete;
+    scope_guard& operator=(const scope_guard&) = delete;
+private:
+    scoped_map<T>& map_;
 };
 
 }

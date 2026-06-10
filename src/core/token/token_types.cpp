@@ -6,7 +6,6 @@
 #include <variant>
 #include <utility>
 #include <algorithm>
-#include <ranges>
 #include <cassert>
 
 namespace core {

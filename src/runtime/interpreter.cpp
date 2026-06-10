@@ -7,6 +7,7 @@
 #include "ast/statement.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/builtins.hpp"
+#include "core/utils/scoped_map.hpp"
 #include "core/token/token_types.hpp"
 #include "core/token/keywords.hpp"
 #include "core/error/error_codes.hpp"
@@ -15,8 +16,6 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
-#include <cmath>
-#include <iterator>
 #include <charconv>
 #include <utility>
 #include <algorithm>
@@ -37,13 +36,6 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug)
         global_env_->define_builtin(def.name_, def.impl_);
 }
 
-interpreter::scope_guard::scope_guard(environment* env) : env_(env) {
-    env_->push_scope();
-}
-interpreter::scope_guard::~scope_guard() {
-    env_->pop_scope();
-}
-
 void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
     try {
         for (const auto& stmt : statements) {
@@ -59,7 +51,7 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
         auto main_it = functions_.find("main");
         if (main_it != functions_.end()) {
             const auto& func = *main_it->second;
-            scope_guard guard(current_env_);
+            core::scope_guard guard(current_env_->scopes());
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
             } catch (const return_exception& ret) {
@@ -125,8 +117,8 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
 }
 
 void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
-    std::optional<scope_guard> guard;
-    if (create_scope) guard.emplace(current_env_);
+    std::optional<core::scope_guard<core::value>> guard;
+    if (create_scope) guard.emplace(current_env_->scopes());
     for (const auto& s : stmt.statements_) execute(*s);
 }
 
@@ -139,7 +131,7 @@ void interpreter::execute_loop_body(const ast::statement& body) {
 }
 
 void interpreter::execute_while(const ast::while_stmt& stmt) {
-    scope_guard guard(current_env_);
+    core::scope_guard guard(current_env_->scopes());
     while (true) {
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
@@ -148,7 +140,7 @@ void interpreter::execute_while(const ast::while_stmt& stmt) {
 }
 
 void interpreter::execute_for(const ast::for_stmt& stmt) {
-    scope_guard guard(current_env_);
+    core::scope_guard guard(current_env_->scopes());
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
         if (stmt.condition_) {
@@ -293,7 +285,8 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
 
 core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
                                                    const ast::index_expr& idx) {
-    auto name = expr.op_.lexeme_;
+    const auto& var = std::get<ast::variable_expr>(idx.object_);
+    auto name = var.name_.lexeme_;
     auto* arr_ptr = current_env_->get_mut(name);
     if (!arr_ptr) reporter_.interpret_error(expr, err::undefined_variable, name);
 
@@ -450,7 +443,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             std::to_string(args.size()));
     }
 
-    scope_guard guard(current_env_);
+    core::scope_guard guard(current_env_->scopes());
 
     for (size_t i = 0; i < func.params_.size(); ++i) {
         current_env_->define(func.params_[i].name_.lexeme_, std::move(args[i]));

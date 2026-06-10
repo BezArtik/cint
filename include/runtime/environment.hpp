@@ -11,8 +11,6 @@
 #include <vector>
 #include <memory>
 #include <optional>
-#include <functional>
-
 
 namespace runtime {
 
@@ -30,6 +28,8 @@ public:
     void define_builtin(std::string_view name, core::builtin_fn_ptr fn);
     std::optional<core::builtin_fn_ptr> get_builtin(std::string_view name) const;
     bool contains_in_current_scope(std::string_view name) const noexcept;
+    core::scoped_map<core::value>& scopes();
+    const core::scoped_map<core::value>& scopes() const;
 
 private:
 

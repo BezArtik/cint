@@ -34,6 +34,8 @@ public:
     void define_function(std::string_view name, core::type func_type);
     std::optional<symbol_info> get(std::string_view name) const;
     bool contains_in_current_scope(std::string_view name) const;
+    core::scoped_map<symbol_info>& scopes();
+    const core::scoped_map<symbol_info>& scopes() const;
 
 private:
     core::scoped_map<symbol_info> scopes_;

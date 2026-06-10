@@ -4,6 +4,9 @@
 #include "core/error/error_report.hpp"
 #include <algorithm>
 #include <cctype>
+#include <iostream>
+#include <string>
+#include <string_view>
 
 namespace core {
 

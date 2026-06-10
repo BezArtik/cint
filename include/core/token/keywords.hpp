@@ -3,7 +3,6 @@
 
 #pragma once
 #include "core/token/token_types.hpp"
-#include <cstdint>
 #include <string_view>
 #include <array>
 #include <optional>
