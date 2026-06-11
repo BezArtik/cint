@@ -67,6 +67,8 @@ private:
         core::string_hash, std::equal_to<>
     > functions_;
     bool debug_ = false;
+    uint32_t recursion_depth_ = 0;
+    static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
 };
 
 } // namespace runtime

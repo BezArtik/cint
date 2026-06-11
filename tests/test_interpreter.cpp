@@ -6,6 +6,7 @@
 #include "lexer/lexer.hpp"
 #include "semantics/type_check.hpp"
 #include "runtime/interpreter.hpp"
+#include "runtime/environment.hpp"
 #include "core/value/value.hpp"
 #include "core/error/error_report.hpp"
 #include <string>
@@ -96,7 +97,8 @@ INSTANTIATE_TEST_SUITE_P(all, runtime_error_test, ::testing::Values(
     runtime_error_case{ "int main() { int x = 1/0; return 0; }",           "div by zero int" },
     runtime_error_case{ "int main() { double x = 1.0/0.0; return 0; }",    "div by zero double" },
     runtime_error_case{ "int main() { int x = 1%0; return 0; }",           "mod by zero" },
-    runtime_error_case{ "int main() { int x = y; return 0; }",             "undefined var" }
+    runtime_error_case{ "int main() { int x = y; return 0; }",             "undefined var" },
+    runtime_error_case{ "int f() { return f(); } int x = f();",            "stack overflow"}
 ));
 
 

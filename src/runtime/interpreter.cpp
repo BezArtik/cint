@@ -409,6 +409,11 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
+    if (recursion_depth_ >= MAX_RECURSION_DEPTH) {
+        reporter_.interpret_error(expr, err::stack_overflow);
+    }
+    recursion_depth_++;
+
     auto builtin = current_env_->get_builtin(name);
     auto func_it = functions_.find(name);
 
@@ -454,10 +459,12 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     try {
         for (const auto& s : func.body_->statements_) execute(*s);
     } catch (const return_exception& ret) {
+        recursion_depth_--;
         result = ret.return_value_;
     } catch (const core::interpret_error&) {
         return core::value();
     }
+    recursion_depth_--;
     return result;
 }
 
