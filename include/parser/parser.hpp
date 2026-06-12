@@ -53,35 +53,12 @@ private:
     ast::expression unary();
     ast::expression postfix();
 	ast::expression array_literal();
-
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
     ast::expression finish_index(ast::expression object);
-
     ast::func_param parse_param();
+
     void synchronize();
-
-    template <typename T, typename Loc, typename... Args>
-    ast::expression make_expr(const Loc& loc, Args&&... args) {
-        return ast::expression(std::make_unique<T>(std::forward<Args>(args)..., loc.loc_));
-    }
-
-    template <typename T, typename... Args>
-    ast::expression make_expr_val(const core::token& tok, Args&&... args) {
-        T val(std::forward<Args>(args)..., tok, tok.loc_);
-        return ast::expression(std::move(val));
-    }
-
-    template <typename Stmt, typename Loc, typename... Args>
-    ast::stmt_ptr make_stmt(const Loc& loc, Args&&... args) {
-        Stmt s(std::forward<Args>(args)..., loc.loc_);
-        return std::make_unique<ast::statement>(std::move(s));
-    }
-
-    template <typename Stmt>
-    ast::stmt_ptr make_stmt(Stmt&& stmt) {
-        return std::make_unique<ast::statement>(std::forward<Stmt>(stmt));
-    }
 
     const std::vector<core::token>& tokens_;
     core::error_reporter& reporter_;

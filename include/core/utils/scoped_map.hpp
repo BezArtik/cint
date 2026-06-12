@@ -9,6 +9,8 @@
 #include <memory>
 #include <optional>
 #include <algorithm>
+#include <cassert>
+
 
 namespace core {
 
@@ -24,7 +26,8 @@ public:
     }
 
     void pop() noexcept {
-        if (scopes_.size() > 1) scopes_.pop_back();
+        assert(scopes_.size() > 1 && "Cannot pop global scope"); 
+        scopes_.pop_back();
     }
 
     void define(std::string_view name, T value) {

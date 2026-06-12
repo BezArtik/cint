@@ -1,4 +1,4 @@
-// core/value.cpp
+// core/value/value.cpp
 
 
 #include "core/value/value.hpp"
@@ -10,6 +10,8 @@
 #include <charconv>
 #include <numeric>
 #include <iostream>
+#include <cassert>
+
 
 namespace core {
 
@@ -105,6 +107,7 @@ std::optional<value::array_t> value::take_array() noexcept {
 }
 
 size_t value::array_size() const {
+    assert(std::holds_alternative<array_info>(data_));
     return std::get<array_info>(data_).elements_.size();
 }
 
@@ -139,6 +142,7 @@ value value::div(const value& other) const {
 }
 
 value value::mod(const value& other) const {
+    assert(type().is_int() && other.type().is_int()); 
     auto li = as_int();
     auto ri = other.as_int();
     if (!li || !ri) throw core::interpret_error{ err::modulo_requires_int };
@@ -184,10 +188,12 @@ value value::ge(const value& other) const {
 }
 
 value value::and_op(const value& other) const {
+    assert(type().is_bool() && other.type().is_bool()); 
     return value(to_bool() && other.to_bool());
 }
 
 value value::or_op(const value& other) const {
+    assert(type().is_bool() && other.type().is_bool()); 
     return value(to_bool() || other.to_bool());
 }
 

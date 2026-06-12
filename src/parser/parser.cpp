@@ -8,6 +8,8 @@
 #include <string>
 #include <utility>
 #include <algorithm>
+#include <cassert>
+
 
 namespace parser {
 
@@ -54,7 +56,10 @@ const core::token& parser::advance() noexcept {
 
 bool parser::is_at_end() const noexcept { return peek().type_ == tt::END_OF_FILE; }
 const core::token& parser::peek() const noexcept { return tokens_[current_]; }
-const core::token& parser::prev() const noexcept { return tokens_[current_ - 1]; }
+const core::token& parser::prev() const noexcept { 
+    assert(current_ > 0 && "No previous token available");
+    return tokens_[current_ - 1];
+}
 
 ast::stmt_ptr parser::declaration() {
     try {
@@ -100,7 +105,7 @@ ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) 
         }
     }
     consume(tt::SEMICOLON, err::expected_semicolon);
-    return make_stmt<ast::var_declaration>(name, std::move(type), name, std::move(initializer));
+    return ast::make_stmt<ast::var_declaration>(name, std::move(type), name, std::move(initializer));
 }
 
 ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token& name) {
@@ -119,7 +124,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
     auto& block = std::get<ast::block_stmt>(body->data_);
     func.body_ = std::make_unique<ast::block_stmt>(std::move(block));
 
-    return make_stmt(std::move(func));
+    return ast::make_stmt(std::move(func));
 }
 
 ast::func_param parser::parse_param() {
@@ -157,7 +162,7 @@ ast::stmt_ptr parser::statement() {
     auto expr = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return make_stmt<ast::expression_stmt>(prev(), std::move(expr));
+    return ast::make_stmt<ast::expression_stmt>(prev(), std::move(expr));
 }
 
 ast::stmt_ptr parser::while_statement() {
@@ -166,7 +171,7 @@ ast::stmt_ptr parser::while_statement() {
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
 
     auto body = statement();
-    return make_stmt<ast::while_stmt>(prev(), std::move(condition), std::move(body));
+    return ast::make_stmt<ast::while_stmt>(prev(), std::move(condition), std::move(body));
 }
 
 ast::stmt_ptr parser::for_statement() {
@@ -196,7 +201,7 @@ ast::stmt_ptr parser::for_statement() {
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
     auto body = statement();
-    return make_stmt<ast::for_stmt>(prev(),
+    return ast::make_stmt<ast::for_stmt>(prev(),
         std::move(initializer), std::move(condition),
         std::move(increment), std::move(body));
 }
@@ -218,7 +223,7 @@ ast::stmt_ptr parser::if_statement() {
         }
     }
 
-    return make_stmt<ast::if_stmt>(prev(), std::move(condition), 
+    return ast::make_stmt<ast::if_stmt>(prev(), std::move(condition), 
         std::move(then_branch), std::move(else_branch));
 }
 
@@ -229,7 +234,7 @@ ast::stmt_ptr parser::return_statement() {
     if (!check(tt::SEMICOLON)) value = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return make_stmt<ast::return_stmt>(keyword, keyword, std::move(value));
+    return ast::make_stmt<ast::return_stmt>(keyword, keyword, std::move(value));
 }
 
 ast::stmt_ptr parser::block_statement() {
@@ -240,7 +245,7 @@ ast::stmt_ptr parser::block_statement() {
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     const auto& brace = prev();
-    return make_stmt<ast::block_stmt>(brace, std::move(block.statements_));
+    return ast::make_stmt<ast::block_stmt>(brace, std::move(block.statements_));
 }
 
 ast::expression parser::expression() { return assignment(); }
@@ -253,7 +258,7 @@ ast::expression parser::assignment() {
                 tt::SLASH_EQUAL, tt::PERCENT_EQUAL })) {
         const auto& op = prev();
         auto value = assignment();
-        return make_expr<ast::binary_expr>(op, std::move(expr), op, std::move(value));
+        return ast::make_expr<ast::binary_expr>(op, std::move(expr), op, std::move(value));
     }
     return expr;
 }
@@ -294,7 +299,7 @@ ast::expression parser::parse_binary(
     while (match(operators)) {
         const auto& op = prev();
         auto right = sub_parser();
-        left = make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
+        left = ast::make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
     }
     return left;
 }
@@ -303,7 +308,7 @@ ast::expression parser::unary() {
     if (match({ tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT })) {
         const auto& op = prev();
         auto operand = unary();
-        return make_expr<ast::unary_expr>(op, op, std::move(operand));
+        return ast::make_expr<ast::unary_expr>(op, op, std::move(operand));
     }
     return postfix();
 }
@@ -316,7 +321,7 @@ ast::expression parser::postfix() {
 			expr = finish_index(std::move(expr));
 		} else if (match({ tt::INCREMENT, tt::DECREMENT })) {
 			const auto& op = prev();
-			expr = make_expr<ast::postfix_expr>(op, std::move(expr), op);
+			expr = ast::make_expr<ast::postfix_expr>(op, std::move(expr), op);
         } else {
             break;
         }
@@ -335,18 +340,18 @@ ast::expression parser::array_literal() {
 		} while (match({ tt::COMMA }));
 	}
 	consume(tt::RIGHT_BRACE, err::expected_right_brace);
-	return make_expr<ast::array_literal_expr>(brace, std::move(elements));
+	return ast::make_expr<ast::array_literal_expr>(brace, std::move(elements));
 }
 
 ast::expression parser::primary() {
     if (match({ tt::NUMBER, tt::STRING })) {
-        return make_expr_val<ast::literal_expr>(prev());
+        return ast::make_expr_val<ast::literal_expr>(prev());
     }
 
     if (match({ tt::KEYWORD })) {
         auto kw = prev().as_keyword();
         if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) {
-            return make_expr_val<ast::literal_expr>( prev());
+            return ast::make_expr_val<ast::literal_expr>( prev());
         }
         reporter_.parse_error(prev(), err::expected_expression);
     }
@@ -355,7 +360,7 @@ ast::expression parser::primary() {
         const auto& name = prev();
 
         if (match({ tt::LEFT_PAREN })) return finish_call(name);
-        return make_expr_val<ast::variable_expr>(name);
+        return ast::make_expr_val<ast::variable_expr>(name);
     }
 
     if (match({ tt::LEFT_PAREN })) {
@@ -380,14 +385,14 @@ ast::expression parser::finish_call(const core::token& callee) {
 
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
-    return make_expr<ast::call_expr>(callee, callee, std::move(args));
+    return ast::make_expr<ast::call_expr>(callee, callee, std::move(args));
 }
 
 ast::expression parser::finish_index(ast::expression object) {
 	const auto& bracket = prev();
 	auto index = expression();
 	consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
-	return make_expr<ast::index_expr>(bracket, std::move(object), std::move(index));
+	return ast::make_expr<ast::index_expr>(bracket, std::move(object), std::move(index));
 }
 
 void parser::synchronize() {

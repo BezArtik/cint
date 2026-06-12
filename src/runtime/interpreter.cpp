@@ -19,6 +19,7 @@
 #include <charconv>
 #include <utility>
 #include <algorithm>
+#include <cassert>
 
 namespace runtime {
 
@@ -233,9 +234,9 @@ core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
     return *val;
 }
 
-core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
+core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {   
     switch (expr.op_.type_) {
-    case tt::EQUAL: case tt::PLUS_EQUAL:
+    case tt::EQUAL: case tt::PLUS_EQUAL:    
     case tt::MINUS_EQUAL: case tt::STAR_EQUAL:
     case tt::SLASH_EQUAL: case tt::PERCENT_EQUAL:
         return evaluate_assignment(expr);
@@ -414,6 +415,11 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     }
     recursion_depth_++;
 
+    struct depth_guard {
+        uint32_t& d;
+        ~depth_guard() { d--; }
+    } d_guard{ recursion_depth_ };
+
     auto builtin = current_env_->get_builtin(name);
     auto func_it = functions_.find(name);
 
@@ -459,12 +465,10 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     try {
         for (const auto& s : func.body_->statements_) execute(*s);
     } catch (const return_exception& ret) {
-        recursion_depth_--;
         result = ret.return_value_;
     } catch (const core::interpret_error&) {
         return core::value();
     }
-    recursion_depth_--;
     return result;
 }
 
@@ -480,7 +484,8 @@ core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& e
 core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     auto obj = evaluate(expr.object_);
     auto idx = evaluate(expr.index_);
-
+    assert(obj.as_array().has_value() && "Indexing non-array should be caught by type checker");
+    assert(idx.as_int().has_value() && "Non-integer index should be caught by type checker");
     if (!obj.as_array()) reporter_.interpret_error(expr, err::indexing_non_array);
 
     auto i_opt = idx.as_int();

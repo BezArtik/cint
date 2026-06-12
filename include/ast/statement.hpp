@@ -124,4 +124,15 @@ struct statement {
     statement(T s) : data_(std::move(s)) {}
 };
 
+template <typename Stmt, typename Loc, typename... Args>
+stmt_ptr make_stmt(const Loc& loc, Args&&... args) {
+    Stmt s(std::forward<Args>(args)..., loc.loc_);
+    return std::make_unique<statement>(std::move(s));
+}
+
+template <typename Stmt>
+stmt_ptr make_stmt(Stmt&& stmt) {
+    return std::make_unique<statement>(std::forward<Stmt>(stmt));
+}
+
 } // namespace ast

@@ -100,4 +100,15 @@ struct index_expr {
         : object_(std::move(object)), index_(std::move(index)), loc_(loc) {}
 };
 
+template <typename T, typename Loc, typename... Args>
+expression make_expr(const Loc& loc, Args&&... args) {
+    return expression(std::make_unique<T>(std::forward<Args>(args)..., loc.loc_));
+}
+
+template <typename T, typename... Args>
+expression make_expr_val(const core::token& tok, Args&&... args) {
+    T val(std::forward<Args>(args)..., tok, tok.loc_);
+    return expression(std::move(val));
+}
+
 } // namespace ast
