@@ -2,48 +2,6 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "msvc-base",
-      "hidden": true,
-      "generator": "Visual Studio 18 2026",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "BUILD_SAMPLES": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
-      }
-    },
-    {
-      "name": "msvc-debug",
-      "displayName": "MSVC Debug",
-      "description": "MSVC build with debug symbols",
-      "inherits": "msvc-base",
-      "cacheVariables": {
-        "BUILD_TESTS": "ON"
-      }
-    },
-    {
-      "name": "msvc-release",
-      "displayName": "MSVC Release",
-      "description": "MSVC build with full optimizations (/O2)",
-      "inherits": "msvc-base",
-      "cacheVariables": {
-        "BUILD_TESTS": "OFF"
-      }
-    },
-    {
-      "name": "msvc-debug-sanitized",
-      "displayName": "MSVC Debug + ASan",
-      "description": "MSVC Debug with AddressSanitizer enabled",
-      "inherits": "msvc-debug",
-      "cacheVariables": {
-        "ENABLE_ASAN": "ON",
-        "ENABLE_WARNINGS_AS_ERRORS": "ON"
-      }
-    },
-
-    {
       "name": "gcc-base",
       "hidden": true,
       "description": "Base configuration for MinGW GCC",
@@ -92,29 +50,33 @@
         "ENABLE_SANITIZERS": "ON",
         "ENABLE_WARNINGS_AS_ERRORS": "ON"
       }
+    },
+    {
+      "name": "gcc-release-profiling",
+      "displayName": "GCC Release + Profiling (gperftools)",
+      "description": "Optimized build with debug symbols and frame pointer for CPU profiling with gperftools",
+      "inherits": "gcc-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_FLAGS": "-fno-omit-frame-pointer",
+        "BUILD_TESTS": "OFF",
+        "BUILD_SAMPLES": "ON"
+      }
+    },
+    {
+      "name": "gcc-debug-callgrind",
+      "displayName": "GCC Debug + Callgrind",
+      "description": "Debug build optimized for Valgrind/Callgrind accurate instruction counting and memory profiling",
+      "inherits": "gcc-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_FLAGS": "-O1 -fno-inline-functions -fno-omit-frame-pointer",
+        "BUILD_TESTS": "OFF"
+      }
     }
   ],
 
   "buildPresets": [
-    {
-      "name": "msvc-debug",
-      "configurePreset": "msvc-debug",
-      "configuration": "Debug",
-      "displayName": "Build MSVC Debug"
-    },
-    {
-      "name": "msvc-release",
-      "configurePreset": "msvc-release",
-      "configuration": "Release",
-      "displayName": "Build MSVC Release"
-    },
-    {
-      "name": "msvc-debug-sanitized",
-      "configurePreset": "msvc-debug-sanitized",
-      "configuration": "Debug",
-      "displayName": "Build MSVC Debug + ASan"
-    },
-
     {
       "name": "gcc-debug",
       "configurePreset": "gcc-debug",
@@ -129,23 +91,20 @@
       "name": "gcc-debug-sanitized",
       "configurePreset": "gcc-debug-sanitized",
       "displayName": "Build GCC Debug + Sanitizers"
+    },
+    {
+      "name": "gcc-release-profiling",
+      "configurePreset": "gcc-release-profiling",
+      "displayName": "Build GCC Release + Profiling"
+    },
+    {
+      "name": "gcc-debug-callgrind",
+      "configurePreset": "gcc-debug-callgrind",
+      "displayName": "Build GCC Debug + Callgrind"
     }
   ],
 
   "testPresets": [
-    {
-      "name": "msvc-debug",
-      "configurePreset": "msvc-debug",
-      "configuration": "Debug",
-      "displayName": "Test MSVC Debug"
-    },
-    {
-      "name": "msvc-debug-sanitized",
-      "configurePreset": "msvc-debug-sanitized",
-      "configuration": "Debug",
-      "displayName": "Test MSVC Debug + ASan"
-    },
-
     {
       "name": "gcc-debug",
       "configurePreset": "gcc-debug",

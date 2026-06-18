@@ -123,7 +123,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
     auto body = block_statement();
     auto& block = std::get<ast::block_stmt>(body->data_);
     func.body_ = std::make_unique<ast::block_stmt>(std::move(block));
-
+    
     return ast::make_stmt(std::move(func));
 }
 
