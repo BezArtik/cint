@@ -33,7 +33,6 @@ using expression = std::variant<
 struct literal_expr {
     core::token value_{};
     core::location loc_{};
-    mutable std::optional<core::value> cached_{};
 
     literal_expr(const core::token& value, core::location loc)
         : value_(value), loc_(loc) {}
