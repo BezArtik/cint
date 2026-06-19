@@ -1,27 +1,22 @@
 // main.cpp
 
-#include "core/token/token.hpp"
 #include "core/error/error_report.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
-#include "ast/statement.hpp"
-#include "ast/expression.hpp"
-#include "semantics/symbol_table.hpp"
 #include "semantics/type_check.hpp"
-#include "core/value/value.hpp"
-#include "runtime/environment.hpp"
 #include "runtime/interpreter.hpp"
+#include "runtime/environment.hpp"
 #include "debug/debug.hpp"
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <string>
-#include <memory>
-#include <vector>
-#include <filesystem>
+#include <string_view>
+#include <chrono>
 
 int main(int argc, char* argv[]) {
     try {
+        std::cout << "Program execution...\n";
         bool debug = false;
         std::string filename;
 
@@ -44,7 +39,8 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: cannot open file '" << filename << "'\n";
             return 1;
         }
-
+        
+        const auto start = std::chrono::steady_clock::now();
         std::stringstream buffer;
         buffer << file.rdbuf();
         std::string source = buffer.str();
@@ -79,7 +75,9 @@ int main(int argc, char* argv[]) {
             std::cerr << "Runtime errors found.\n";
             return 1;
         }
-
+        const auto finish = std::chrono::steady_clock::now();
+        const std::chrono::duration<double> time_program = finish - start;
+        std::cout << "Program execution time (" << time_program << ")\n";
         std::cout << "Program finished successfully.\n";
 
     } catch (const std::exception& e) {

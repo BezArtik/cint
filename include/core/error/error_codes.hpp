@@ -5,7 +5,8 @@
 #include <cstdint>
 #include <string_view>
 #include <array>
-#include <stdexcept>
+#include <algorithm>
+
 
 namespace core {
 

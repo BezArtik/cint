@@ -11,9 +11,7 @@
 #include "core/token/token_types.hpp"
 #include "core/token/keywords.hpp"
 #include "core/error/error_codes.hpp"
-#include "semantics/type_check.hpp"
 #include "debug/debug.hpp"
-#include <stdexcept>
 #include <string>
 #include <iostream>
 #include <charconv>
@@ -201,18 +199,21 @@ core::value interpreter::evaluate(const ast::expression& expr) {
 
 core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
+    
+    auto to_number = [&](auto&& lex, auto&& num) {
+        auto [_, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), num);
+        if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
+        return num;
+    };
+
     if (token.type_ == tt::NUMBER) {
         auto lex = token.lexeme_;
         if (token.is_double_literal()) {
             core::value::double_t d;
-            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), d);
-            if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
-            return core::value(d);
+            return core::value(to_number(lex, d));
         } else {
             core::value::int_t i;
-            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), i);
-            if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
-            return core::value(i);
+            return core::value(to_number(lex, i));
         }
     }
     if (token.is_string_literal()) {

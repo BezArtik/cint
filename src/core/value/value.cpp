@@ -5,12 +5,9 @@
 #include "core/token/token_types.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
-#include <stdexcept>
-#include <cstdint>
 #include <charconv>
-#include <numeric>
-#include <iostream>
 #include <cassert>
+#include <limits>
 
 
 namespace core {

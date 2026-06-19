@@ -7,7 +7,6 @@
 #include "core/error/error_report.hpp"
 #include "core/error/error_codes.hpp"
 #include <string_view>
-#include <unordered_map>
 #include <cctype>
 
 namespace lexer {
@@ -36,7 +35,7 @@ void lexer::scan_token() {
     case ')': add_token(tt::RIGHT_PAREN); break;
     case '{': add_token(tt::LEFT_BRACE); break;
     case '}': add_token(tt::RIGHT_BRACE); break;
-	case '[': add_token(tt::LEFT_BRACKET); break;
+    case '[': add_token(tt::LEFT_BRACKET); break;
 	case ']': add_token(tt::RIGHT_BRACKET); break;
     case ',': add_token(tt::COMMA); break;
     case '.': add_token(tt::DOT); break;

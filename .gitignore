@@ -5,3 +5,5 @@
 merged_project.txt
 .vs/
 /out
+.cache/
+compile_commands.json
