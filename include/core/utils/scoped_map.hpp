@@ -6,7 +6,6 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <memory>
 #include <optional>
 #include <algorithm>
 #include <cassert>
@@ -18,11 +17,11 @@ template<typename T>
 class scoped_map {
 public:
     scoped_map() {
-        scopes_.push_back(std::make_unique<scope>());
+        scopes_.emplace_back();
     }
 
     void push() {
-        scopes_.push_back(std::make_unique<scope>());
+        scopes_.emplace_back();
     }
 
     void pop() noexcept {
@@ -31,7 +30,7 @@ public:
     }
 
     void define(std::string_view name, T value) {
-        scopes_.back()->bindings_.emplace(name, std::move(value));
+        scopes_.back().bindings_.emplace(name, std::move(value));
     }
 
     std::optional<T> get(std::string_view name) const {
@@ -50,7 +49,7 @@ public:
     }
 
     bool contains_in_current_scope(std::string_view name) const noexcept {
-        return scopes_.back()->bindings_.contains(name);
+        return scopes_.back().bindings_.contains(name);
     }
 
     bool assign(std::string_view name, T value) {
@@ -69,18 +68,18 @@ private:
     struct scope {
         std::unordered_map<std::string, T, core::string_hash, std::equal_to<>> bindings_;
     };
-    std::vector<std::unique_ptr<scope>> scopes_;
+    std::vector<scope> scopes_;
 
     scope* find_scope(std::string_view name) {
         auto it = std::find_if(scopes_.rbegin(), scopes_.rend(),
-            [&](const auto& s) { return s->bindings_.contains(name); });
-        return it != scopes_.rend() ? it->get() : nullptr;
+            [&](const auto& s) { return s.bindings_.contains(name); });
+        return it != scopes_.rend() ? &(*it) : nullptr;
     }
 
     const scope* find_scope(std::string_view name) const {
         auto it = std::find_if(scopes_.rbegin(), scopes_.rend(),
-            [&](const auto& s) { return s->bindings_.contains(name); });
-        return it != scopes_.rend() ? it->get() : nullptr;
+            [&](const auto& s) { return s.bindings_.contains(name); });
+        return it != scopes_.rend() ? &(*it) : nullptr;
     }
 };
 
