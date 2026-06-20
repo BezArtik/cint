@@ -27,7 +27,7 @@ using err = core::error_code;
 interpreter::interpreter(core::error_reporter& reporter, bool debug)
     : reporter_(reporter), debug_(debug) {
     for (const auto& def : core::builtins)
-        builtins_.emplace(def.name_, def.impl_);
+        functions_.emplace(def.name_, def.impl_);
 }
 
 void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
@@ -44,7 +44,7 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
         }
         auto main_it = functions_.find("main");
         if (main_it != functions_.end()) {
-            const auto& func = *main_it->second;
+            const auto& func = *std::get<const ast::func_declaration*>(main_it->second);
             core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
@@ -225,7 +225,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
-    auto val = values_.get(expr.name_.lexeme_);
+    auto* val = values_.get(expr.name_.lexeme_);
     if (!val) reporter_.interpret_error(expr, err::undefined_variable, expr.name_.lexeme_);
     return *val;
 }
@@ -280,44 +280,47 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
     return result;
 }
 
-core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
+core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr, 
                                                    const ast::index_expr& idx) {
     const auto& var = std::get<ast::variable_expr>(idx.object_);
-    auto name = var.name_.lexeme_;
-    auto* arr_ptr = values_.get_mut(name);
-    if (!arr_ptr) reporter_.interpret_error(expr, err::undefined_variable, name);
-
+    auto* arr_val = values_.get(var.name_.lexeme_);  
+    if (!arr_val) reporter_.interpret_error(expr, err::undefined_variable, var.name_.lexeme_);
+    
+    auto* arr = arr_val->as_array();  
+    if (!arr) reporter_.interpret_error(expr, err::indexing_non_array);
+    
     auto index_val = evaluate(idx.index_);
     auto right = evaluate(expr.right_);
-
+    
     auto i_opt = index_val.as_int();
     if (!i_opt) reporter_.interpret_error(expr, err::index_must_be_integer);
     auto i = *i_opt;
-    auto size = arr_ptr->as_array()->size();
-    if (i < 0 || i >= size) reporter_.interpret_error(expr, err::index_out_of_bounds, name, i);
-
-    auto vec = std::move(*arr_ptr->as_array_mut());
-    auto& element = vec[i];
-
-    core::value result;
-    if (expr.op_.type_ == tt::EQUAL) {
-        result = std::move(right);
-    } else {
-        auto left_val = element;
-        switch (expr.op_.type_) {
-        case tt::PLUS_EQUAL:    result = left_val.add(right); break;
-        case tt::MINUS_EQUAL:   result = left_val.sub(right); break;
-        case tt::STAR_EQUAL:    result = left_val.mul(right); break;
-        case tt::SLASH_EQUAL:   result = left_val.div(right); break;
-        case tt::PERCENT_EQUAL: result = left_val.mod(right); break;
-        default: break;
-        }
+    
+    if (i < 0 || i >= arr->size()) {
+        reporter_.interpret_error(expr, err::index_out_of_bounds);
     }
-
+    
+    auto& element = (*arr)[i];
+    
+    if (expr.op_.type_ == tt::EQUAL) {
+        element = std::move(right);
+        return element;
+    }
+    
+    core::value result;
+    switch (expr.op_.type_) {
+    case tt::PLUS_EQUAL:    result = element.add(right); break;
+    case tt::MINUS_EQUAL:   result = element.sub(right); break;
+    case tt::STAR_EQUAL:    result = element.mul(right); break;
+    case tt::SLASH_EQUAL:   result = element.div(right); break;
+    case tt::PERCENT_EQUAL: result = element.mod(right); break;
+    default: break;
+    }
+    
     element = std::move(result);
-    *arr_ptr = core::value(arr_ptr->type().element_type(), std::move(vec));
     return element;
 }
+
 
 core::value interpreter::evaluate_logical(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
@@ -416,14 +419,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{ recursion_depth_ };
 
-    auto builtin_it = builtins_.find(name);
-    auto builtin = (builtin_it != builtins_.end()) 
-                   ? std::optional<core::builtin_fn_ptr>(builtin_it->second) 
-                   : std::nullopt;
-
-    auto func_it = functions_.find(name);
-
-    if (!builtin && func_it == functions_.end()) {
+    auto it = functions_.find(name);
+    if (it == functions_.end()) {
         reporter_.error(expr, err::undefined_function, name);
         return core::value();
     }
@@ -438,38 +435,51 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         return core::value();
     }
 
-    if (builtin) {
-        try {
-            return (*builtin)(args);
-        } catch (const core::interpret_error& e) {
-            reporter_.interpret_error(expr, e.code_, name);
+    return std::visit(core::overloaded{
+        [&](core::builtin_fn_ptr builtin) -> core::value {
+            try {
+                return (*builtin)(args);
+            } catch (const core::interpret_error& e) {
+                reporter_.interpret_error(expr, e.code_, name);
+                return core::value();
+            }
+        },
+        [&](const ast::func_declaration* func) -> core::value {
+            return call_user_function(*func, args, expr);
         }
-    }
+    }, it->second);
+}
 
-    const auto& func = *func_it->second;
 
+core::value interpreter::call_user_function(
+    const ast::func_declaration& func,
+    const std::vector<core::value>& args,
+    const ast::call_expr& expr) {
+    
     if (args.size() != func.params_.size()) {
-        reporter_.interpret_error(expr, err::argument_count_mismatch, name,
-            std::to_string(func.params_.size()),
-            std::to_string(args.size()));
+        reporter_.interpret_error(expr, err::argument_count_mismatch,
+            func.name_.lexeme_,
+            func.params_.size(),
+            args.size());
+        return core::value();
     }
 
-    core::scope_guard guard(values_);  
+    
+    core::scope_guard guard(values_);
 
     for (size_t i = 0; i < func.params_.size(); ++i) {
-        values_.define(func.params_[i].name_.lexeme_, std::move(args[i]));
+        values_.define(func.params_[i].name_.lexeme_, args[i]);
     }
-
-    auto result = default_value(func.return_type_);
 
     try {
         for (const auto& s : func.body_->statements_) execute(*s);
     } catch (const return_exception& ret) {
-        result = ret.return_value_;
+        return ret.return_value_;
     } catch (const core::interpret_error&) {
         return core::value();
     }
-    return result;
+
+    return default_value(func.return_type_);
 }
 
 core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
@@ -484,28 +494,29 @@ core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& e
 core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     auto obj = evaluate(expr.object_);
     auto idx = evaluate(expr.index_);
-    assert(obj.as_array().has_value() && "Indexing non-array should be caught by type checker");
-    assert(idx.as_int().has_value() && "Non-integer index should be caught by type checker");
-    if (!obj.as_array()) reporter_.interpret_error(expr, err::indexing_non_array);
-
+    
+    const auto* arr = obj.as_array(); 
+    if (!arr) reporter_.interpret_error(expr, err::indexing_non_array);
+    
     auto i_opt = idx.as_int();
     if (!i_opt) reporter_.interpret_error(expr, err::index_must_be_integer);
     auto i = *i_opt;
-    auto size = obj.as_array()->size();
-
-    if (i < 0 || i >= size) reporter_.interpret_error(expr, err::index_out_of_bounds);
-
-    return (*obj.as_array())[i];
+    
+    if (i < 0 || i >= arr->size()) {
+        reporter_.interpret_error(expr, err::index_out_of_bounds);
+    }
+    
+    return (*arr)[i]; 
 }
 
 core::value interpreter::default_value(const t& type) {
-    if (type == t::int_type())       return core::value(core::value::int_t{ 0 });
-    if (type == t::double_type())    return core::value(0.0);
-    if (type == t::bool_type())      return core::value(false);
-    if (type == t::string_type())    return core::value(core::value::string_t(""));
-    if (type.is_void())              return core::value();
-    if (type.is_array())             return core::value(type.element_type(), core::value::array_t{});
-    if (type.is_unknown())           throw core::interpret_error{ err::unexpected_literal };
+    if (type.is_int())       return core::value(core::value::int_t{ 0 });
+    if (type.is_double())    return core::value(core::value::double_t{ 0.0 });
+    if (type.is_bool())      return core::value(false);
+    if (type.is_string())    return core::value(core::value::string_t(""));
+    if (type.is_void())      return core::value();
+    if (type.is_array())     return core::value(type.element_type(), core::value::array_t{});
+    if (type.is_unknown())   throw core::interpret_error{ err::unexpected_literal };
     return core::value();
 }
 

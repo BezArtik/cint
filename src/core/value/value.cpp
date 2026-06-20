@@ -90,17 +90,13 @@ std::optional<value::int_t> value::as_int() const noexcept { return as<int_t>();
 std::optional<value::double_t> value::as_double() const noexcept { return as<double_t>(); }
 std::optional<value::bool_t> value::as_bool() const noexcept { return as<bool_t>();}
 std::optional<value::string_t> value::as_string() const noexcept { return as<string_t>();}
-std::optional<value::array_t> value::as_array() const noexcept {
-    if (auto* p = std::get_if<array_info>(&data_)) return p->elements_;
-    return std::nullopt;
-}
-value::array_t* value::as_array_mut() noexcept {
+const value::array_t* value::as_array() const noexcept {
     if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
     return nullptr;
 }
-std::optional<value::array_t> value::take_array() noexcept {
-    if (auto* p = std::get_if<array_info>(&data_)) return std::move(p->elements_);
-    return std::nullopt;
+value::array_t* value::as_array() noexcept {
+    if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
+    return nullptr;
 }
 
 size_t value::array_size() const {

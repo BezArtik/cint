@@ -56,20 +56,25 @@ private:
 	core::value evaluate_array_literal(const ast::array_literal_expr& expr);
 	core::value evaluate_index(const ast::index_expr& expr);
 
+    core::value call_user_function(
+            const ast::func_declaration& func,
+            const std::vector<core::value>& args, 
+            const ast::call_expr& expr);
+
 	core::value default_value(const core::type& type);
 
     core::error_reporter& reporter_;
     core::scoped_map<core::value> values_;
+    using callable = std::variant<
+        const ast::func_declaration*,
+        core::builtin_fn_ptr
+    >;
     std::unordered_map<
-        std::string, core::builtin_fn_ptr,
-        core::string_hash, std::equal_to<>
-    > builtins_;
-    std::unordered_map<
-        std::string, const ast::func_declaration*,
+        std::string, callable,
         core::string_hash, std::equal_to<>
     > functions_;
-    bool debug_ = false;
     uint32_t recursion_depth_ = 0;
+    bool debug_;
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
 };
 

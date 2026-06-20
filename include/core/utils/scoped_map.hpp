@@ -33,23 +33,19 @@ public:
         scopes_.back().bindings_.emplace(name, std::move(value));
     }
 
-    std::optional<T> get(std::string_view name) const {
-        auto* scope = find_scope(name);
-        if (!scope) return std::nullopt;
-        auto it = scope->bindings_.find(name);
-        if (it != scope->bindings_.end()) return it->second;
-        return std::nullopt;
-    }
 
-    T* get_mut(std::string_view name) { 
-        auto* scope = find_scope(name);
+    const T* get(std::string_view name) const noexcept {
+        const auto* scope = find_scope(name);
         if (!scope) return nullptr;
         auto it = scope->bindings_.find(name);
         return it != scope->bindings_.end() ? &it->second : nullptr;
     }
 
-    bool contains_in_current_scope(std::string_view name) const noexcept {
-        return scopes_.back().bindings_.contains(name);
+    T* get(std::string_view name) noexcept {
+        auto* scope = find_scope(name);
+        if (!scope) return nullptr;
+        auto it = scope->bindings_.find(name);
+        return it != scope->bindings_.end() ? &it->second : nullptr;
     }
 
     bool assign(std::string_view name, T value) {
@@ -61,6 +57,14 @@ public:
             return true;
         }
         return false;
+    }
+
+    bool contains_in_current_scope(std::string_view name) const noexcept {
+        return scopes_.back().bindings_.contains(name);
+    }
+
+    bool contains(std::string_view name) const noexcept {
+        return find_scope(name) != nullptr;
     }
 
 private:

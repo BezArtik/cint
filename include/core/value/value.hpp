@@ -40,9 +40,8 @@ public:
     std::optional<double_t> as_double() const noexcept;
     std::optional<bool_t> as_bool() const noexcept;
     std::optional<string_t> as_string() const noexcept;
-	std::optional<array_t> as_array() const noexcept;
-	array_t* as_array_mut() noexcept;
-    std::optional<array_t> take_array() noexcept;
+    const array_t* as_array() const noexcept;
+    array_t* as_array() noexcept;
 
     size_t array_size() const;
 
