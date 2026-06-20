@@ -48,16 +48,18 @@ type type::void_type() { return type(kind::VOID); }
 type type::unknown_type() { return type(kind::UNKNOWN); }
 
 type type::function_type(type return_type, std::vector<type> param_types) {
-    function_info info;
-    info.return_type_ = std::make_unique<type>(std::move(return_type));
-    info.param_types_ = std::move(param_types);
+    function_info info {
+        std::make_unique<type>(std::move(return_type)),
+        std::move(param_types)
+    };
     return type(kind::FUNCTION, std::move(info));
 }
 
 type type::array_type(type element_type, size_t size) {
-	array_info info;
-	info.element_type_ = std::make_unique<type>(std::move(element_type));
-	info.size_ = size;
+	array_info info {
+	    std::make_unique<type>(std::move(element_type)),
+	    size
+    };
 	return type(kind::ARRAY, std::move(info));
 }
 
@@ -79,15 +81,6 @@ bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
 bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
 bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
 
-const type& type::return_type() const {
-	assert(is_function());
-    return *std::get<function_info>(info_).return_type_;
-}
-
-const std::vector<type>& type::param_types() const {
-	assert(is_function());
-    return std::get<function_info>(info_).param_types_;
-}
 
 bool type::operator==(const type& other) const noexcept {
     if (kind_ != other.kind_) return false;
@@ -131,6 +124,16 @@ type type::common_arithmetic_type(const type& other) const noexcept {
     return int_type();
 }
 
+const type& type::return_type() const {
+	assert(is_function());
+	return *std::get<function_info>(info_).return_type_;
+}
+
+const std::vector<type>& type::param_types() const {
+	assert(is_function());
+	return std::get<function_info>(info_).param_types_;
+}
+
 const type& type::element_type() const {
 	assert(is_array());
     return *std::get<array_info>(info_).element_type_;
@@ -141,4 +144,4 @@ size_t type::array_size() const {
     return std::get<array_info>(info_).size_;
 }
 
-}
+} // namespace core

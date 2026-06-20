@@ -5,8 +5,7 @@
 #include "ast/statement.hpp"
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
-#include "semantics/symbol_table.hpp"
-#include <memory>
+#include "core/utils/scoped_map.hpp"
 #include <vector>
 #include <optional>
 
@@ -44,8 +43,18 @@ private:
 
 	bool is_lvalue(const ast::expression& expr);
 
+
+    enum class symbol_kind : uint8_t {
+        VARIABLE, FUNCTION
+    };
+
+    struct symbol_info {
+        core::type type_;
+        symbol_kind kind_;
+    };
+
     core::error_reporter& reporter_;
-    symbol_table symbols_;
+    core::scoped_map<symbol_info> symbols_;
     std::optional<core::type> curr_return_type_;
 };
 

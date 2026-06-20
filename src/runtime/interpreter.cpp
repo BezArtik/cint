@@ -2,7 +2,6 @@
 
 
 #include "runtime/interpreter.hpp"
-#include "runtime/environment.hpp"
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/utils/overloaded.hpp"
@@ -26,13 +25,9 @@ using t = core::type;
 using err = core::error_code;
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug)
-    : reporter_(reporter)
-    , global_env_(std::make_unique<environment>())
-    , current_env_(global_env_.get())
-    , debug_(debug) {
-
+    : reporter_(reporter), debug_(debug) {
     for (const auto& def : core::builtins)
-        global_env_->define_builtin(def.name_, def.impl_);
+        builtins_.emplace(def.name_, def.impl_);
 }
 
 void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
@@ -50,7 +45,7 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
         auto main_it = functions_.find("main");
         if (main_it != functions_.end()) {
             const auto& func = *main_it->second;
-            core::scope_guard guard(current_env_->scopes());
+            core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
             } catch (const return_exception& ret) {
@@ -108,16 +103,16 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         }
     }
 
-    if (current_env_->contains_in_current_scope(name)) {
-        current_env_->assign(name, std::move(init_val));
+    if (values_.contains_in_current_scope(name)) {
+        values_.assign(name, std::move(init_val));
     } else {
-        current_env_->define(name, std::move(init_val));
+        values_.define(name, std::move(init_val));
     }
 }
 
 void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<core::value>> guard;
-    if (create_scope) guard.emplace(current_env_->scopes());
+    if (create_scope) guard.emplace(values_);
     for (const auto& s : stmt.statements_) execute(*s);
 }
 
@@ -130,7 +125,7 @@ void interpreter::execute_loop_body(const ast::statement& body) {
 }
 
 void interpreter::execute_while(const ast::while_stmt& stmt) {
-    core::scope_guard guard(current_env_->scopes());
+    core::scope_guard guard(values_);
     while (true) {
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
@@ -139,7 +134,7 @@ void interpreter::execute_while(const ast::while_stmt& stmt) {
 }
 
 void interpreter::execute_for(const ast::for_stmt& stmt) {
-    core::scope_guard guard(current_env_->scopes());
+    core::scope_guard guard(values_);
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
         if (stmt.condition_) {
@@ -230,7 +225,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
-    auto val = current_env_->get(expr.name_.lexeme_);
+    auto val = values_.get(expr.name_.lexeme_);
     if (!val) reporter_.interpret_error(expr, err::undefined_variable, expr.name_.lexeme_);
     return *val;
 }
@@ -267,7 +262,7 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
     auto right = evaluate(expr.right_);
 
     if (expr.op_.type_ == tt::EQUAL) {
-        current_env_->assign(var.name_.lexeme_, right);
+        values_.assign(var.name_.lexeme_, right);
         return right;
     }
 
@@ -281,7 +276,7 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
     case tt::PERCENT_EQUAL: result = left.mod(right); break;
     default: break;
     }
-    current_env_->assign(var.name_.lexeme_, result);
+    values_.assign(var.name_.lexeme_, result);
     return result;
 }
 
@@ -289,7 +284,7 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
                                                    const ast::index_expr& idx) {
     const auto& var = std::get<ast::variable_expr>(idx.object_);
     auto name = var.name_.lexeme_;
-    auto* arr_ptr = current_env_->get_mut(name);
+    auto* arr_ptr = values_.get_mut(name);
     if (!arr_ptr) reporter_.interpret_error(expr, err::undefined_variable, name);
 
     auto index_val = evaluate(idx.index_);
@@ -383,7 +378,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
             auto v = old_val.to_double();
             new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
         }
-        current_env_->assign(var.name_.lexeme_, new_val);
+        values_.assign(var.name_.lexeme_, new_val);
         return new_val;
     }
 
@@ -404,7 +399,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
         auto v = old_val.to_double();
         new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
     }
-    current_env_->assign(var.name_.lexeme_, new_val);
+    values_.assign(var.name_.lexeme_, new_val);
     return old_val;
 }
 
@@ -421,7 +416,11 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{ recursion_depth_ };
 
-    auto builtin = current_env_->get_builtin(name);
+    auto builtin_it = builtins_.find(name);
+    auto builtin = (builtin_it != builtins_.end()) 
+                   ? std::optional<core::builtin_fn_ptr>(builtin_it->second) 
+                   : std::nullopt;
+
     auto func_it = functions_.find(name);
 
     if (!builtin && func_it == functions_.end()) {
@@ -455,10 +454,10 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             std::to_string(args.size()));
     }
 
-    core::scope_guard guard(current_env_->scopes());
+    core::scope_guard guard(values_);  
 
     for (size_t i = 0; i < func.params_.size(); ++i) {
-        current_env_->define(func.params_[i].name_.lexeme_, std::move(args[i]));
+        values_.define(func.params_[i].name_.lexeme_, std::move(args[i]));
     }
 
     auto result = default_value(func.return_type_);

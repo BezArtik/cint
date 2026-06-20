@@ -5,7 +5,6 @@
 #include "parser/parser.hpp"
 #include "semantics/type_check.hpp"
 #include "runtime/interpreter.hpp"
-#include "runtime/environment.hpp"
 #include "debug/debug.hpp"
 #include <iostream>
 #include <fstream>

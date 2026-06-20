@@ -6,12 +6,10 @@
 #include "lexer/lexer.hpp"
 #include "semantics/type_check.hpp"
 #include "runtime/interpreter.hpp"
-#include "runtime/environment.hpp"
-#include "core/value/value.hpp"
 #include "core/error/error_report.hpp"
 #include <string>
 #include <vector>
-#include <sstream>
+
 
 namespace tests {
 

@@ -7,17 +7,16 @@
 #include "ast/expression.hpp"
 #include "core/error/error_report.hpp"
 #include "core/utils/hash.hpp"
-#include <memory>
+#include "core/utils/scoped_map.hpp"
+#include "core/utils/builtins.hpp"
 #include <vector>
 #include <unordered_map>
 #include <string>
 
 namespace runtime {
 
-class environment;
-
 struct return_exception {
-    core::value return_value_{};
+    core::value return_value_;
 };
 
 class interpreter {
@@ -60,8 +59,11 @@ private:
 	core::value default_value(const core::type& type);
 
     core::error_reporter& reporter_;
-    std::unique_ptr<environment> global_env_;
-    environment* current_env_;
+    core::scoped_map<core::value> values_;
+    std::unordered_map<
+        std::string, core::builtin_fn_ptr,
+        core::string_hash, std::equal_to<>
+    > builtins_;
     std::unordered_map<
         std::string, const ast::func_declaration*,
         core::string_hash, std::equal_to<>

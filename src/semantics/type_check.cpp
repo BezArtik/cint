@@ -84,12 +84,12 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         }
     }
 
-    symbols_.define(name, stmt.type_);
+    symbols_.define(name, {stmt.type_, symbol_kind::VARIABLE});
 }
 
 void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<symbol_info>> guard;
-    if (create_scope) guard.emplace(symbols_.scopes());
+    if (create_scope) guard.emplace(symbols_);
     for (const auto& s : stmt.statements_) check_statement(*s);
 }
 
@@ -99,7 +99,7 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
         reporter_.error(stmt, err::condition_not_bool);
     }
 
-    core::scope_guard guard(symbols_.scopes());
+    core::scope_guard guard(symbols_);
 
     if (auto* block = std::get_if<ast::block_stmt>(&stmt.body_->data_)) {
         check_block(*block, false);
@@ -109,7 +109,7 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
-    core::scope_guard guard(symbols_.scopes());
+    core::scope_guard guard(symbols_);
 
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
@@ -179,12 +179,12 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
         [](const auto& param) { return param.type_; });
 
     auto func_type = t::function_type(stmt.return_type_, param_types);
-    symbols_.define_function(name, func_type);
+    symbols_.define(name, {func_type, symbol_kind::FUNCTION});
 
-    core::scope_guard guard(symbols_.scopes());
+    core::scope_guard guard(symbols_);
 
     for (const auto& param : stmt.params_) {
-        symbols_.define(param.name_.lexeme_, param.type_);
+        symbols_.define(param.name_.lexeme_, {param.type_, symbol_kind::VARIABLE});
     }
 
     const auto& prev_return_type = curr_return_type_;
