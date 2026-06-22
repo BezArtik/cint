@@ -63,8 +63,15 @@ private:
 
 	core::value default_value(const core::type& type);
 
+    core::value convert(core::value val, const core::type& target);
+
+    struct runtime_var {
+        core::type static_type_;
+        core::value value_;
+    };
+
     core::error_reporter& reporter_;
-    core::scoped_map<core::value> values_;
+    core::scoped_map<runtime_var> values_;
     using callable = std::variant<
         const ast::func_declaration*,
         core::builtin_fn_ptr

@@ -85,14 +85,14 @@ bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
 bool type::operator==(const type& other) const noexcept {
     if (kind_ != other.kind_) return false;
 
-    if (kind_ == kind::FUNCTION) {
+    if (is_function()) {
         const auto& lhs_info = std::get<function_info>(info_);
         const auto& rhs_info = std::get<function_info>(other.info_);
 
         if (*lhs_info.return_type_ != *rhs_info.return_type_) return false;
         return lhs_info.param_types_.size() == rhs_info.param_types_.size() &&
             std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
-    } else if (kind_ == kind::ARRAY) {
+    } else if (is_array()) {
         const auto& lhs = std::get<array_info>(info_);
         const auto& rhs = std::get<array_info>(other.info_);
         if (*lhs.element_type_ != *rhs.element_type_) return false;
@@ -110,7 +110,7 @@ bool type::is_assignable_from(const type& source) const noexcept {
     if (*this == source) return true;
 
     if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
-    if (kind_ == kind::ARRAY && source.kind_ == kind::ARRAY) {
+    if (is_array() && source.is_array()) {
         return element_type().is_assignable_from(source.element_type())
             && (array_size() == 0 || source.array_size() == 0
                 || array_size() == source.array_size());

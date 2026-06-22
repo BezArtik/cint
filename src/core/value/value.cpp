@@ -164,7 +164,7 @@ value value::neq(const value& other) const {
 
 value value::lt(const value& other) const {
     if (type().is_int() && other.type().is_int())
-        return value(to_double() < other.to_int());
+        return value(to_int() < other.to_int());
     return value(to_double() < other.to_double());
 }
 

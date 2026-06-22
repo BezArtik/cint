@@ -7,8 +7,6 @@
 #include "core/token/token.hpp"
 #include "core/error/error_report.hpp"
 #include <vector>
-#include <memory>
-#include <string_view>
 #include <functional>
 
 namespace parser {
