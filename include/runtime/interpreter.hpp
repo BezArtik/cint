@@ -9,9 +9,9 @@
 #include "core/utils/hash.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/utils/builtins.hpp"
+#include <string_view>
 #include <vector>
 #include <unordered_map>
-#include <string>
 
 namespace runtime {
 
@@ -77,8 +77,8 @@ private:
         core::builtin_fn_ptr
     >;
     std::unordered_map<
-        std::string, callable,
-        core::string_hash, std::equal_to<>
+        std::string_view, callable,
+        core::transparent_string_hash, core::transparent_string_equal
     > functions_;
     uint32_t recursion_depth_ = 0;
     bool debug_;

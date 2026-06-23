@@ -99,11 +99,6 @@ value::array_t* value::as_array() noexcept {
     return nullptr;
 }
 
-size_t value::array_size() const {
-    assert(std::holds_alternative<array_info>(data_));
-    return std::get<array_info>(data_).elements_.size();
-}
-
 value value::add(const value& other) const {
     if (type().is_int() && other.type().is_int())
         return value(to_int() + other.to_int());

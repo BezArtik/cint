@@ -43,8 +43,6 @@ public:
     const array_t* as_array() const noexcept;
     array_t* as_array() noexcept;
 
-    size_t array_size() const;
-
     value add(const value& other) const;
     value sub(const value& other) const;
     value mul(const value& other) const;

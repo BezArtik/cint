@@ -3,10 +3,9 @@
 
 #pragma once
 #include "core/utils/hash.hpp"
-#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <optional>
 #include <algorithm>
 #include <cassert>
 
@@ -17,7 +16,7 @@ template<typename T>
 class scoped_map {
 public:
     scoped_map() {
-        scopes_.emplace_back();
+        push();
     }
 
     void push() {
@@ -30,9 +29,8 @@ public:
     }
 
     void define(std::string_view name, T value) {
-        scopes_.back().bindings_.emplace(name, std::move(value));
+        scopes_.back().bindings_[name] = std::move(value);
     }
-
 
     const T* get(std::string_view name) const noexcept {
         const auto* scope = find_scope(name);
@@ -62,15 +60,12 @@ public:
     bool contains_in_current_scope(std::string_view name) const noexcept {
         return scopes_.back().bindings_.contains(name);
     }
-
-    bool contains(std::string_view name) const noexcept {
-        return find_scope(name) != nullptr;
-    }
-
+    
 private:
 
-    struct scope {
-        std::unordered_map<std::string, T, core::string_hash, std::equal_to<>> bindings_;
+    struct scope { 
+        std::unordered_map<std::string_view,T, 
+            transparent_string_hash,transparent_string_equal> bindings_;
     };
     std::vector<scope> scopes_;
 
@@ -93,7 +88,7 @@ public:
     scope_guard(scoped_map<T>& map) : map_(map) {
         map_.push();
     }
-    ~scope_guard() noexcept {
+    ~scope_guard() {
         map_.pop();
     }
     scope_guard(const scope_guard&) = delete;

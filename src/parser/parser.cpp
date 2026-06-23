@@ -288,19 +288,6 @@ ast::expression parser::factor() {
         [this] { return unary(); });
 }
 
-ast::expression parser::parse_binary(
-    std::initializer_list<tt> operators,
-    std::function<ast::expression()> sub_parser) {
-
-    auto left = sub_parser();
-    while (match(operators)) {
-        const auto& op = prev();
-        auto right = sub_parser();
-        left = ast::make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
-    }
-    return left;
-}
-
 ast::expression parser::unary() {
     if (match({ tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT })) {
         const auto& op = prev();

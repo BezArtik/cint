@@ -22,9 +22,10 @@ struct token {
     token_type type_;
     std::string_view lexeme_;
     location loc_; 
+    bool is_double_ = false;
 
     token() = default;
-    token(token_type type, std::string_view lex, location loc);
+    token(token_type type, std::string_view lex, location loc, bool is_double = false);
 
     bool is_keyword() const noexcept;
     bool is_double_literal() const noexcept;

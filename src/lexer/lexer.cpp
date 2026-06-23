@@ -94,14 +94,18 @@ void lexer::consume_identifier() {
 }
 
 void lexer::consume_number() {
+    bool is_double = false;
+
     while (std::isdigit(peek())) advance();
 
     if (peek() == '.' && std::isdigit(peek_next())) {
+        is_double = true;
         advance();
         while (std::isdigit(peek())) advance();
     }
 
-    add_token(tt::NUMBER);
+    auto text = source_.substr(start_, current_ - start_);
+    tokens_.emplace_back(tt::NUMBER, text, loc_, is_double);
 }
 
 void lexer::consume_string() {

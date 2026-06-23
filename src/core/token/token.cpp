@@ -7,8 +7,8 @@
 
 namespace core {
 
-token::token(token_type type, std::string_view lex, location loc)
-    : type_(type), lexeme_(lex), loc_(loc) {}
+token::token(token_type type, std::string_view lex, location loc, bool is_double)
+    : type_(type), lexeme_(lex), loc_(loc), is_double_(is_double) {}
 
 std::optional<keyword_info> token::as_keyword() const {
     if (!is_keyword()) return std::nullopt;
@@ -20,8 +20,7 @@ bool token::is_keyword() const noexcept {
 }
 
 bool token::is_double_literal() const noexcept {
-    return type_ == token_type::NUMBER &&
-        lexeme_.find('.') != std::string_view::npos;
+    return type_ == token_type::NUMBER && is_double_;
 }
 
 bool token::is_string_literal() const noexcept {
