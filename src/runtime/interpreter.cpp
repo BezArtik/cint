@@ -336,6 +336,22 @@ core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
     }
 }
 
+core::value interpreter::apply_increment(runtime_var* var, core::token_type op, bool return_old) {
+    auto old_val = var->value_;
+    core::value new_val;
+    
+    if (var->static_type_.is_int()) {
+        auto v = old_val.to_int();
+        new_val = core::value(op == tt::INCREMENT ? v + 1 : v - 1);
+    } else {
+        auto v = old_val.to_double();
+        new_val = core::value(op == tt::INCREMENT ? v + 1.0 : v - 1.0);
+    }
+    
+    var->value_ = new_val;
+    return return_old ? old_val : new_val;
+}
+
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     auto operand = evaluate(expr.operand_);
 
@@ -352,18 +368,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     case tt::DECREMENT: {
         const auto& var_expr = std::get<ast::variable_expr>(expr.operand_);
         auto* var = values_.get(var_expr.name_.lexeme_);
-    
-        core::value new_val;
-        if (var->static_type_.is_int()) {
-            auto v = var->value_.to_int();
-            new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
-        } else {
-            auto v = var->value_.to_double();
-            new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
-        }
-    
-        var->value_ = new_val;
-        return new_val;
+        return apply_increment(var, expr.op_.type_, false);
     }
     
     default:
@@ -375,19 +380,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
 core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
     const auto& var_expr = std::get<ast::variable_expr>(expr.operand_);
     auto* var = values_.get(var_expr.name_.lexeme_);
-    auto old_val = var->value_;
-    
-    core::value new_val;
-    if (var->static_type_.is_int()) {
-        auto v = old_val.to_int();
-        new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1 : v - 1);
-    } else {
-        auto v = old_val.to_double();
-        new_val = core::value(expr.op_.type_ == tt::INCREMENT ? v + 1.0 : v - 1.0);
-    }
-    
-    var->value_ = new_val;
-    return old_val;
+    return apply_increment(var, expr.op_.type_, true);
 }
 
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
