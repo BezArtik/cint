@@ -5,8 +5,7 @@ target_compile_features(interpreter PUBLIC cxx_std_20)
 target_sources(interpreter PRIVATE
     lexer/lexer.cpp
     parser/parser.cpp
-    core/error/error_report.cpp
-    
+    core/error/error_report.cpp 
     core/utils/builtins.cpp
     core/token/token_types.cpp
     core/token/token.cpp

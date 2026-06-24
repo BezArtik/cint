@@ -1,12 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
-
 include(FetchContent)
-
-if(POLICY CMP0135)
-    cmake_policy(SET CMP0135 NEW)
-endif()
-
-set(INSTALL_GTEST OFF CACHE BOOL "Disable install" FORCE)
 
 FetchContent_Declare(
     GoogleTest
@@ -15,9 +7,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(GoogleTest)
 
-add_executable(tests)
-
-target_sources(tests PRIVATE
+add_executable(tests
     test_interpreter.cpp
     test_lexer.cpp
     test_parser.cpp
@@ -28,10 +18,6 @@ target_sources(tests PRIVATE
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
     interpreter
-)
-
-target_include_directories(tests PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 include(GoogleTest)
