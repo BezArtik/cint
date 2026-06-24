@@ -8,6 +8,7 @@
 #include <charconv>
 #include <cassert>
 #include <limits>
+#include <functional>
 
 
 namespace core {
@@ -99,34 +100,14 @@ value::array_t* value::as_array() noexcept {
     return nullptr;
 }
 
-value value::add(const value& other) const {
-    if (type().is_int() && other.type().is_int())
-        return value(to_int() + other.to_int());
-    return value(to_double() + other.to_double());
-}
-
-value value::sub(const value& other) const {
-    if (type().is_int() && other.type().is_int())
-        return value(to_int() - other.to_int());
-    return value(to_double() - other.to_double());
-}
-
-value value::mul(const value& other) const {
-    if (type().is_int() && other.type().is_int())
-        return value(to_int() * other.to_int());
-    return value(to_double() * other.to_double());
-}
-
+value value::add(const value& other) const { return arithmetic_op(other, std::plus<>{}); }
+value value::sub(const value& other) const { return arithmetic_op(other, std::minus<>{}); }
+value value::mul(const value& other) const { return arithmetic_op(other, std::multiplies<>{}); }
 value value::div(const value& other) const {
-    if (type().is_int() && other.type().is_int()) {
-        auto rhs = other.to_int();
-        if (rhs == 0) throw core::interpret_error{ err::division_by_zero };
-        return value(to_int() / rhs);
-    }
-    auto rhs = other.to_double();
-    if (std::abs(rhs) < std::numeric_limits<double_t>::epsilon()) 
-        throw core::interpret_error{err::division_by_zero};
-    return value(to_double() / rhs);
+    return arithmetic_op(other, [](auto a, auto b) {
+        if (b == 0) throw core::interpret_error{err::division_by_zero};
+        return a / b;
+    });
 }
 
 value value::mod(const value& other) const {

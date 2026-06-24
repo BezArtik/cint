@@ -43,6 +43,12 @@ public:
     const array_t* as_array() const noexcept;
     array_t* as_array() noexcept;
 
+    template<typename Op>
+    value arithmetic_op(const value& other, Op&& op) const {
+        if(type().is_int() && other.type().is_int())
+            return value(op(to_int(), other.to_int()));
+        return value(op(to_double(), other.to_double()));
+    }
     value add(const value& other) const;
     value sub(const value& other) const;
     value mul(const value& other) const;
