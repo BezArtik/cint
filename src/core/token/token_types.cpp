@@ -144,4 +144,6 @@ size_t type::array_size() const {
     return std::get<array_info>(info_).size_;
 }
 
+type::kind type::get_kind() const noexcept { return kind_; }
+
 } // namespace core

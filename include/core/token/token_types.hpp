@@ -53,6 +53,12 @@ constexpr std::string_view to_string(token_type t) {
 
 class type {
 public:
+    
+    enum class kind : uint8_t {
+        INT, DOUBLE, BOOL, STRING, VOID,
+        FUNCTION, ARRAY,
+        UNKNOWN
+    };
 
     type() = default;
     type(const type& other);
@@ -90,19 +96,13 @@ public:
 	const type& element_type() const;
 	size_t array_size() const;
 
+    kind get_kind() const noexcept;
 
     bool operator==(const type& other) const noexcept;
     bool operator!=(const type& other) const noexcept;
 
 private:
     
-    enum class kind : uint8_t {
-        INT, DOUBLE, BOOL, STRING, VOID,
-        FUNCTION,
-        ARRAY,
-        UNKNOWN
-    };
-
     struct function_info {
         std::unique_ptr<type> return_type_;
         std::vector<type> param_types_;

@@ -22,6 +22,7 @@ namespace runtime {
 
 using tt = core::token_type;
 using t = core::type;
+using k = core::type::kind;
 using err = core::error_code;
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug)
@@ -473,15 +474,16 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     return (*arr)[i]; 
 }
 
-core::value interpreter::default_value(const t& type) {
-    if (type.is_int())       return core::value(core::value::int_t{ 0 });
-    if (type.is_double())    return core::value(core::value::double_t{ 0.0 });
-    if (type.is_bool())      return core::value(false);
-    if (type.is_string())    return core::value(core::value::string_t(""));
-    if (type.is_void())      return core::value();
-    if (type.is_array())     return core::value(type.element_type(), core::value::array_t{});
-    if (type.is_unknown())   throw core::interpret_error{ err::unexpected_literal };
-    return core::value();
+core::value interpreter::default_value(const core::type& t) {
+    switch (t.get_kind()) {
+        case k::INT:    return core::value(core::value::int_t{0});
+        case k::DOUBLE: return core::value(0.0);
+        case k::BOOL:   return core::value(false);
+        case k::STRING: return core::value(std::string(""));
+        case k::VOID:   return core::value();
+        case k::ARRAY:  return core::value(t.element_type(), core::value::array_t{});
+        default:        return core::value();
+    }
 }
 
 core::value interpreter::convert(core::value val, const core::type& target) {
