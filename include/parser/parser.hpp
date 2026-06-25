@@ -1,19 +1,18 @@
 // parser/parser.hpp
 
-
 #pragma once
-#include "ast/statement.hpp"
 #include "ast/expression.hpp"
-#include "core/token/token.hpp"
+#include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
-#include <vector>
+#include "core/token/token.hpp"
+
 #include <functional>
+#include <vector>
 
 namespace parser {
 
 class parser {
 public:
-
     parser(const std::vector<core::token>& tokens, core::error_reporter& reporter);
 
     std::vector<ast::stmt_ptr> parse();
@@ -32,23 +31,21 @@ private:
     ast::stmt_ptr var_declaration(core::type type, const core::token& name);
     ast::stmt_ptr func_declaration(core::type return_type, const core::token& name);
     ast::stmt_ptr while_statement();
-	ast::stmt_ptr for_statement();
+    ast::stmt_ptr for_statement();
     ast::stmt_ptr if_statement();
     ast::stmt_ptr block_statement();
     ast::stmt_ptr return_statement();
 
-    template<typename F>
-    ast::expression parse_binary(
-            std::initializer_list<core::token_type> operators, 
-            F&& sub_parser) {
-    auto left = sub_parser();
-    while (match(operators)) {
-        const auto& op = prev();
-        auto right = sub_parser();
-        left = ast::make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
+    template <typename F>
+    ast::expression parse_binary(std::initializer_list<core::token_type> operators, F&& sub_parser) {
+        auto left = sub_parser();
+        while (match(operators)) {
+            const auto& op = prev();
+            auto right = sub_parser();
+            left = ast::make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
+        }
+        return left;
     }
-    return left;
-}
     ast::expression expression();
     ast::expression equality();
     ast::expression assignment();
@@ -59,7 +56,7 @@ private:
     ast::expression factor();
     ast::expression unary();
     ast::expression postfix();
-	ast::expression array_literal();
+    ast::expression array_literal();
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
     ast::expression finish_index(ast::expression object);
@@ -72,4 +69,4 @@ private:
     size_t current_ = 0;
 };
 
-} // namespace parser
+}  // namespace parser

@@ -1,18 +1,18 @@
 // semantics/type_check.cpp
 
-
 #include "semantics/type_check.hpp"
+
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
-#include "core/utils/overloaded.hpp"
-#include "core/utils/builtins.hpp"
-#include "core/utils/scoped_map.hpp"
-#include "core/token/token_types.hpp"
-#include "core/token/keywords.hpp"
 #include "core/error/error_codes.hpp"
+#include "core/token/keywords.hpp"
+#include "core/token/token_types.hpp"
+#include "core/utils/builtins.hpp"
+#include "core/utils/overloaded.hpp"
+#include "core/utils/scoped_map.hpp"
+
 #include <algorithm>
 #include <vector>
-
 
 namespace semantics {
 
@@ -29,9 +29,7 @@ bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
 
 bool type_checker::block_has_declarations(const ast::block_stmt& block) const noexcept {
     for (const auto& stmt : block.statements_) {
-        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) {
-            return true;
-        }
+        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) { return true; }
         if (auto* inner = std::get_if<ast::block_stmt>(&stmt->data_)) {
             if (block_has_declarations(*inner)) return true;
         }
@@ -41,15 +39,16 @@ bool type_checker::block_has_declarations(const ast::block_stmt& block) const no
 
 void type_checker::check_statement(const ast::statement& stmt) {
     std::visit(core::overloaded{
-        [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
-        [this](const ast::var_declaration& s) { check_var_declaration(s); },
-        [this](const ast::block_stmt& s) { check_block(s); },
-        [this](const ast::while_stmt& s) { check_while(s); },
-        [this](const ast::for_stmt& s) { check_for(s); },
-        [this](const ast::if_stmt& s) { check_if(s); },
-        [this](const ast::return_stmt& s) { check_return_stmt(s); },
-        [this](const ast::func_declaration& s) { check_func_declaration(s); },
-        }, stmt.data_);
+                   [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
+                   [this](const ast::var_declaration& s) { check_var_declaration(s); },
+                   [this](const ast::block_stmt& s) { check_block(s); },
+                   [this](const ast::while_stmt& s) { check_while(s); },
+                   [this](const ast::for_stmt& s) { check_for(s); },
+                   [this](const ast::if_stmt& s) { check_if(s); },
+                   [this](const ast::return_stmt& s) { check_return_stmt(s); },
+                   [this](const ast::func_declaration& s) { check_func_declaration(s); },
+               },
+               stmt.data_);
 }
 
 void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
@@ -95,9 +94,7 @@ void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
 
 void type_checker::check_while(const ast::while_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) {
-        reporter_.error(stmt, err::condition_not_bool);
-    }
+    if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
 
     core::scope_guard guard(symbols_);
 
@@ -114,9 +111,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
         auto cond_type = type_of(*stmt.condition_);
-        if (cond_type != t::bool_type() && !cond_type.is_unknown()) {
-            reporter_.error(stmt, err::condition_not_bool);
-        }
+        if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
     }
     if (stmt.increment_) type_of(*stmt.increment_);
 
@@ -129,9 +124,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) {
-        reporter_.error(stmt, err::condition_not_bool);
-    }
+    if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
 
     auto check_branch = [this](const ast::statement& branch) {
         if (auto* block = std::get_if<ast::block_stmt>(&branch.data_)) {
@@ -152,17 +145,13 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
     }
 
     if (!stmt.value_) {
-        if (!curr_return_type_->is_void()) {
-            reporter_.error(stmt, err::return_missing_value);
-        }
+        if (!curr_return_type_->is_void()) { reporter_.error(stmt, err::return_missing_value); }
         return;
     }
 
     auto return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
-    if (!curr_return_type_->is_assignable_from(return_type)) {
-        reporter_.error(stmt, err::return_type_mismatch);
-    }
+    if (!curr_return_type_->is_assignable_from(return_type)) { reporter_.error(stmt, err::return_type_mismatch); }
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
@@ -176,7 +165,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     std::vector<t> param_types;
     param_types.reserve(stmt.params_.size());
     std::ranges::transform(stmt.params_, std::back_inserter(param_types),
-        [](const auto& param) { return param.type_; });
+                           [](const auto& param) { return param.type_; });
 
     auto func_type = t::function_type(stmt.return_type_, param_types);
     symbols_.define(name, {func_type, symbol_kind::FUNCTION});
@@ -196,23 +185,23 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
 }
 
 t type_checker::type_of(const ast::expression& expr) {
-    return std::visit(core::overloaded{
-        [this](const ast::literal_expr& e) { return type_of_literal(e); },
-        [this](const ast::variable_expr& e) { return type_of_variable(e); },
-        [this](const std::unique_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
-        [this](const std::unique_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
-        [this](const std::unique_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
-        [this](const std::unique_ptr<ast::call_expr>& e) { return type_of_call(*e); },
-        [this](const std::unique_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
-        [this](const std::unique_ptr<ast::index_expr>& e) { return type_of_index(*e); }
-        }, expr);
+    return std::visit(
+        core::overloaded{
+            [this](const ast::literal_expr& e) { return type_of_literal(e); },
+            [this](const ast::variable_expr& e) { return type_of_variable(e); },
+            [this](const std::unique_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
+            [this](const std::unique_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
+            [this](const std::unique_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
+            [this](const std::unique_ptr<ast::call_expr>& e) { return type_of_call(*e); },
+            [this](const std::unique_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
+            [this](const std::unique_ptr<ast::index_expr>& e) { return type_of_index(*e); }},
+        expr);
 }
 
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
-    if (token.type_ == tt::NUMBER)
-        return token.is_double_literal() ? t::double_type() : t::int_type();
+    if (token.type_ == tt::NUMBER) return token.is_double_literal() ? t::double_type() : t::int_type();
     if (token.type_ == tt::STRING) return t::string_type();
     if (token.is_keyword()) {
         auto kw = token.as_keyword();
@@ -248,8 +237,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
         return left;
     }
 
-    if (op == tt::PLUS_EQUAL || op == tt::MINUS_EQUAL ||
-        op == tt::STAR_EQUAL || op == tt::SLASH_EQUAL ||
+    if (op == tt::PLUS_EQUAL || op == tt::MINUS_EQUAL || op == tt::STAR_EQUAL || op == tt::SLASH_EQUAL ||
         op == tt::PERCENT_EQUAL) {
         if (!is_lvalue(expr.left_)) {
             reporter_.error(expr, err::compound_requires_lvalue);
@@ -262,20 +250,16 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
         return left;
     }
 
-    if (op == tt::PLUS || op == tt::MINUS ||
-        op == tt::STAR || op == tt::SLASH ||
-        op == tt::PERCENT) {
+    if (op == tt::PLUS || op == tt::MINUS || op == tt::STAR || op == tt::SLASH || op == tt::PERCENT) {
         if (!left.is_numeric() || !right.is_numeric()) {
             reporter_.error(expr, err::arithmetic_requires_numeric);
             return t::unknown_type();
         }
-        return (left == t::int_type() && right == t::int_type())
-            ? t::int_type() : t::double_type();
+        return (left == t::int_type() && right == t::int_type()) ? t::int_type() : t::double_type();
     }
 
-    if (op == tt::EQUAL_EQUAL || op == tt::BANG_EQUAL ||
-        op == tt::LESS || op == tt::LESS_EQUAL ||
-        op == tt::GREATER || op == tt::GREATER_EQUAL) {
+    if (op == tt::EQUAL_EQUAL || op == tt::BANG_EQUAL || op == tt::LESS || op == tt::LESS_EQUAL || op == tt::GREATER ||
+        op == tt::GREATER_EQUAL) {
         if (!left.is_numeric() || !right.is_numeric()) {
             reporter_.error(expr, err::comparison_requires_numeric);
             return t::unknown_type();
@@ -297,9 +281,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
     if (std::holds_alternative<ast::variable_expr>(expr)) return true;
-    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) {
-        return is_lvalue((*idx)->object_);
-    }
+    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) { return is_lvalue((*idx)->object_); }
     return false;
 }
 
@@ -361,15 +343,14 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
 
     std::vector<t> arg_types;
     arg_types.reserve(expr.args_.size());
-    std::ranges::transform(expr.args_, std::back_inserter(arg_types),
-        [this](const auto& arg) { return type_of(arg); });
+    std::ranges::transform(expr.args_, std::back_inserter(arg_types), [this](const auto& arg) { return type_of(arg); });
 
     for (const auto& def : core::builtins) {
         if (def.name_ != name) continue;
         for (const auto& ov : def.overloads_) {
             if (ov.param_types_.size() == arg_types.size() &&
                 std::ranges::equal(ov.param_types_, arg_types,
-                    [](const auto& p, const auto& a) { return p.is_assignable_from(a); })) {
+                                   [](const auto& p, const auto& a) { return p.is_assignable_from(a); })) {
                 return ov.return_type_;
             }
         }
@@ -387,8 +368,7 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     const auto& param_types = func_type.param_types();
 
     if (expr.args_.size() != param_types.size()) {
-        reporter_.error(expr, err::argument_count_mismatch, name,
-            param_types.size(), expr.args_.size());
+        reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
         return t::unknown_type();
     }
 
@@ -440,4 +420,4 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
     return object_type.element_type();
 }
 
-} // namespace semantics
+}  // namespace semantics

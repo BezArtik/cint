@@ -1,17 +1,18 @@
 // debug/debug.hpp
 
-
 #pragma once
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/token/token.hpp"
-#include <vector>
+
+#include <cstdint>
 #include <memory>
 #include <string>
-#include <cstdint>
+#include <vector>
 
-
-namespace core { class value; }
+namespace core {
+class value;
+}
 
 namespace debug {
 
@@ -25,4 +26,4 @@ void print_expression(const ast::expression& expr, uint32_t level = 0);
 void print_value(const core::value& val, uint32_t indent = 0);
 void print_execution(const std::string& message, uint32_t indent = 0);
 
-} // namespace debug
+}  // namespace debug

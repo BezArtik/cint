@@ -1,7 +1,9 @@
-// core/token/token.cpp 
+// core/token/token.cpp
 
 #include "core/token/token.hpp"
+
 #include "core/token/keywords.hpp"
+
 #include <optional>
 #include <string_view>
 
@@ -31,4 +33,4 @@ bool token::is_identifier() const noexcept {
     return type_ == token_type::IDENTIFIER;
 }
 
-} // namespace core
+}  // namespace core

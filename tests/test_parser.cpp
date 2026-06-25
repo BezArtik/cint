@@ -1,15 +1,15 @@
 // test_parser.cpp
 
+#include "ast/expression.hpp"
+#include "ast/statement.hpp"
+#include "core/error/error_report.hpp"
+#include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
 
 #include <gtest/gtest.h>
-#include "parser/parser.hpp"
-#include "lexer/lexer.hpp"
-#include "core/error/error_report.hpp"
-#include "ast/statement.hpp"
-#include "ast/expression.hpp"
-#include <vector>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace tests {
 
@@ -17,9 +17,7 @@ using t = core::type;
 
 class parser_harness {
 public:
-    parser_harness(std::string source)
-        : source_code_(std::move(source))
-        , reporter_(source_code_) {
+    parser_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = lex.scan_tokens();
         parser::parser p(tokens_, reporter_);
@@ -36,12 +34,12 @@ private:
     std::vector<ast::stmt_ptr> ast_;
 };
 
-template<typename T>
+template <typename T>
 const T* as(const ast::statement& stmt) {
     return std::get_if<T>(&stmt.data_);
 }
 
-template<typename T>
+template <typename T>
 const T* as(const ast::expression& expr) {
     if constexpr (std::is_same_v<T, ast::literal_expr>) {
         return std::get_if<ast::literal_expr>(&expr);
@@ -49,9 +47,7 @@ const T* as(const ast::expression& expr) {
         return std::get_if<ast::variable_expr>(&expr);
     } else {
         using ptr_t = std::unique_ptr<T>;
-        if (auto* p = std::get_if<ptr_t>(&expr)) {
-            return p->get();
-        }
+        if (auto* p = std::get_if<ptr_t>(&expr)) { return p->get(); }
         return static_cast<const T*>(nullptr);
     }
 }
@@ -65,7 +61,6 @@ bool is_variable(const ast::expression& expr, std::string_view name) {
     auto* var = as<ast::variable_expr>(expr);
     return var && var->name_.lexeme_ == name;
 }
-
 
 TEST(parser_test, empty_program) {
     parser_harness h("");
@@ -85,7 +80,7 @@ class var_decl_test : public ::testing::TestWithParam<var_decl_case> {};
 
 TEST_P(var_decl_test, parsed) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
 
     ASSERT_EQ(h.ast().size(), 1);
     auto* decl = as<ast::var_declaration>(*h.ast()[0]);
@@ -100,19 +95,16 @@ TEST_P(var_decl_test, parsed) {
     EXPECT_FALSE(h.had_error());
 }
 
-INSTANTIATE_TEST_SUITE_P(without_init, var_decl_test, ::testing::Values(
-    var_decl_case{ "int x;",      "x",    t::int_type(),    false },
-    var_decl_case{ "double pi;",  "pi",   t::double_type(), false },
-    var_decl_case{ "bool flag;",  "flag", t::bool_type(),   false },
-    var_decl_case{ "string s;",   "s",    t::string_type(), false }
-));
+INSTANTIATE_TEST_SUITE_P(without_init, var_decl_test,
+                         ::testing::Values(var_decl_case{"int x;", "x", t::int_type(), false},
+                                           var_decl_case{"double pi;", "pi", t::double_type(), false},
+                                           var_decl_case{"bool flag;", "flag", t::bool_type(), false},
+                                           var_decl_case{"string s;", "s", t::string_type(), false}));
 
-INSTANTIATE_TEST_SUITE_P(with_init, var_decl_test, ::testing::Values(
-    var_decl_case{ "int x = 42;",       "x",  t::int_type(),    true, "42" },
-    var_decl_case{ "double pi = 3.14;", "pi", t::double_type(), true, "3.14" },
-    var_decl_case{ "bool f = true;",    "f",  t::bool_type(),   true, "true" }
-));
-
+INSTANTIATE_TEST_SUITE_P(with_init, var_decl_test,
+                         ::testing::Values(var_decl_case{"int x = 42;", "x", t::int_type(), true, "42"},
+                                           var_decl_case{"double pi = 3.14;", "pi", t::double_type(), true, "3.14"},
+                                           var_decl_case{"bool f = true;", "f", t::bool_type(), true, "true"}));
 
 struct expr_case {
     std::string_view source_;
@@ -125,7 +117,7 @@ class binary_expr_test : public ::testing::TestWithParam<expr_case> {};
 
 TEST_P(binary_expr_test, parsed) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
 
     ASSERT_EQ(h.ast().size(), 1);
     auto* decl = as<ast::var_declaration>(*h.ast()[0]);
@@ -140,22 +132,18 @@ TEST_P(binary_expr_test, parsed) {
     EXPECT_FALSE(h.had_error());
 }
 
-INSTANTIATE_TEST_SUITE_P(arithmetic, binary_expr_test, ::testing::Values(
-    expr_case{ "int r = x + 1;", "+", "x", "1" },
-    expr_case{ "int r = x - 1;", "-", "x", "1" },
-    expr_case{ "int r = x * 2;", "*", "x", "2" },
-    expr_case{ "int r = x / 2;", "/", "x", "2" },
-    expr_case{ "int r = x % 3;", "%", "x", "3" }
-));
+INSTANTIATE_TEST_SUITE_P(arithmetic, binary_expr_test,
+                         ::testing::Values(expr_case{"int r = x + 1;", "+", "x", "1"},
+                                           expr_case{"int r = x - 1;", "-", "x", "1"},
+                                           expr_case{"int r = x * 2;", "*", "x", "2"},
+                                           expr_case{"int r = x / 2;", "/", "x", "2"},
+                                           expr_case{"int r = x % 3;", "%", "x", "3"}));
 
-INSTANTIATE_TEST_SUITE_P(comparison, binary_expr_test, ::testing::Values(
-    expr_case{ "bool r = x == 0;", "==", "x", "0" },
-    expr_case{ "bool r = x != 0;", "!=", "x", "0" },
-    expr_case{ "bool r = x < 0;",  "<",  "x", "0" },
-    expr_case{ "bool r = x <= 0;", "<=", "x", "0" },
-    expr_case{ "bool r = x > 0;",  ">",  "x", "0" },
-    expr_case{ "bool r = x >= 0;", ">=", "x", "0" }
-));
+INSTANTIATE_TEST_SUITE_P(
+    comparison, binary_expr_test,
+    ::testing::Values(expr_case{"bool r = x == 0;", "==", "x", "0"}, expr_case{"bool r = x != 0;", "!=", "x", "0"},
+                      expr_case{"bool r = x < 0;", "<", "x", "0"}, expr_case{"bool r = x <= 0;", "<=", "x", "0"},
+                      expr_case{"bool r = x > 0;", ">", "x", "0"}, expr_case{"bool r = x >= 0;", ">=", "x", "0"}));
 
 TEST(parser_test, multiplication_before_addition) {
     parser_harness h("int r = 1 + 2 * 3;");
@@ -187,7 +175,6 @@ TEST(parser_test, grouping_overrides_precedence) {
     EXPECT_EQ(left->op_.lexeme_, "+");
 }
 
-
 struct unary_case {
     std::string_view source_;
     std::string_view op_lexeme_;
@@ -198,7 +185,7 @@ class unary_test : public ::testing::TestWithParam<unary_case> {};
 
 TEST_P(unary_test, parsed) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
 
     auto* decl = as<ast::var_declaration>(*h.ast()[0]);
     ASSERT_NE(decl, nullptr);
@@ -209,13 +196,10 @@ TEST_P(unary_test, parsed) {
     EXPECT_TRUE(is_variable(un->operand_, tc.operand_name_));
 }
 
-INSTANTIATE_TEST_SUITE_P(prefix, unary_test, ::testing::Values(
-    unary_case{ "int r = -x;",  "-",  "x" },
-    unary_case{ "int r = !x;",  "!",  "x" },
-    unary_case{ "int r = ++x;", "++", "x" },
-    unary_case{ "int r = --x;", "--", "x" }
-));
-
+INSTANTIATE_TEST_SUITE_P(prefix, unary_test,
+                         ::testing::Values(unary_case{"int r = -x;", "-", "x"}, unary_case{"int r = !x;", "!", "x"},
+                                           unary_case{"int r = ++x;", "++", "x"},
+                                           unary_case{"int r = --x;", "--", "x"}));
 
 struct func_case {
     std::string_view source_;
@@ -228,7 +212,7 @@ class func_decl_test : public ::testing::TestWithParam<func_case> {};
 
 TEST_P(func_decl_test, parsed) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
 
     ASSERT_EQ(h.ast().size(), 1);
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
@@ -238,13 +222,11 @@ TEST_P(func_decl_test, parsed) {
     EXPECT_EQ(func->params_.size(), tc.param_count_);
 }
 
-INSTANTIATE_TEST_SUITE_P(various, func_decl_test, ::testing::Values(
-    func_case{ "int main() { return 0; }",        "main", t::int_type(),    0 },
-    func_case{ "void foo() { }",                  "foo",  t::void_type(),   0 },
-    func_case{ "int add(int a, int b) { }",       "add",  t::int_type(),    2 },
-    func_case{ "double f(int x, double y) { }",   "f",    t::double_type(), 2 }
-));
-
+INSTANTIATE_TEST_SUITE_P(various, func_decl_test,
+                         ::testing::Values(func_case{"int main() { return 0; }", "main", t::int_type(), 0},
+                                           func_case{"void foo() { }", "foo", t::void_type(), 0},
+                                           func_case{"int add(int a, int b) { }", "add", t::int_type(), 2},
+                                           func_case{"double f(int x, double y) { }", "f", t::double_type(), 2}));
 
 struct call_case {
     std::string_view source_;
@@ -256,7 +238,7 @@ class call_test : public ::testing::TestWithParam<call_case> {};
 
 TEST_P(call_test, parsed) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
 
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
@@ -271,13 +253,11 @@ TEST_P(call_test, parsed) {
     EXPECT_EQ(call->args_.size(), tc.arg_count_);
 }
 
-INSTANTIATE_TEST_SUITE_P(various, call_test, ::testing::Values(
-    call_case{ "void f() { print(); }",      "print", 0 },
-    call_case{ "void f() { print(42); }",    "print", 1 },
-    call_case{ "void f() { add(1, 2); }",    "add",   2 },
-    call_case{ "void f() { foo(a, b, c); }", "foo",   3 }
-));
-
+INSTANTIATE_TEST_SUITE_P(various, call_test,
+                         ::testing::Values(call_case{"void f() { print(); }", "print", 0},
+                                           call_case{"void f() { print(42); }", "print", 1},
+                                           call_case{"void f() { add(1, 2); }", "add", 2},
+                                           call_case{"void f() { foo(a, b, c); }", "foo", 3}));
 
 TEST(parser_test, if_statement) {
     parser_harness h("void f() { if (true) { return; } }");
@@ -312,8 +292,7 @@ TEST(parser_test, for_statement) {
     parser_harness h(
         "void f() {"
         "  for (int i = 0; i < 10; i = i + 1) { }"
-        "}"
-    );
+        "}");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
     auto* fs = as<ast::for_stmt>(*func->body_->statements_[0]);
     ASSERT_NE(fs, nullptr);
@@ -340,7 +319,6 @@ TEST(parser_test, return_with_value) {
     EXPECT_TRUE(is_literal(*ret->value_, "42"));
 }
 
-
 struct syntax_error_case {
     std::string_view source_;
     std::string_view description_;
@@ -350,15 +328,14 @@ class syntax_error_test : public ::testing::TestWithParam<syntax_error_case> {};
 
 TEST_P(syntax_error_test, reports_error) {
     const auto& tc = GetParam();
-    parser_harness h(std::string{ tc.source_ });
+    parser_harness h(std::string{tc.source_});
     EXPECT_TRUE(h.had_error()) << "Expected error for: " << tc.description_;
 }
 
-INSTANTIATE_TEST_SUITE_P(all, syntax_error_test, ::testing::Values(
-    syntax_error_case{ "int x = ;",   "missing init expression" },
-    syntax_error_case{ "int x",       "missing semicolon" },
-    syntax_error_case{ "(1 + 2",      "unclosed paren" },
-    syntax_error_case{ "int f( { }",  "missing right paren in func" }
-));
+INSTANTIATE_TEST_SUITE_P(all, syntax_error_test,
+                         ::testing::Values(syntax_error_case{"int x = ;", "missing init expression"},
+                                           syntax_error_case{"int x", "missing semicolon"},
+                                           syntax_error_case{"(1 + 2", "unclosed paren"},
+                                           syntax_error_case{"int f( { }", "missing right paren in func"}));
 
-} // namespace tests
+}  // namespace tests

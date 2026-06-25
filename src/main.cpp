@@ -1,17 +1,18 @@
 // main.cpp
 
 #include "core/error/error_report.hpp"
+#include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
-#include "semantics/type_check.hpp"
 #include "runtime/interpreter.hpp"
-#include "debug/debug.hpp"
-#include <iostream>
+#include "semantics/type_check.hpp"
+
+#include <chrono>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
 #include <string_view>
-#include <chrono>
 
 int main(int argc, char* argv[]) {
     try {
@@ -38,7 +39,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Error: cannot open file '" << filename << "'\n";
             return 1;
         }
-        
+
         const auto start = std::chrono::steady_clock::now();
         std::stringstream buffer;
         buffer << file.rdbuf();
@@ -55,7 +56,7 @@ int main(int argc, char* argv[]) {
 
         parser::parser p(tokens, reporter);
         auto ast = p.parse();
-        if (debug) debug::print_ast(ast); 
+        if (debug) debug::print_ast(ast);
         if (reporter.has_error()) {
             std::cerr << "Syntax errors found.\n";
             return 1;

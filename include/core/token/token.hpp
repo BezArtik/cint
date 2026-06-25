@@ -1,12 +1,11 @@
 // core/token/token.hpp
 
-
 #pragma once
 #include "core/token/token_types.hpp"
-#include <string_view>
-#include <optional>
-#include <cstdint>
 
+#include <cstdint>
+#include <optional>
+#include <string_view>
 
 namespace core {
 
@@ -21,7 +20,7 @@ struct location {
 struct token {
     token_type type_;
     std::string_view lexeme_;
-    location loc_; 
+    location loc_;
     bool is_double_ = false;
 
     token() = default;
@@ -35,4 +34,4 @@ struct token {
     std::optional<keyword_info> as_keyword() const;
 };
 
-} // namespace core
+}  // namespace core

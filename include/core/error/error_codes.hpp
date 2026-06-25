@@ -1,12 +1,10 @@
 // core/error/error_codes.hpp
 
-
 #pragma once
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <string_view>
-#include <array>
-#include <algorithm>
-
 
 namespace core {
 
@@ -42,4 +40,4 @@ struct interpret_error : std::exception {
     const char* what() const noexcept override { return "Runtime error"; }
 };
 
-} // namespace core
+}  // namespace core

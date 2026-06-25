@@ -1,12 +1,13 @@
 // core/token/token_types.cpp
 
 #include "core/token/token_types.hpp"
-#include <vector>
-#include <memory>
-#include <variant>
-#include <utility>
+
 #include <algorithm>
 #include <cassert>
+#include <memory>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace core {
 
@@ -15,18 +16,11 @@ type::type(kind k) : kind_(k), info_(std::monostate{}) {}
 type::type(const type& other) : kind_(other.kind_) {
     if (kind_ == kind::FUNCTION) {
         const auto& src = std::get<function_info>(other.info_);
-        info_ = function_info{
-            std::make_unique<type>(*src.return_type_),
-            src.param_types_
-        };
+        info_ = function_info{std::make_unique<type>(*src.return_type_), src.param_types_};
     } else if (kind_ == kind::ARRAY) {
         const auto& src = std::get<array_info>(other.info_);
-        info_ = array_info{
-            std::make_unique<type>(*src.element_type_),
-            src.size_
-        };
+        info_ = array_info{std::make_unique<type>(*src.element_type_), src.size_};
     }
-
 }
 
 type& type::operator=(const type& other) {
@@ -40,47 +34,67 @@ void type::swap(type& other) noexcept {
     info_.swap(other.info_);
 }
 
-type type::int_type() { return type(kind::INT); }
-type type::double_type() { return type(kind::DOUBLE); }
-type type::bool_type() { return type(kind::BOOL); }
-type type::string_type() { return type(kind::STRING); }
-type type::void_type() { return type(kind::VOID); }
-type type::unknown_type() { return type(kind::UNKNOWN); }
+type type::int_type() {
+    return type(kind::INT);
+}
+type type::double_type() {
+    return type(kind::DOUBLE);
+}
+type type::bool_type() {
+    return type(kind::BOOL);
+}
+type type::string_type() {
+    return type(kind::STRING);
+}
+type type::void_type() {
+    return type(kind::VOID);
+}
+type type::unknown_type() {
+    return type(kind::UNKNOWN);
+}
 
 type type::function_type(type return_type, std::vector<type> param_types) {
-    function_info info {
-        std::make_unique<type>(std::move(return_type)),
-        std::move(param_types)
-    };
+    function_info info{std::make_unique<type>(std::move(return_type)), std::move(param_types)};
     return type(kind::FUNCTION, std::move(info));
 }
 
 type type::array_type(type element_type, size_t size) {
-	array_info info {
-	    std::make_unique<type>(std::move(element_type)),
-	    size
-    };
-	return type(kind::ARRAY, std::move(info));
+    array_info info{std::make_unique<type>(std::move(element_type)), size};
+    return type(kind::ARRAY, std::move(info));
 }
 
 bool type::is_primitive() const noexcept {
-    return kind_ == kind::INT || kind_ == kind::DOUBLE ||
-        kind_ == kind::BOOL || kind_ == kind::STRING;
+    return kind_ == kind::INT || kind_ == kind::DOUBLE || kind_ == kind::BOOL || kind_ == kind::STRING;
 }
 
 bool type::is_numeric() const noexcept {
     return kind_ == kind::INT || kind_ == kind::DOUBLE;
 }
 
-bool type::is_int() const noexcept { return kind_ == kind::INT; }
-bool type::is_double() const noexcept { return kind_ == kind::DOUBLE; }
-bool type::is_bool() const noexcept { return kind_ == kind::BOOL; }
-bool type::is_string() const noexcept { return kind_ == kind::STRING; }
-bool type::is_void() const noexcept { return kind_ == kind::VOID; }
-bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
-bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
-bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
-
+bool type::is_int() const noexcept {
+    return kind_ == kind::INT;
+}
+bool type::is_double() const noexcept {
+    return kind_ == kind::DOUBLE;
+}
+bool type::is_bool() const noexcept {
+    return kind_ == kind::BOOL;
+}
+bool type::is_string() const noexcept {
+    return kind_ == kind::STRING;
+}
+bool type::is_void() const noexcept {
+    return kind_ == kind::VOID;
+}
+bool type::is_function() const noexcept {
+    return kind_ == kind::FUNCTION;
+}
+bool type::is_unknown() const noexcept {
+    return kind_ == kind::UNKNOWN;
+}
+bool type::is_array() const noexcept {
+    return kind_ == kind::ARRAY;
+}
 
 bool type::operator==(const type& other) const noexcept {
     if (kind_ != other.kind_) return false;
@@ -91,7 +105,7 @@ bool type::operator==(const type& other) const noexcept {
 
         if (*lhs_info.return_type_ != *rhs_info.return_type_) return false;
         return lhs_info.param_types_.size() == rhs_info.param_types_.size() &&
-            std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
+               std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
     } else if (is_array()) {
         const auto& lhs = std::get<array_info>(info_);
         const auto& rhs = std::get<array_info>(other.info_);
@@ -111,9 +125,8 @@ bool type::is_assignable_from(const type& source) const noexcept {
 
     if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
     if (is_array() && source.is_array()) {
-        return element_type().is_assignable_from(source.element_type())
-            && (array_size() == 0 || source.array_size() == 0
-                || array_size() == source.array_size());
+        return element_type().is_assignable_from(source.element_type()) &&
+               (array_size() == 0 || source.array_size() == 0 || array_size() == source.array_size());
     }
     return false;
 }
@@ -125,25 +138,27 @@ type type::common_arithmetic_type(const type& other) const noexcept {
 }
 
 const type& type::return_type() const {
-	assert(is_function());
-	return *std::get<function_info>(info_).return_type_;
+    assert(is_function());
+    return *std::get<function_info>(info_).return_type_;
 }
 
 const std::vector<type>& type::param_types() const {
-	assert(is_function());
-	return std::get<function_info>(info_).param_types_;
+    assert(is_function());
+    return std::get<function_info>(info_).param_types_;
 }
 
 const type& type::element_type() const {
-	assert(is_array());
+    assert(is_array());
     return *std::get<array_info>(info_).element_type_;
 }
 
 size_t type::array_size() const {
-	assert(is_array());
+    assert(is_array());
     return std::get<array_info>(info_).size_;
 }
 
-type::kind type::get_kind() const noexcept { return kind_; }
+type::kind type::get_kind() const noexcept {
+    return kind_;
+}
 
-} // namespace core
+}  // namespace core

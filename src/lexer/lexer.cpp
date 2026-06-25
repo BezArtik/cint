@@ -1,22 +1,21 @@
 // lexer/lexer.cpp
 
-
 #include "lexer/lexer.hpp"
-#include "core/token/token_types.hpp"
-#include "core/token/keywords.hpp"
-#include "core/error/error_report.hpp"
+
 #include "core/error/error_codes.hpp"
-#include <string_view>
+#include "core/error/error_report.hpp"
+#include "core/token/keywords.hpp"
+#include "core/token/token_types.hpp"
+
 #include <cctype>
+#include <string_view>
 
 namespace lexer {
 
 using tt = core::token_type;
 using err = core::error_code;
 
-lexer::lexer(std::string_view source, core::error_reporter& reporter)
-    : source_(source), reporter_(reporter) {
-}
+lexer::lexer(std::string_view source, core::error_reporter& reporter) : source_(source), reporter_(reporter) {}
 
 std::vector<core::token> lexer::scan_tokens() {
     while (!is_at_end()) {
@@ -31,56 +30,97 @@ std::vector<core::token> lexer::scan_tokens() {
 void lexer::scan_token() {
     auto c = advance();
     switch (c) {
-    case '(': add_token(tt::LEFT_PAREN); break;
-    case ')': add_token(tt::RIGHT_PAREN); break;
-    case '{': add_token(tt::LEFT_BRACE); break;
-    case '}': add_token(tt::RIGHT_BRACE); break;
-    case '[': add_token(tt::LEFT_BRACKET); break;
-	case ']': add_token(tt::RIGHT_BRACKET); break;
-    case ',': add_token(tt::COMMA); break;
-    case '.': add_token(tt::DOT); break;
-    case '+': add_token(match('=') ? tt::PLUS_EQUAL : match('+') ? tt::INCREMENT : tt::PLUS); break;
-    case '-': add_token(match('=') ? tt::MINUS_EQUAL : match('-') ? tt::DECREMENT : tt::MINUS); break;
-    case '*': add_token(match('=') ? tt::STAR_EQUAL : tt::STAR); break;
-    case '%': add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT); break;
-	case ';': add_token(tt::SEMICOLON); break;
+        case '(':
+            add_token(tt::LEFT_PAREN);
+            break;
+        case ')':
+            add_token(tt::RIGHT_PAREN);
+            break;
+        case '{':
+            add_token(tt::LEFT_BRACE);
+            break;
+        case '}':
+            add_token(tt::RIGHT_BRACE);
+            break;
+        case '[':
+            add_token(tt::LEFT_BRACKET);
+            break;
+        case ']':
+            add_token(tt::RIGHT_BRACKET);
+            break;
+        case ',':
+            add_token(tt::COMMA);
+            break;
+        case '.':
+            add_token(tt::DOT);
+            break;
+        case '+':
+            add_token(match('=') ? tt::PLUS_EQUAL : match('+') ? tt::INCREMENT : tt::PLUS);
+            break;
+        case '-':
+            add_token(match('=') ? tt::MINUS_EQUAL : match('-') ? tt::DECREMENT : tt::MINUS);
+            break;
+        case '*':
+            add_token(match('=') ? tt::STAR_EQUAL : tt::STAR);
+            break;
+        case '%':
+            add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT);
+            break;
+        case ';':
+            add_token(tt::SEMICOLON);
+            break;
 
-    case '!': add_token(match('=') ? tt::BANG_EQUAL : tt::BANG); break;
-    case '=': add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL); break;
-    case '<': add_token(match('=') ? tt::LESS_EQUAL : tt::LESS); break;
-    case '>': add_token(match('=') ? tt::GREATER_EQUAL : tt::GREATER); break;
-        
-    case '&': add_token(match('&') ? tt::AND : tt::UNKNOWN); break;
-    case '|': add_token(match('|') ? tt::OR : tt::UNKNOWN); break;
-	
-    case '/':
-		if (match('/')) {
-			while (peek() != '\n' && !is_at_end()) advance();
-		} else {
-			add_token(match('=') ? tt::SLASH_EQUAL : tt::SLASH);
-		}
-		break;
+        case '!':
+            add_token(match('=') ? tt::BANG_EQUAL : tt::BANG);
+            break;
+        case '=':
+            add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL);
+            break;
+        case '<':
+            add_token(match('=') ? tt::LESS_EQUAL : tt::LESS);
+            break;
+        case '>':
+            add_token(match('=') ? tt::GREATER_EQUAL : tt::GREATER);
+            break;
 
-    case ' ':
-    case '\r':
-    case '\t': break;
+        case '&':
+            add_token(match('&') ? tt::AND : tt::UNKNOWN);
+            break;
+        case '|':
+            add_token(match('|') ? tt::OR : tt::UNKNOWN);
+            break;
 
-    case '\n':
-        loc_.line_++;
-        loc_.column_ = 0;
-        break;
+        case '/':
+            if (match('/')) {
+                while (peek() != '\n' && !is_at_end()) advance();
+            } else {
+                add_token(match('=') ? tt::SLASH_EQUAL : tt::SLASH);
+            }
+            break;
 
-    case '"': consume_string(); break;
+        case ' ':
+        case '\r':
+        case '\t':
+            break;
 
-    default:
-        if (std::isdigit(c)) {
-            consume_number();
-        } else if (std::isalpha(c) || c == '_') {
-            consume_identifier();
-        } else {
-			reporter_.error(loc_, err::unexpected_character, c);
-        }
-        break;
+        case '\n':
+            loc_.line_++;
+            loc_.column_ = 0;
+            break;
+
+        case '"':
+            consume_string();
+            break;
+
+        default:
+            if (std::isdigit(c)) {
+                consume_number();
+            } else if (std::isalpha(c) || c == '_') {
+                consume_identifier();
+            } else {
+                reporter_.error(loc_, err::unexpected_character, c);
+            }
+            break;
     }
 }
 
@@ -122,7 +162,7 @@ void lexer::consume_string() {
         return;
     }
 
-    advance(); 
+    advance();
     add_token(tt::STRING);
 }
 
@@ -157,5 +197,4 @@ void lexer::add_token(tt type) {
     tokens_.emplace_back(type, text, loc_);
 }
 
-
-} // namespace lexer
+}  // namespace lexer

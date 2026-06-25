@@ -1,7 +1,7 @@
 // core/error/error_report.cpp
 
-
 #include "core/error/error_report.hpp"
+
 #include <cctype>
 #include <iostream>
 #include <string>
@@ -9,10 +9,10 @@
 
 namespace core {
 
-error_reporter::error_reporter(std::string_view source): source_(source) {}
+error_reporter::error_reporter(std::string_view source) : source_(source) {}
 
 bool error_reporter::has_error() const noexcept {
-	return had_error_;
+    return had_error_;
 }
 
 void error_reporter::report(location loc, std::string_view kind, const std::string& msg) {
@@ -28,9 +28,7 @@ void error_reporter::report(location loc, std::string_view kind, const std::stri
     }
 
     auto eof = remaining.find('\n');
-    auto source_line = (eof != std::string_view::npos)
-        ? remaining.substr(0, eof)
-        : remaining;
+    auto source_line = (eof != std::string_view::npos) ? remaining.substr(0, eof) : remaining;
 
     if (source_line.empty()) return;
 
@@ -60,9 +58,9 @@ void error_reporter::report(location loc, std::string_view kind, const std::stri
         std::string caret(display_line.size(), ' ');
         caret[caret_pos] = '^';
         for (size_t i = caret_pos + 1; i < token_end; ++i) caret[i] = '~';
-            
+
         std::cerr << std::format("       | {}\n", caret);
     }
 }
 
-} // namespace core
+}  // namespace core

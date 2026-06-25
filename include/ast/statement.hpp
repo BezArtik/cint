@@ -4,9 +4,10 @@
 
 #include "ast/expression.hpp"
 #include "core/token/token_types.hpp"
-#include <vector>
-#include <variant>
+
 #include <memory>
+#include <variant>
+#include <vector>
 
 namespace ast {
 
@@ -18,8 +19,7 @@ struct expression_stmt {
     expression expr_;
     core::location loc_;
 
-    expression_stmt(expression e, core::location loc)
-        : expr_(std::move(e)), loc_( loc ) {}
+    expression_stmt(expression e, core::location loc) : expr_(std::move(e)), loc_(loc) {}
 };
 
 struct var_declaration {
@@ -28,8 +28,7 @@ struct var_declaration {
     std::optional<expression> initializer_;
     core::location loc_;
 
-    var_declaration(core::type t, const core::token& n, 
-        std::optional<expression> init, core::location loc)
+    var_declaration(core::type t, const core::token& n, std::optional<expression> init, core::location loc)
         : type_(std::move(t)), name_(n), initializer_(std::move(init)), loc_(loc) {}
 };
 
@@ -38,8 +37,7 @@ struct block_stmt {
     core::location loc_;
 
     block_stmt() = default;
-    block_stmt(std::vector<stmt_ptr> statements, core::location loc)
-        : statements_(std::move(statements)), loc_(loc) {}
+    block_stmt(std::vector<stmt_ptr> statements, core::location loc) : statements_(std::move(statements)), loc_(loc) {}
 };
 
 struct while_stmt {
@@ -58,10 +56,13 @@ struct for_stmt {
     stmt_ptr body_;
     core::location loc_;
 
-    for_stmt(stmt_ptr init, std::optional<expression> cond,
-        std::optional<expression> inc, stmt_ptr body, core::location loc)
-        : initializer_(std::move(init)), condition_(std::move(cond)),
-        increment_(std::move(inc)), body_(std::move(body)), loc_(loc) {}
+    for_stmt(stmt_ptr init, std::optional<expression> cond, std::optional<expression> inc, stmt_ptr body,
+             core::location loc)
+        : initializer_(std::move(init)),
+          condition_(std::move(cond)),
+          increment_(std::move(inc)),
+          body_(std::move(body)),
+          loc_(loc) {}
 };
 
 struct if_stmt {
@@ -71,8 +72,10 @@ struct if_stmt {
     core::location loc_;
 
     if_stmt(expression cond, stmt_ptr then_branch, stmt_ptr else_branch, core::location loc)
-        : condition_(std::move(cond)), then_branch_(std::move(then_branch)),
-          else_branch_(std::move(else_branch)), loc_(loc) {}
+        : condition_(std::move(cond)),
+          then_branch_(std::move(then_branch)),
+          else_branch_(std::move(else_branch)),
+          loc_(loc) {}
 };
 
 struct return_stmt {
@@ -88,8 +91,7 @@ struct func_param {
     core::type type_;
     core::token name_;
 
-    func_param(core::type t, const core::token& n)
-        : type_(std::move(t)), name_(n) {}
+    func_param(core::type t, const core::token& n) : type_(std::move(t)), name_(n) {}
 };
 
 struct func_declaration {
@@ -104,16 +106,9 @@ struct func_declaration {
 };
 
 struct statement {
-    std::variant<
-        expression_stmt,
-        var_declaration,
-        block_stmt,
-        for_stmt,
-        while_stmt,
-        if_stmt,
-        return_stmt,
-        func_declaration
-    > data_;
+    std::variant<expression_stmt, var_declaration, block_stmt, for_stmt, while_stmt, if_stmt, return_stmt,
+                 func_declaration>
+        data_;
 
     statement() = delete;
 
@@ -132,4 +127,4 @@ stmt_ptr make_stmt(Stmt&& stmt) {
     return std::make_unique<statement>(std::forward<Stmt>(stmt));
 }
 
-} // namespace ast
+}  // namespace ast

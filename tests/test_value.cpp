@@ -1,12 +1,12 @@
 // test_value.cpp
 
-
-#include <gtest/gtest.h>
-#include "core/value/value.hpp"
-#include "core/token/token_types.hpp"
 #include "core/error/error_codes.hpp"
-#include <string>
+#include "core/token/token_types.hpp"
+#include "core/value/value.hpp"
+
 #include <cstdint>
+#include <gtest/gtest.h>
+#include <string>
 
 namespace tests {
 
@@ -19,7 +19,7 @@ TEST(value_test, default_is_void) {
 }
 
 TEST(value_test, int_value) {
-    v v(v::int_t{ 42 });
+    v v(v::int_t{42});
     EXPECT_EQ(v.type(), t::int_type());
     EXPECT_EQ(v.as_int().value(), 42);
 }
@@ -43,7 +43,7 @@ TEST(value_test, string_value) {
 }
 
 TEST(value_test, int_to_string) {
-    v v(v::int_t{ 42 });
+    v v(v::int_t{42});
     EXPECT_EQ(v.to_string(), "42");
 }
 
@@ -58,7 +58,7 @@ TEST(value_test, void_to_string) {
 }
 
 TEST(value_test, int_to_double) {
-    v v(v::int_t{ 42 });
+    v v(v::int_t{42});
     EXPECT_DOUBLE_EQ(v.to_double(), 42.0);
 }
 
@@ -68,15 +68,15 @@ TEST(value_test, double_to_int) {
 }
 
 TEST(value_test, add_ints) {
-    v a(v::int_t{ 10 });
-    v b(v::int_t{ 20 });
+    v a(v::int_t{10});
+    v b(v::int_t{20});
     auto result = a.add(b);
     EXPECT_EQ(result.type(), t::int_type());
     EXPECT_EQ(result.as_int().value(), 30);
 }
 
 TEST(value_test, add_int_and_double) {
-    v a(v::int_t{ 10 });
+    v a(v::int_t{10});
     v b(3.5);
     auto result = a.add(b);
     EXPECT_EQ(result.type(), t::double_type());
@@ -84,56 +84,56 @@ TEST(value_test, add_int_and_double) {
 }
 
 TEST(value_test, sub_ints) {
-    v a(v::int_t{ 30 });
-    v b(v::int_t{ 10 });
+    v a(v::int_t{30});
+    v b(v::int_t{10});
     auto result = a.sub(b);
     EXPECT_EQ(result.as_int().value(), 20);
 }
 
 TEST(value_test, mul_ints) {
-    v a(v::int_t{ 6 });
-    v b(v::int_t{ 7 });
+    v a(v::int_t{6});
+    v b(v::int_t{7});
     auto result = a.mul(b);
     EXPECT_EQ(result.as_int().value(), 42);
 }
 
 TEST(value_test, div_ints) {
-    v a(v::int_t{ 20 });
-    v b(v::int_t{ 4 });
+    v a(v::int_t{20});
+    v b(v::int_t{4});
     auto result = a.div(b);
     EXPECT_EQ(result.as_int().value(), 5);
 }
 
 TEST(value_test, div_by_zero) {
-    v a(v::int_t{ 1 });
-    v b(v::int_t{ 0 });
+    v a(v::int_t{1});
+    v b(v::int_t{0});
     EXPECT_THROW(a.div(b), core::interpret_error);
 }
 
 TEST(value_test, mod_ints) {
-    v a(v::int_t{ 17 });
-    v b(v::int_t{ 5 });
+    v a(v::int_t{17});
+    v b(v::int_t{5});
     auto result = a.mod(b);
     EXPECT_EQ(result.as_int().value(), 2);
 }
 
 TEST(value_test, mod_by_zero) {
-    v a(v::int_t{ 1 });
-    v b(v::int_t{ 0 });
+    v a(v::int_t{1});
+    v b(v::int_t{0});
     EXPECT_THROW(a.mod(b), core::interpret_error);
 }
 
 TEST(value_test, eq_ints) {
-    v a(v::int_t{ 42 });
-    v b(v::int_t{ 42 });
-    v c(v::int_t{ 0 });
+    v a(v::int_t{42});
+    v b(v::int_t{42});
+    v c(v::int_t{0});
     EXPECT_TRUE(a.eq(b).as_bool().value());
     EXPECT_FALSE(a.eq(c).as_bool().value());
 }
 
 TEST(value_test, lt_ints) {
-    v a(v::int_t{ 10 });
-    v b(v::int_t{ 20 });
+    v a(v::int_t{10});
+    v b(v::int_t{20});
     EXPECT_TRUE(a.lt(b).as_bool().value());
     EXPECT_FALSE(b.lt(a).as_bool().value());
 }
@@ -163,8 +163,8 @@ TEST(value_test, not_op) {
 
 TEST(value_test, invalid_add) {
     v a(true);
-    v b(v::int_t{ 1 });
+    v b(v::int_t{1});
     EXPECT_THROW(a.add(b), core::interpret_error);
 }
 
-} // namespace tests
+}  // namespace tests

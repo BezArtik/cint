@@ -1,22 +1,22 @@
 // core/value/value.hpp
 
-
 #pragma once
 #include "core/token/token_types.hpp"
+
+#include <cstdint>
+#include <optional>
 #include <string>
 #include <variant>
-#include <optional>
-#include <cstdint>
 
 namespace core {
 
 class value {
-public:	
+public:
     using int_t = int64_t;
-	using double_t = double;
-	using bool_t = bool;
-	using string_t = std::string;
-	using array_t = std::vector<value>;
+    using double_t = double;
+    using bool_t = bool;
+    using string_t = std::string;
+    using array_t = std::vector<value>;
 
     value();
 
@@ -43,10 +43,9 @@ public:
     const array_t* as_array() const noexcept;
     array_t* as_array() noexcept;
 
-    template<typename Op>
+    template <typename Op>
     value arithmetic_op(const value& other, Op&& op) const {
-        if(type().is_int() && other.type().is_int())
-            return value(op(to_int(), other.to_int()));
+        if (type().is_int() && other.type().is_int()) return value(op(to_int(), other.to_int()));
         return value(op(to_double(), other.to_double()));
     }
     value add(const value& other) const;
@@ -71,14 +70,7 @@ private:
         core::type element_type_;
         array_t elements_;
     };
-    std::variant<
-        int_t,
-        double_t,
-        bool_t,
-        string_t,
-		array_info,
-        std::monostate
-    > data_;
+    std::variant<int_t, double_t, bool_t, string_t, array_info, std::monostate> data_;
 };
 
-} // namespace core
+}  // namespace core

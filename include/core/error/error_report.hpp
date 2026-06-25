@@ -1,35 +1,34 @@
 // core/error/error_report.hpp
 
-
 #pragma once
 #include "core/error/error_codes.hpp"
 #include "core/token/token.hpp"
-#include <string_view>
-#include <string>
+
 #include <format>
+#include <string>
+#include <string_view>
 
 namespace core {
 
 class error_reporter {
 public:
-
     error_reporter(std::string_view source = {});
 
-    template<typename... Args>
+    template <typename... Args>
     void error(location loc, error_code code, Args&&... args) {
         had_error_ = true;
         report(loc, "Error", format_message(code, std::forward<Args>(args)...));
     }
 
-    template<typename T, typename... Args>
+    template <typename T, typename... Args>
     void error(const T& t, core::error_code code, Args&&... args) {
         error(t.loc_, code, std::forward<Args>(args)...);
     }
 
-    template<typename T, typename... Args>
+    template <typename T, typename... Args>
     [[noreturn]] void interpret_error(const T& t, core::error_code code, Args&&... args) {
         error(t.loc_, code, std::forward<Args>(args)...);
-        throw core::interpret_error{ code };
+        throw core::interpret_error{code};
     }
 
     [[noreturn]] void parse_error(const core::token& token, core::error_code code) {
@@ -45,12 +44,12 @@ private:
 
     void report(location loc, std::string_view kind, const std::string& msg);
 
-    template<typename... Args>
+    template <typename... Args>
     std::string format_message(error_code code, Args&&... args) {
         auto format = get_error_message(code);
-        if constexpr (sizeof...(Args) == 0) return std::string{ format };
+        if constexpr (sizeof...(Args) == 0) return std::string{format};
         return std::vformat(format, std::make_format_args(args...));
     }
 };
 
-} // namespace core
+}  // namespace core

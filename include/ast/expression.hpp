@@ -3,10 +3,11 @@
 #pragma once
 
 #include "core/token/token.hpp"
-#include <variant>
-#include <memory>
-#include <vector>
+
 #include <cstdint>
+#include <memory>
+#include <variant>
+#include <vector>
 
 namespace ast {
 
@@ -19,35 +20,26 @@ struct call_expr;
 struct array_literal_expr;
 struct index_expr;
 
-using expression = std::variant<
-    literal_expr,
-    variable_expr,
-    std::unique_ptr<binary_expr>,
-    std::unique_ptr<unary_expr>,
-    std::unique_ptr<postfix_expr>,
-    std::unique_ptr<call_expr>,
-	std::unique_ptr<array_literal_expr>,
-	std::unique_ptr<index_expr>
->;
+using expression = std::variant<literal_expr, variable_expr, std::unique_ptr<binary_expr>, std::unique_ptr<unary_expr>,
+                                std::unique_ptr<postfix_expr>, std::unique_ptr<call_expr>,
+                                std::unique_ptr<array_literal_expr>, std::unique_ptr<index_expr> >;
 
 struct literal_expr {
     core::token value_;
     core::location loc_;
 
-    literal_expr(const core::token& value, core::location loc)
-        : value_(value), loc_(loc) {}
+    literal_expr(const core::token& value, core::location loc) : value_(value), loc_(loc) {}
 };
 
 struct variable_expr {
     core::token name_;
     core::location loc_;
 
-    variable_expr(const core::token& name, core::location loc)
-        : name_(name), loc_(loc) {}
+    variable_expr(const core::token& name, core::location loc) : name_(name), loc_(loc) {}
 };
 
 struct binary_expr {
-    expression left_; 
+    expression left_;
     core::token op_;
     expression right_;
     core::location loc_;
@@ -84,11 +76,11 @@ struct call_expr {
 };
 
 struct array_literal_expr {
-	std::vector<expression> elements_;
+    std::vector<expression> elements_;
     core::location loc_;
 
-	array_literal_expr(std::vector<expression> elements, core::location loc)
-		: elements_(std::move(elements)), loc_(loc) {}
+    array_literal_expr(std::vector<expression> elements, core::location loc)
+        : elements_(std::move(elements)), loc_(loc) {}
 };
 
 struct index_expr {
@@ -96,7 +88,7 @@ struct index_expr {
     expression index_;
     core::location loc_;
 
-	index_expr(expression object, expression index, core::location loc)
+    index_expr(expression object, expression index, core::location loc)
         : object_(std::move(object)), index_(std::move(index)), loc_(loc) {}
 };
 
@@ -111,4 +103,4 @@ expression make_expr_val(const core::token& tok, Args&&... args) {
     return expression(std::move(val));
 }
 
-} // namespace ast
+}  // namespace ast
