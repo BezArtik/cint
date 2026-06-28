@@ -13,6 +13,10 @@ namespace core {
 
 template <typename T>
 class scoped_map {
+    using map_type = std::unordered_map<std::string_view, T, transparent_string_hash, transparent_string_equal>;
+    using map_iterator = typename map_type::iterator;
+    using const_map_iterator = typename map_type::const_iterator;
+
 public:
     scoped_map() { push(); }
 
@@ -26,28 +30,20 @@ public:
     void define(std::string_view name, T value) { scopes_.back().bindings_[name] = std::move(value); }
 
     const T* get(std::string_view name) const noexcept {
-        const auto* scope = find_scope(name);
-        if (!scope) return nullptr;
-        auto it = scope->bindings_.find(name);
-        return it != scope->bindings_.end() ? &it->second : nullptr;
+        auto [scope, it] = find_in_scope(name);
+        return scope ? &it->second : nullptr;
     }
 
     T* get(std::string_view name) noexcept {
-        auto* scope = find_scope(name);
-        if (!scope) return nullptr;
-        auto it = scope->bindings_.find(name);
-        return it != scope->bindings_.end() ? &it->second : nullptr;
+        auto [scope, it] = find_in_scope(name);
+        return scope ? &it->second : nullptr;
     }
 
     bool assign(std::string_view name, T value) {
-        auto* scope = find_scope(name);
+        auto [scope, it] = find_in_scope(name);
         if (!scope) return false;
-        auto it = scope->bindings_.find(name);
-        if (it != scope->bindings_.end()) {
-            it->second = std::move(value);
-            return true;
-        }
-        return false;
+        it->second = std::move(value);
+        return true;
     }
 
     bool contains_in_current_scope(std::string_view name) const noexcept {
@@ -56,20 +52,22 @@ public:
 
 private:
     struct scope {
-        std::unordered_map<std::string_view, T, transparent_string_hash, transparent_string_equal> bindings_;
+        map_type bindings_;
     };
     std::vector<scope> scopes_;
 
-    scope* find_scope(std::string_view name) {
-        auto it =
-            std::find_if(scopes_.rbegin(), scopes_.rend(), [&](const auto& s) { return s.bindings_.contains(name); });
-        return it != scopes_.rend() ? &(*it) : nullptr;
+    template <typename ScopeType, typename MapIter>
+    static std::pair<ScopeType*, MapIter> find_in_scope_impl(std::vector<scope>& scopes, std::string_view name) {
+        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it) {
+            auto found = it->bindings_.find(name);
+            if (found != it->bindings_.end()) return {&(*it), found};
+        }
+        return {nullptr, {}};
     }
 
-    const scope* find_scope(std::string_view name) const {
-        auto it =
-            std::find_if(scopes_.rbegin(), scopes_.rend(), [&](const auto& s) { return s.bindings_.contains(name); });
-        return it != scopes_.rend() ? &(*it) : nullptr;
+    auto find_in_scope(std::string_view name) { return find_in_scope_impl<scope, map_iterator>(scopes_, name); }
+    auto find_in_scope(std::string_view name) const {
+        return find_in_scope_impl<const scope, const_map_iterator>(scopes_, name);
     }
 };
 
