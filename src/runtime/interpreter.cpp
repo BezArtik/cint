@@ -7,6 +7,7 @@
 #include "core/error/error_codes.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
@@ -31,7 +32,7 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug) : reporter_
     for (const auto& def : core::builtins) functions_.emplace(def.name_, def.impl_);
 }
 
-void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
+void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
     try {
         for (const auto& stmt : statements) {
             if (std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
@@ -149,12 +150,12 @@ core::value interpreter::evaluate(const ast::expression& expr) {
         std::visit(core::overloaded{
                        [this](const ast::literal_expr& e) { return evaluate_literal(e); },
                        [this](const ast::variable_expr& e) { return evaluate_variable(e); },
-                       [this](const std::unique_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
-                       [this](const std::unique_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
-                       [this](const std::unique_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
-                       [this](const std::unique_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
-                       [this](const std::unique_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
-                       [this](const std::unique_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
+                       [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
+                       [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
+                       [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
+                       [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
+                       [this](const core::arena_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
+                       [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
                    },
                    expr);
     if (debug_) {
@@ -218,7 +219,7 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 }
 
 core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
-    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr.left_)) {
+    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr.left_)) {
         return evaluate_index_assignment(expr, **idx);
     }
 

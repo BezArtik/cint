@@ -1,6 +1,7 @@
 // test_semantics.cpp
 
 #include "core/error/error_report.hpp"
+#include "core/utils/arena.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "semantics/type_check.hpp"
@@ -16,7 +17,7 @@ public:
     semantics_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = lex.scan_tokens();
-        parser::parser p(tokens_, reporter_);
+        parser::parser p(tokens_, reporter_, arena_);
         ast_ = p.parse();
         semantics::type_checker checker(reporter_);
         check_ok_ = checker.check(ast_);
@@ -31,6 +32,7 @@ private:
     core::error_reporter reporter_;
     std::vector<core::token> tokens_;
     std::vector<ast::stmt_ptr> ast_;
+    core::arena arena_;
     bool check_ok_ = false;
     bool had_error_ = false;
 };

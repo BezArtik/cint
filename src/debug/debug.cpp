@@ -2,7 +2,9 @@
 
 #include "debug/debug.hpp"
 
+#include "ast/statement.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/value/value.hpp"
 
@@ -29,7 +31,7 @@ void print_variable(const ast::variable_expr& e, uint32_t level) {
               << e.loc_.column_ << "]\n";
 }
 
-void print_binary(const std::unique_ptr<ast::binary_expr>& e, uint32_t level) {
+void print_binary(const core::arena_ptr<ast::binary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "Binary: " << e->op_.lexeme_ << " [line " << e->loc_.line_ << ":"
               << e->loc_.column_ << "]\n";
 
@@ -40,21 +42,21 @@ void print_binary(const std::unique_ptr<ast::binary_expr>& e, uint32_t level) {
     print_expression(e->right_, level + 2);
 }
 
-void print_unary(const std::unique_ptr<ast::unary_expr>& e, uint32_t level) {
+void print_unary(const core::arena_ptr<ast::unary_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "Unary: " << e->op_.lexeme_ << " [line " << e->loc_.line_ << ":"
               << e->loc_.column_ << "]\n";
 
     print_expression(e->operand_, level + 1);
 }
 
-void print_postfix(const std::unique_ptr<ast::postfix_expr>& e, uint32_t level) {
+void print_postfix(const core::arena_ptr<ast::postfix_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "Postfix: " << e->op_.lexeme_ << " [line " << e->loc_.line_ << ":"
               << e->loc_.column_ << "]\n";
 
     print_expression(e->operand_, level + 1);
 }
 
-void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
+void print_call(const core::arena_ptr<ast::call_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "Call: " << e->callee_.lexeme_ << " [line " << e->loc_.line_ << ":"
               << e->loc_.column_ << "]";
 
@@ -70,7 +72,7 @@ void print_call(const std::unique_ptr<ast::call_expr>& e, uint32_t level) {
     }
 }
 
-void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint32_t level) {
+void print_array_literal(const core::arena_ptr<ast::array_literal_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "ArrayLiteral: [" << e->elements_.size() << " elements]" << " [line "
               << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
     for (size_t i = 0; i < e->elements_.size(); ++i) {
@@ -79,7 +81,7 @@ void print_array_literal(const std::unique_ptr<ast::array_literal_expr>& e, uint
     }
 }
 
-void print_index(const std::unique_ptr<ast::index_expr>& e, uint32_t level) {
+void print_index(const core::arena_ptr<ast::index_expr>& e, uint32_t level) {
     std::cerr << indent_str(level) << "IndexExpr: [line " << e->loc_.line_ << ":" << e->loc_.column_ << "]\n";
     std::cerr << indent_str(level + 1) << "Object:\n";
     print_expression(e->object_, level + 2);
@@ -196,12 +198,12 @@ void print_expression(const ast::expression& expr, uint32_t level) {
     std::visit(core::overloaded{
                    [level](const ast::literal_expr& e) { print_literal(e, level); },
                    [level](const ast::variable_expr& e) { print_variable(e, level); },
-                   [level](const std::unique_ptr<ast::binary_expr>& e) { print_binary(e, level); },
-                   [level](const std::unique_ptr<ast::unary_expr>& e) { print_unary(e, level); },
-                   [level](const std::unique_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
-                   [level](const std::unique_ptr<ast::call_expr>& e) { print_call(e, level); },
-                   [level](const std::unique_ptr<ast::array_literal_expr>& e) { print_array_literal(e, level); },
-                   [level](const std::unique_ptr<ast::index_expr>& e) { print_index(e, level); },
+                   [level](const core::arena_ptr<ast::binary_expr>& e) { print_binary(e, level); },
+                   [level](const core::arena_ptr<ast::unary_expr>& e) { print_unary(e, level); },
+                   [level](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
+                   [level](const core::arena_ptr<ast::call_expr>& e) { print_call(e, level); },
+                   [level](const core::arena_ptr<ast::array_literal_expr>& e) { print_array_literal(e, level); },
+                   [level](const core::arena_ptr<ast::index_expr>& e) { print_index(e, level); },
                },
                expr);
 }
@@ -240,7 +242,7 @@ void print_tokens(const std::vector<core::token>& tokens) {
     std::cerr << "\n";
 }
 
-void print_ast(const std::vector<std::unique_ptr<ast::statement>>& statements) {
+void print_ast(const std::vector<ast::stmt_ptr>& statements) {
     std::cerr << "\n";
     std::cerr << "═══════════════════════════════════════════════════════\n";
     std::cerr << "  ABSTRACT SYNTAX TREE\n";

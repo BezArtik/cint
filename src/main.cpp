@@ -1,6 +1,7 @@
 // main.cpp
 
 #include "core/error/error_report.hpp"
+#include "core/utils/arena.hpp"
 #include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
@@ -45,6 +46,7 @@ int main(int argc, char* argv[]) {
         buffer << file.rdbuf();
         std::string source = buffer.str();
 
+        core::arena arena;
         core::error_reporter reporter(source);
         lexer::lexer lex(source, reporter);
         auto tokens = lex.scan_tokens();
@@ -54,7 +56,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        parser::parser p(tokens, reporter);
+        parser::parser p(tokens, reporter, arena);
         auto ast = p.parse();
         if (debug) debug::print_ast(ast);
         if (reporter.has_error()) {

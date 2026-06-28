@@ -3,6 +3,7 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
+#include "core/utils/arena.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 
@@ -20,7 +21,7 @@ public:
     parser_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = lex.scan_tokens();
-        parser::parser p(tokens_, reporter_);
+        parser::parser p(tokens_, reporter_, arena_);
         ast_ = p.parse();
     }
 
@@ -32,6 +33,7 @@ private:
     core::error_reporter reporter_;
     std::vector<core::token> tokens_;
     std::vector<ast::stmt_ptr> ast_;
+    core::arena arena_;
 };
 
 template <typename T>
@@ -46,8 +48,7 @@ const T* as(const ast::expression& expr) {
     } else if constexpr (std::is_same_v<T, ast::variable_expr>) {
         return std::get_if<ast::variable_expr>(&expr);
     } else {
-        using ptr_t = std::unique_ptr<T>;
-        if (auto* p = std::get_if<ptr_t>(&expr)) { return p->get(); }
+        if (auto* p = std::get_if<core::arena_ptr<T>>(&expr)) { return p->get(); }
         return static_cast<const T*>(nullptr);
     }
 }

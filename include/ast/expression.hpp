@@ -3,6 +3,7 @@
 #pragma once
 
 #include "core/token/token.hpp"
+#include "core/utils/arena.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -20,9 +21,9 @@ struct call_expr;
 struct array_literal_expr;
 struct index_expr;
 
-using expression = std::variant<literal_expr, variable_expr, std::unique_ptr<binary_expr>, std::unique_ptr<unary_expr>,
-                                std::unique_ptr<postfix_expr>, std::unique_ptr<call_expr>,
-                                std::unique_ptr<array_literal_expr>, std::unique_ptr<index_expr> >;
+using expression = std::variant<literal_expr, variable_expr, core::arena_ptr<binary_expr>, core::arena_ptr<unary_expr>,
+                                core::arena_ptr<postfix_expr>, core::arena_ptr<call_expr>,
+                                core::arena_ptr<array_literal_expr>, core::arena_ptr<index_expr> >;
 
 struct literal_expr {
     core::token value_;
@@ -93,8 +94,9 @@ struct index_expr {
 };
 
 template <typename T, typename Loc, typename... Args>
-expression make_expr(const Loc& loc, Args&&... args) {
-    return expression(std::make_unique<T>(std::forward<Args>(args)..., loc.loc_));
+expression make_expr(core::arena& arena, const Loc& loc, Args&&... args) {
+    auto* p = arena.allocate<T>(std::forward<Args>(args)..., loc.loc_);
+    return expression(core::arena_ptr<T>(p));
 }
 
 template <typename T, typename... Args>

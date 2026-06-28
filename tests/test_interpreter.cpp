@@ -1,6 +1,7 @@
 // test_interpreter.cpp
 
 #include "core/error/error_report.hpp"
+#include "core/utils/arena.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
@@ -17,7 +18,7 @@ public:
     interpreter_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = std::move(lex.scan_tokens());
-        parser::parser p(tokens_, reporter_);
+        parser::parser p(tokens_, reporter_, arena_);
         ast_ = std::move(p.parse());
         semantics::type_checker checker(reporter_);
         checker.check(ast_);
@@ -33,6 +34,7 @@ private:
     core::error_reporter reporter_;
     std::vector<core::token> tokens_;
     std::vector<ast::stmt_ptr> ast_;
+    core::arena arena_;
     bool ok_ = false;
 };
 

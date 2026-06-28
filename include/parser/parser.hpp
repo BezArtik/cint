@@ -5,15 +5,15 @@
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
 #include "core/token/token.hpp"
+#include "core/utils/arena.hpp"
 
-#include <functional>
 #include <vector>
 
 namespace parser {
 
 class parser {
 public:
-    parser(const std::vector<core::token>& tokens, core::error_reporter& reporter);
+    parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena);
 
     std::vector<ast::stmt_ptr> parse();
 
@@ -42,7 +42,7 @@ private:
         while (match(operators)) {
             const auto& op = prev();
             auto right = sub_parser();
-            left = ast::make_expr<ast::binary_expr>(op, std::move(left), op, std::move(right));
+            left = ast::make_expr<ast::binary_expr>(arena_, op, std::move(left), op, std::move(right));
         }
         return left;
     }
@@ -67,6 +67,7 @@ private:
     const std::vector<core::token>& tokens_;
     core::error_reporter& reporter_;
     size_t current_ = 0;
+    core::arena& arena_;
 };
 
 }  // namespace parser

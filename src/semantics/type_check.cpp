@@ -7,6 +7,7 @@
 #include "core/error/error_codes.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
@@ -170,12 +171,12 @@ t type_checker::type_of(const ast::expression& expr) {
         core::overloaded{
             [this](const ast::literal_expr& e) { return type_of_literal(e); },
             [this](const ast::variable_expr& e) { return type_of_variable(e); },
-            [this](const std::unique_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
-            [this](const std::unique_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
-            [this](const std::unique_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
-            [this](const std::unique_ptr<ast::call_expr>& e) { return type_of_call(*e); },
-            [this](const std::unique_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
-            [this](const std::unique_ptr<ast::index_expr>& e) { return type_of_index(*e); }},
+            [this](const core::arena_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
+            [this](const core::arena_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
+            [this](const core::arena_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
+            [this](const core::arena_ptr<ast::call_expr>& e) { return type_of_call(*e); },
+            [this](const core::arena_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
+            [this](const core::arena_ptr<ast::index_expr>& e) { return type_of_index(*e); }},
         expr);
 }
 
@@ -262,7 +263,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
     if (std::holds_alternative<ast::variable_expr>(expr)) return true;
-    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) return is_lvalue((*idx)->object_);
+    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr)) return is_lvalue((*idx)->object_);
     return false;
 }
 

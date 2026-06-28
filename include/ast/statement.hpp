@@ -4,6 +4,7 @@
 
 #include "ast/expression.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -14,7 +15,7 @@ namespace ast {
 
 struct statement;
 
-using stmt_ptr = std::unique_ptr<statement>;
+using stmt_ptr = core::arena_ptr<statement>;
 
 struct expression_stmt {
     expression expr_;
@@ -118,14 +119,15 @@ struct statement {
 };
 
 template <typename Stmt, typename Loc, typename... Args>
-stmt_ptr make_stmt(const Loc& loc, Args&&... args) {
-    Stmt s(std::forward<Args>(args)..., loc.loc_);
-    return std::make_unique<statement>(std::move(s));
+stmt_ptr make_stmt(core::arena& arena, const Loc& loc, Args&&... args) {
+    auto* p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc.loc_});
+    return stmt_ptr(p);
 }
 
 template <typename Stmt>
-stmt_ptr make_stmt(Stmt&& stmt) {
-    return std::make_unique<statement>(std::forward<Stmt>(stmt));
+stmt_ptr make_stmt(core::arena& arena, Stmt&& stmt) {
+    auto* p = arena.allocate<statement>(std::forward<Stmt>(stmt));
+    return stmt_ptr(p);
 }
 
 inline bool has_declarations(const block_stmt& block) noexcept {

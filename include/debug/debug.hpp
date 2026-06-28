@@ -6,7 +6,6 @@
 #include "core/token/token.hpp"
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
