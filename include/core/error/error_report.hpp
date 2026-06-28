@@ -42,7 +42,7 @@ private:
     bool had_error_ = false;
     std::string_view source_;
 
-    void report(location loc, std::string_view kind, const std::string& msg);
+    void report(location loc, std::string_view kind, std::string_view msg);
 
     template <typename... Args>
     std::string format_message(error_code code, Args&&... args) {

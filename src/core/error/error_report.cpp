@@ -15,7 +15,7 @@ bool error_reporter::has_error() const noexcept {
     return had_error_;
 }
 
-void error_reporter::report(location loc, std::string_view kind, const std::string& msg) {
+void error_reporter::report(location loc, std::string_view kind, std::string_view msg) {
     std::cerr << std::format("[line {}:{}] {}: {}\n", loc.line_, loc.column_, kind, msg);
 
     if (source_.empty()) return;

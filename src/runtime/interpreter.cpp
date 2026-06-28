@@ -10,6 +10,7 @@
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/value/value.hpp"
 #include "debug/debug.hpp"
 
 #include <algorithm>
@@ -33,10 +34,10 @@ interpreter::interpreter(core::error_reporter& reporter, bool debug) : reporter_
 void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& statements) {
     try {
         for (const auto& stmt : statements) {
-            if (std::holds_alternative<ast::func_declaration>(stmt->data_)) { execute(*stmt); }
+            if (std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
         for (const auto& stmt : statements) {
-            if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) { execute(*stmt); }
+            if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
         auto main_it = functions_.find("main");
         if (main_it != functions_.end()) {
@@ -85,8 +86,6 @@ void interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
 }
 
 void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
-    auto name = stmt.name_.lexeme_;
-
     auto init_val = default_value(stmt.type_);
 
     if (stmt.initializer_) {
@@ -94,7 +93,7 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         init_val = convert(std::move(init), stmt.type_);
     }
 
-    values_.define(name, {stmt.type_, std::move(init_val)});
+    values_.define(stmt.name_.lexeme_, {stmt.type_, std::move(init_val)});
 }
 
 void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
@@ -245,35 +244,37 @@ core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
 core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr, const ast::variable_expr& var_expr) {
     auto* var = values_.get(var_expr.name_.lexeme_);
     auto right = evaluate(expr.right_);
+    auto op = expr.op_.type_;
+    auto& val = var->value_;
 
-    if (expr.op_.type_ == tt::EQUAL) {
-        var->value_ = convert(std::move(right), var->static_type_);
-        return var->value_;
+    if (op == tt::EQUAL) {
+        val = convert(std::move(right), var->static_type_);
+        return val;
     }
 
     core::value result;
-    switch (expr.op_.type_) {
+    switch (op) {
         case tt::PLUS_EQUAL:
-            result = var->value_.add(right);
+            result = val.add(right);
             break;
         case tt::MINUS_EQUAL:
-            result = var->value_.sub(right);
+            result = val.sub(right);
             break;
         case tt::STAR_EQUAL:
-            result = var->value_.mul(right);
+            result = val.mul(right);
             break;
         case tt::SLASH_EQUAL:
-            result = var->value_.div(right);
+            result = val.div(right);
             break;
         case tt::PERCENT_EQUAL:
-            result = var->value_.mod(right);
+            result = val.mod(right);
             break;
         default:
             break;
     }
 
-    var->value_ = convert(std::move(result), var->static_type_);
-    return var->value_;
+    val = convert(std::move(result), var->static_type_);
+    return val;
 }
 
 core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr, const ast::index_expr& idx) {
@@ -290,13 +291,14 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
 
     auto& element = (*arr)[i];
 
-    if (expr.op_.type_ == tt::EQUAL) {
+    auto op = expr.op_.type_;
+    if (op == tt::EQUAL) {
         element = convert(std::move(right), var->static_type_.element_type());
         return element;
     }
 
     core::value result;
-    switch (expr.op_.type_) {
+    switch (op) {
         case tt::PLUS_EQUAL:
             result = element.add(right);
             break;
@@ -383,7 +385,8 @@ core::value interpreter::apply_increment(runtime_var* var, core::token_type op, 
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     auto operand = evaluate(expr.operand_);
 
-    switch (expr.op_.type_) {
+    auto op = expr.op_.type_;
+    switch (op) {
         case tt::MINUS: {
             if (operand.type() == t::int_type()) return core::value(-operand.to_int());
             return core::value(-operand.to_double());
@@ -395,7 +398,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
         case tt::DECREMENT: {
             const auto& var_expr = std::get<ast::variable_expr>(expr.operand_);
             auto* var = values_.get(var_expr.name_.lexeme_);
-            return apply_increment(var, expr.op_.type_, false);
+            return apply_increment(var, op, false);
         }
 
         default:
@@ -412,7 +415,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
-    if (recursion_depth_ >= MAX_RECURSION_DEPTH) { reporter_.interpret_error(expr, err::stack_overflow); }
+    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.interpret_error(expr, err::stack_overflow);
     recursion_depth_++;
 
     struct depth_guard {
@@ -428,18 +431,17 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     } catch (const core::interpret_error&) { return core::value(); }
 
     auto it = functions_.find(name);
-    return std::visit(core::overloaded{[&](core::builtin_fn_ptr builtin) -> core::value {
-                                           try {
-                                               return (*builtin)(args);
-                                           } catch (const core::interpret_error& e) {
-                                               reporter_.interpret_error(expr, e.code_, name);
-                                               return core::value();
-                                           }
-                                       },
-                                       [&](const ast::func_declaration* func) -> core::value {
-                                           return call_user_function(*func, args, expr);
-                                       }},
-                      it->second);
+    return std::visit(
+        core::overloaded{[&](core::builtin_fn_ptr builtin) {
+                             try {
+                                 return (*builtin)(args);
+                             } catch (const core::interpret_error& e) {
+                                 reporter_.interpret_error(expr, e.code_, name);
+                                 return core::value();
+                             }
+                         },
+                         [&](const ast::func_declaration* func) { return call_user_function(*func, args, expr); }},
+        it->second);
 }
 
 core::value interpreter::call_user_function(const ast::func_declaration& func, const std::vector<core::value>& args,
@@ -447,8 +449,10 @@ core::value interpreter::call_user_function(const ast::func_declaration& func, c
     core::scope_guard guard(values_);
 
     for (size_t i = 0; i < func.params_.size(); ++i) {
-        auto converted = convert(std::move(args[i]), func.params_[i].type_);
-        values_.define(func.params_[i].name_.lexeme_, {func.params_[i].type_, std::move(converted)});
+        auto&& param = func.params_[i];
+        auto&& param_t = param.type_;
+        auto converted = convert(std::move(args[i]), param_t);
+        values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
     }
 
     try {
@@ -479,7 +483,7 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     const auto* arr = obj.as_array();
     auto i = *idx.as_int();
 
-    if (i < 0 || i >= arr->size()) { reporter_.interpret_error(expr, err::index_out_of_bounds); }
+    if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
 
     return (*arr)[i];
 }
@@ -489,11 +493,11 @@ core::value interpreter::default_value(const core::type& t) {
         case k::INT:
             return core::value(core::value::int_t{0});
         case k::DOUBLE:
-            return core::value(0.0);
+            return core::value(core::value::double_t{0.0});
         case k::BOOL:
             return core::value(false);
         case k::STRING:
-            return core::value(std::string(""));
+            return core::value(core::value::string_t(""));
         case k::VOID:
             return core::value();
         case k::ARRAY:
@@ -504,9 +508,10 @@ core::value interpreter::default_value(const core::type& t) {
 }
 
 core::value interpreter::convert(core::value val, const core::type& target) {
-    if (val.type() == target) return val;
-    if (target.is_int() && val.type().is_double()) return core::value(static_cast<core::value::int_t>(val.to_double()));
-    if (target.is_double() && val.type().is_int()) return core::value(static_cast<core::value::double_t>(val.to_int()));
+    auto&& val_t = val.type();
+    if (val_t == target) return val;
+    if (target.is_int() && val_t.is_double()) return core::value(static_cast<core::value::int_t>(val.to_double()));
+    if (target.is_double() && val_t.is_int()) return core::value(static_cast<core::value::double_t>(val.to_int()));
     return val;
 }
 
