@@ -5,6 +5,7 @@
 #include "ast/expression.hpp"
 #include "core/token/token_types.hpp"
 
+#include <algorithm>
 #include <memory>
 #include <variant>
 #include <vector>
@@ -125,6 +126,13 @@ stmt_ptr make_stmt(const Loc& loc, Args&&... args) {
 template <typename Stmt>
 stmt_ptr make_stmt(Stmt&& stmt) {
     return std::make_unique<statement>(std::forward<Stmt>(stmt));
+}
+
+inline bool has_declarations(const block_stmt& block) noexcept {
+    return std::ranges::any_of(block.statements_, [](const auto& stmt) {
+        return std::holds_alternative<var_declaration>(stmt->data_) ||
+               (std::holds_alternative<block_stmt>(stmt->data_) && has_declarations(std::get<block_stmt>(stmt->data_)));
+    });
 }
 
 }  // namespace ast

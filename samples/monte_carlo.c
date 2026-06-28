@@ -16,9 +16,7 @@ int monte_carlo_pi(int iterations) {
         y = seed;
         y = y / 1073741824.0 - 1.0;
 
-        if (x * x + y * y <= 1.0) {
-            inside = inside + 1;
-        }
+        if (x * x + y * y <= 1.0) { inside = inside + 1; }
 
         i = i + 1;
     }

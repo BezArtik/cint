@@ -56,16 +56,6 @@ void interpreter::interpret(const std::vector<std::unique_ptr<ast::statement>>& 
     } catch (const core::interpret_error&) {}
 }
 
-bool interpreter::block_has_declarations(const ast::block_stmt& block) const noexcept {
-    for (const auto& stmt : block.statements_) {
-        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) return true;
-        if (auto* inner = std::get_if<ast::block_stmt>(&stmt->data_)) {
-            if (block_has_declarations(*inner)) return true;
-        }
-    }
-    return false;
-}
-
 void interpreter::execute(const ast::statement& stmt) {
     if (debug_) debug::print_execution("Executing statement...");
     std::visit(core::overloaded{
@@ -102,9 +92,11 @@ void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) 
     for (const auto& s : stmt.statements_) execute(*s);
 }
 
-void interpreter::execute_loop_body(const ast::statement& body) {
+void interpreter::execute_body(const ast::statement& body) {
+    bool create_scope = false;
     if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
-        execute_block(*block, false);
+        create_scope = ast::has_declarations(*block);
+        execute_block(*block, create_scope);
     } else {
         execute(body);
     }
@@ -115,7 +107,7 @@ void interpreter::execute_while(const ast::while_stmt& stmt) {
     while (true) {
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
-        execute_loop_body(*stmt.body_);
+        execute_body(*stmt.body_);
     }
 }
 
@@ -127,7 +119,7 @@ void interpreter::execute_for(const ast::for_stmt& stmt) {
             auto cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        execute_loop_body(*stmt.body_);
+        execute_body(*stmt.body_);
         if (stmt.increment_) evaluate(*stmt.increment_);
     }
 }
@@ -135,18 +127,10 @@ void interpreter::execute_for(const ast::for_stmt& stmt) {
 void interpreter::execute_if(const ast::if_stmt& stmt) {
     auto cond = evaluate(stmt.condition_);
 
-    auto execute_branch = [this](const ast::statement& branch) {
-        if (auto* block = std::get_if<ast::block_stmt>(&branch.data_)) {
-            execute_block(*block, block_has_declarations(*block));
-        } else {
-            execute(branch);
-        }
-    };
-
     if (cond.as_bool().value_or(false)) {
-        execute_branch(*stmt.then_branch_);
+        execute_body(*stmt.then_branch_);
     } else if (stmt.else_branch_) {
-        execute_branch(*stmt.else_branch_);
+        execute_body(*stmt.else_branch_);
     }
 }
 
@@ -157,7 +141,7 @@ void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
-    functions_.emplace(stmt.name_.lexeme_, &stmt);
+    functions_.insert_or_assign(stmt.name_.lexeme_, &stmt);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
@@ -184,8 +168,9 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
     auto to_number = [&](auto&& lex, auto&& num) {
-        auto [_, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), num);
-        if (ec != std::errc{}) reporter_.interpret_error(token, err::unexpected_literal);
+        auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), num);
+        if (ec != std::errc{} || ptr != lex.data() + lex.size())
+            reporter_.interpret_error(token, err::unexpected_literal);
         return num;
     };
 
@@ -287,7 +272,7 @@ core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr,
 
     auto i = *index_val.as_int();
 
-    if (i < 0 || i >= arr->size()) { reporter_.interpret_error(expr, err::index_out_of_bounds); }
+    if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
 
     auto& element = (*arr)[i];
 
@@ -457,10 +442,7 @@ core::value interpreter::call_user_function(const ast::func_declaration& func, c
 
     try {
         for (const auto& s : func.body_->statements_) execute(*s);
-    } catch (const return_exception& ret) { return ret.return_value_; } catch (const core::interpret_error&) {
-        return core::value();
-    }
-
+    } catch (const return_exception& ret) { return ret.return_value_; }
     return default_value(func.return_type_);
 }
 

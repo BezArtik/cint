@@ -27,16 +27,6 @@ bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
     return !reporter_.has_error();
 }
 
-bool type_checker::block_has_declarations(const ast::block_stmt& block) const noexcept {
-    for (const auto& stmt : block.statements_) {
-        if (std::holds_alternative<ast::var_declaration>(stmt->data_)) { return true; }
-        if (auto* inner = std::get_if<ast::block_stmt>(&stmt->data_)) {
-            if (block_has_declarations(*inner)) return true;
-        }
-    }
-    return false;
-}
-
 void type_checker::check_statement(const ast::statement& stmt) {
     std::visit(core::overloaded{
                    [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
@@ -92,17 +82,22 @@ void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
     for (const auto& s : stmt.statements_) check_statement(*s);
 }
 
+void type_checker::check_body(const ast::statement& body) {
+    bool create_scope = false;
+    if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
+        create_scope = has_declarations(*block);
+        check_block(*block, create_scope);
+    } else {
+        check_statement(body);
+    }
+}
+
 void type_checker::check_while(const ast::while_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
+    if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
 
     core::scope_guard guard(symbols_);
-
-    if (auto* block = std::get_if<ast::block_stmt>(&stmt.body_->data_)) {
-        check_block(*block, false);
-    } else {
-        check_statement(*stmt.body_);
-    }
+    check_body(*stmt.body_);
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
@@ -111,31 +106,17 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
         auto cond_type = type_of(*stmt.condition_);
-        if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
+        if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
     }
     if (stmt.increment_) type_of(*stmt.increment_);
-
-    if (auto* block = std::get_if<ast::block_stmt>(&stmt.body_->data_)) {
-        check_block(*block, false);
-    } else {
-        check_statement(*stmt.body_);
-    }
+    check_body(*stmt.body_);
 }
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) { reporter_.error(stmt, err::condition_not_bool); }
-
-    auto check_branch = [this](const ast::statement& branch) {
-        if (auto* block = std::get_if<ast::block_stmt>(&branch.data_)) {
-            check_block(*block, block_has_declarations(*block));
-        } else {
-            check_statement(branch);
-        }
-    };
-
-    check_branch(*stmt.then_branch_);
-    if (stmt.else_branch_) check_branch(*stmt.else_branch_);
+    if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+    check_body(*stmt.then_branch_);
+    if (stmt.else_branch_) check_body(*stmt.else_branch_);
 }
 
 void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
@@ -145,13 +126,13 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
     }
 
     if (!stmt.value_) {
-        if (!curr_return_type_->is_void()) { reporter_.error(stmt, err::return_missing_value); }
+        if (!curr_return_type_->is_void()) reporter_.error(stmt, err::return_missing_value);
         return;
     }
 
     auto return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
-    if (!curr_return_type_->is_assignable_from(return_type)) { reporter_.error(stmt, err::return_type_mismatch); }
+    if (!curr_return_type_->is_assignable_from(return_type)) reporter_.error(stmt, err::return_type_mismatch);
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
@@ -281,7 +262,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
     if (std::holds_alternative<ast::variable_expr>(expr)) return true;
-    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) { return is_lvalue((*idx)->object_); }
+    if (auto* idx = std::get_if<std::unique_ptr<ast::index_expr>>(&expr)) return is_lvalue((*idx)->object_);
     return false;
 }
 
@@ -341,6 +322,28 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 t type_checker::type_of_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
+    auto info = symbols_.get(name);
+    if (info && info->kind_ == symbol_kind::FUNCTION) {
+        const auto& func_type = info->type_;
+        const auto& param_types = func_type.param_types();
+
+        if (expr.args_.size() != param_types.size()) {
+            reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
+            return t::unknown_type();
+        }
+
+        for (size_t i = 0; i < expr.args_.size(); i++) {
+            auto arg_type = type_of(expr.args_[i]);
+            if (arg_type.is_unknown()) return t::unknown_type();
+            if (!param_types[i].is_assignable_from(arg_type)) {
+                reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
+                return t::unknown_type();
+            }
+        }
+
+        return func_type.return_type();
+    }
+
     std::vector<t> arg_types;
     arg_types.reserve(expr.args_.size());
     std::ranges::transform(expr.args_, std::back_inserter(arg_types), [this](const auto& arg) { return type_of(arg); });
@@ -358,30 +361,8 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
         return t::unknown_type();
     }
 
-    auto info = symbols_.get(name);
-    if (!info || info->kind_ != symbol_kind::FUNCTION) {
-        reporter_.error(expr, err::undefined_function, name);
-        return t::unknown_type();
-    }
-
-    const auto& func_type = info->type_;
-    const auto& param_types = func_type.param_types();
-
-    if (expr.args_.size() != param_types.size()) {
-        reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
-        return t::unknown_type();
-    }
-
-    for (size_t i = 0; i < expr.args_.size(); i++) {
-        auto arg_type = type_of(expr.args_[i]);
-        if (arg_type.is_unknown()) return t::unknown_type();
-        if (!param_types[i].is_assignable_from(arg_type)) {
-            reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
-            return t::unknown_type();
-        }
-    }
-
-    return func_type.return_type();
+    reporter_.error(expr, err::undefined_function, name);
+    return t::unknown_type();
 }
 
 t type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {

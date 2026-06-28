@@ -9,7 +9,6 @@
 #include <cassert>
 #include <charconv>
 #include <functional>
-#include <limits>
 
 namespace core {
 
@@ -35,7 +34,7 @@ value::int_t value::to_int() const {
     if (auto s = as_string()) {
         int_t result;
         auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
-        if (ec != std::errc{}) throw core::interpret_error{err::invalid_conversion};
+        if (ec != std::errc{} || ptr != s->data() + s->size()) throw core::interpret_error{err::invalid_conversion};
         return result;
     }
     throw core::interpret_error{err::invalid_conversion};
@@ -47,7 +46,7 @@ value::double_t value::to_double() const {
     if (auto s = as_string()) {
         double_t result;
         auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
-        if (ec != std::errc{}) throw core::interpret_error{err::invalid_conversion};
+        if (ec != std::errc{} || ptr != s->data() + s->size()) throw core::interpret_error{err::invalid_conversion};
         return result;
     }
     throw core::interpret_error{err::invalid_conversion};
