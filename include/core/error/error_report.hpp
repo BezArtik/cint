@@ -7,6 +7,7 @@
 #include <format>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace core {
 
@@ -41,6 +42,9 @@ public:
 private:
     bool had_error_ = false;
     std::string_view source_;
+    std::vector<std::string_view> lines_;
+
+    void build_line_cache();
 
     void report(location loc, std::string_view kind, std::string_view msg);
 

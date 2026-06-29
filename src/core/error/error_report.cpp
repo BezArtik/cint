@@ -4,62 +4,64 @@
 
 #include <cctype>
 #include <iostream>
-#include <string>
 #include <string_view>
 
 namespace core {
 
-error_reporter::error_reporter(std::string_view source) : source_(source) {}
+error_reporter::error_reporter(std::string_view source) : source_(source) {
+    build_line_cache();
+}
 
 bool error_reporter::has_error() const noexcept {
     return had_error_;
 }
 
+void error_reporter::build_line_cache() {
+    if (source_.empty()) return;
+
+    size_t start = 0;
+    while (start < source_.size()) {
+        auto end = source_.find('\n', start);
+        if (end == std::string_view::npos) {
+            lines_.push_back(source_.substr(start));
+            break;
+        }
+        lines_.push_back(source_.substr(start, end - start));
+        start = end + 1;
+    }
+}
+
 void error_reporter::report(location loc, std::string_view kind, std::string_view msg) {
     std::cerr << std::format("[line {}:{}] {}: {}\n", loc.line_, loc.column_, kind, msg);
 
-    if (source_.empty()) return;
+    if (lines_.empty()) return;
+    if (loc.line_ - 1 >= lines_.size()) return;
 
-    auto remaining = source_;
-    for (uint32_t i = 1; i < loc.line_ && !remaining.empty(); ++i) {
-        auto pos = remaining.find('\n');
-        if (pos == std::string_view::npos) return;
-        remaining = remaining.substr(pos + 1);
-    }
-
-    auto eof = remaining.find('\n');
-    auto source_line = (eof != std::string_view::npos) ? remaining.substr(0, eof) : remaining;
-
-    if (source_line.empty()) return;
+    auto line = lines_[loc.line_ - 1];
+    if (line.empty()) return;
 
     constexpr size_t max_width = 80;
-    auto display_line = source_line;
+    size_t start = 0;
 
-    if (display_line.size() > max_width && loc.column_ > max_width / 2) {
-        size_t display_start = loc.column_ - max_width / 2;
-
-        if (display_start > 0) {
-            auto space = display_line.rfind(' ', display_start - 1);
-            display_start = (space != std::string_view::npos) ? space + 1 : 0;
-        }
-
-        display_line = display_line.substr(display_start, max_width);
-    } else {
-        display_line = display_line.substr(0, max_width);
+    if (line.size() > max_width && loc.column_ > max_width / 2) {
+        start = loc.column_ - max_width / 2;
+        if (auto space = line.rfind(' ', start); space != std::string_view::npos) start = space + 1;
+        if (start + max_width > line.size()) start = line.size() - max_width;
     }
 
-    std::cerr << std::format("  {:>4} | {}\n", loc.line_, display_line);
+    auto display = line.substr(start, max_width);
+    auto caret_col = loc.column_ - 1 - start;
 
-    auto caret_pos = loc.column_ - (source_line.data() - display_line.data()) - 1;
-    if (caret_pos < display_line.size()) {
-        auto token_end = display_line.find_first_of(" ;()\t\n", caret_pos + 1);
-        if (token_end == std::string_view::npos) token_end = display_line.size();
+    std::cerr << std::format("  {:>4} | {}\n", loc.line_, display);
 
-        std::string caret(display_line.size(), ' ');
-        caret[caret_pos] = '^';
-        for (size_t i = caret_pos + 1; i < token_end; ++i) caret[i] = '~';
+    if (caret_col < display.size()) {
+        auto end = display.find_first_of(" ;()\t\n[]{},.", caret_col + 1);
+        if (end == std::string_view::npos) end = display.size();
+        auto tilde_count = end - caret_col - 1;
 
-        std::cerr << std::format("       | {}\n", caret);
+        std::cerr << std::format("       | {:{}}{}", "", caret_col, '^');
+        if (tilde_count > 0) std::cerr << std::format("{:~<{}}", "", tilde_count);
+        std::cerr << '\n';
     }
 }
 
