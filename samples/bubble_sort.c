@@ -1,5 +1,5 @@
 
-int arr[] = { 64, 34, 25, 12, 22, 11, 90, 45 };
+int arr[] = {64, 34, 25, 12, 22, 11, 90, 45};
 
 for (int i = 0; i < 7; i++) {
     for (int j = 0; j < 7 - i; j++) {
@@ -11,6 +11,4 @@ for (int i = 0; i < 7; i++) {
     }
 }
 
-for (int i = 0; i < 8; i++) {
-    print(arr[i]);
-}
+for (int i = 0; i < 8; i++) { print(arr[i]); }
