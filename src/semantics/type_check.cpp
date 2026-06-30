@@ -29,17 +29,17 @@ bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
 }
 
 void type_checker::check_statement(const ast::statement& stmt) {
-    std::visit(core::overloaded{
-                   [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
-                   [this](const ast::var_declaration& s) { check_var_declaration(s); },
-                   [this](const ast::block_stmt& s) { check_block(s); },
-                   [this](const ast::while_stmt& s) { check_while(s); },
-                   [this](const ast::for_stmt& s) { check_for(s); },
-                   [this](const ast::if_stmt& s) { check_if(s); },
-                   [this](const ast::return_stmt& s) { check_return_stmt(s); },
-                   [this](const ast::func_declaration& s) { check_func_declaration(s); },
-               },
-               stmt.data_);
+    core::visit(core::overloaded{
+                    [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
+                    [this](const ast::var_declaration& s) { check_var_declaration(s); },
+                    [this](const ast::block_stmt& s) { check_block(s); },
+                    [this](const ast::while_stmt& s) { check_while(s); },
+                    [this](const ast::for_stmt& s) { check_for(s); },
+                    [this](const ast::if_stmt& s) { check_if(s); },
+                    [this](const ast::return_stmt& s) { check_return_stmt(s); },
+                    [this](const ast::func_declaration& s) { check_func_declaration(s); },
+                },
+                stmt.data_);
 }
 
 void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
@@ -167,7 +167,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
 }
 
 t type_checker::type_of(const ast::expression& expr) {
-    return std::visit(
+    return core::visit(
         core::overloaded{
             [this](const ast::literal_expr& e) { return type_of_literal(e); },
             [this](const ast::variable_expr& e) { return type_of_variable(e); },

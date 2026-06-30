@@ -195,31 +195,31 @@ const char* type_name(const core::type& t) {
 }
 
 void print_expression(const ast::expression& expr, uint32_t level) {
-    std::visit(core::overloaded{
-                   [level](const ast::literal_expr& e) { print_literal(e, level); },
-                   [level](const ast::variable_expr& e) { print_variable(e, level); },
-                   [level](const core::arena_ptr<ast::binary_expr>& e) { print_binary(e, level); },
-                   [level](const core::arena_ptr<ast::unary_expr>& e) { print_unary(e, level); },
-                   [level](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
-                   [level](const core::arena_ptr<ast::call_expr>& e) { print_call(e, level); },
-                   [level](const core::arena_ptr<ast::array_literal_expr>& e) { print_array_literal(e, level); },
-                   [level](const core::arena_ptr<ast::index_expr>& e) { print_index(e, level); },
-               },
-               expr);
+    core::visit(core::overloaded{
+                    [level](const ast::literal_expr& e) { print_literal(e, level); },
+                    [level](const ast::variable_expr& e) { print_variable(e, level); },
+                    [level](const core::arena_ptr<ast::binary_expr>& e) { print_binary(e, level); },
+                    [level](const core::arena_ptr<ast::unary_expr>& e) { print_unary(e, level); },
+                    [level](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
+                    [level](const core::arena_ptr<ast::call_expr>& e) { print_call(e, level); },
+                    [level](const core::arena_ptr<ast::array_literal_expr>& e) { print_array_literal(e, level); },
+                    [level](const core::arena_ptr<ast::index_expr>& e) { print_index(e, level); },
+                },
+                expr);
 }
 
 void print_statement(const ast::statement& stmt, uint32_t level) {
-    std::visit(core::overloaded{
-                   [level](const ast::expression_stmt& s) { print_expression_stmt(s, level); },
-                   [level](const ast::var_declaration& s) { print_var_declaration(s, level); },
-                   [level](const ast::block_stmt& s) { print_block(s, level); },
-                   [level](const ast::while_stmt& s) { print_while(s, level); },
-                   [level](const ast::for_stmt& s) { print_for(s, level); },
-                   [level](const ast::if_stmt& s) { print_if(s, level); },
-                   [level](const ast::return_stmt& s) { print_return(s, level); },
-                   [level](const ast::func_declaration& s) { print_func_declaration(s, level); },
-               },
-               stmt.data_);
+    core::visit(core::overloaded{
+                    [level](const ast::expression_stmt& s) { print_expression_stmt(s, level); },
+                    [level](const ast::var_declaration& s) { print_var_declaration(s, level); },
+                    [level](const ast::block_stmt& s) { print_block(s, level); },
+                    [level](const ast::while_stmt& s) { print_while(s, level); },
+                    [level](const ast::for_stmt& s) { print_for(s, level); },
+                    [level](const ast::if_stmt& s) { print_if(s, level); },
+                    [level](const ast::return_stmt& s) { print_return(s, level); },
+                    [level](const ast::func_declaration& s) { print_func_declaration(s, level); },
+                },
+                stmt.data_);
 }
 
 void print_tokens(const std::vector<core::token>& tokens) {

@@ -59,17 +59,17 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
 
 void interpreter::execute(const ast::statement& stmt) {
     if (debug_) debug::print_execution("Executing statement...");
-    std::visit(core::overloaded{
-                   [this](const ast::expression_stmt& s) { execute_expression_stmt(s); },
-                   [this](const ast::var_declaration& s) { execute_var_declaration(s); },
-                   [this](const ast::block_stmt& s) { execute_block(s); },
-                   [this](const ast::while_stmt& s) { execute_while(s); },
-                   [this](const ast::for_stmt& s) { execute_for(s); },
-                   [this](const ast::if_stmt& s) { execute_if(s); },
-                   [this](const ast::return_stmt& s) { execute_return_stmt(s); },
-                   [this](const ast::func_declaration& s) { execute_func_declaration(s); },
-               },
-               stmt.data_);
+    core::visit(core::overloaded{
+                    [this](const ast::expression_stmt& s) { execute_expression_stmt(s); },
+                    [this](const ast::var_declaration& s) { execute_var_declaration(s); },
+                    [this](const ast::block_stmt& s) { execute_block(s); },
+                    [this](const ast::while_stmt& s) { execute_while(s); },
+                    [this](const ast::for_stmt& s) { execute_for(s); },
+                    [this](const ast::if_stmt& s) { execute_if(s); },
+                    [this](const ast::return_stmt& s) { execute_return_stmt(s); },
+                    [this](const ast::func_declaration& s) { execute_func_declaration(s); },
+                },
+                stmt.data_);
 }
 
 void interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
@@ -146,18 +146,18 @@ void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
-    auto result =
-        std::visit(core::overloaded{
-                       [this](const ast::literal_expr& e) { return evaluate_literal(e); },
-                       [this](const ast::variable_expr& e) { return evaluate_variable(e); },
-                       [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
-                       [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
-                       [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
-                       [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
-                       [this](const core::arena_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
-                       [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
-                   },
-                   expr);
+    auto result = core::visit(
+        core::overloaded{
+            [this](const ast::literal_expr& e) { return evaluate_literal(e); },
+            [this](const ast::variable_expr& e) { return evaluate_variable(e); },
+            [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
+            [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
+            [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
+            [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
+            [this](const core::arena_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
+            [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
+        },
+        expr);
     if (debug_) {
         std::cerr << "  → ";
         debug::print_value(result);
