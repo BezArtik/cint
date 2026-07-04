@@ -27,6 +27,7 @@ struct token {
     token(token_type type, std::string_view lex, location loc, bool is_double = false);
 
     bool is_keyword() const noexcept;
+    bool is_number_literal() const noexcept;
     bool is_double_literal() const noexcept;
     bool is_string_literal() const noexcept;
     bool is_identifier() const noexcept;

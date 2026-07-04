@@ -175,7 +175,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         return num;
     };
 
-    if (token.type_ == tt::NUMBER) {
+    if (token.is_number_literal()) {
         auto lex = token.lexeme_;
         if (token.is_double_literal()) {
             core::value::double_t d;

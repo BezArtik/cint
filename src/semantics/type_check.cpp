@@ -95,7 +95,7 @@ void type_checker::check_body(const ast::statement& body) {
 
 void type_checker::check_while(const ast::while_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
 
     core::scope_guard guard(symbols_);
     check_body(*stmt.body_);
@@ -107,7 +107,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
         auto cond_type = type_of(*stmt.condition_);
-        if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+        if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
     }
     if (stmt.increment_) type_of(*stmt.increment_);
     check_body(*stmt.body_);
@@ -115,7 +115,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (cond_type != t::bool_type() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
     check_body(*stmt.then_branch_);
     if (stmt.else_branch_) check_body(*stmt.else_branch_);
 }
@@ -183,8 +183,8 @@ t type_checker::type_of(const ast::expression& expr) {
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
-    if (token.type_ == tt::NUMBER) return token.is_double_literal() ? t::double_type() : t::int_type();
-    if (token.type_ == tt::STRING) return t::string_type();
+    if (token.is_number_literal()) return token.is_double_literal() ? t::double_type() : t::int_type();
+    if (token.is_string_literal()) return t::string_type();
     if (token.is_keyword()) {
         auto kw = token.as_keyword();
         if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) return t::bool_type();
@@ -250,7 +250,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
     }
 
     if (op == tt::AND || op == tt::OR) {
-        if (left != t::bool_type() || right != t::bool_type()) {
+        if (!left.is_bool() || !right.is_bool()) {
             reporter_.error(expr, err::logical_requires_bool);
             return t::unknown_type();
         }
@@ -296,7 +296,7 @@ t type_checker::type_of_unary(const ast::unary_expr& expr) {
     }
 
     if (op == tt::BANG) {
-        if (operand_type != t::bool_type()) {
+        if (!operand_type.is_bool()) {
             reporter_.error(expr, err::not_requires_bool);
             return t::unknown_type();
         }

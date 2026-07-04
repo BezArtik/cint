@@ -9,13 +9,14 @@
 
 namespace core {
 
-#define TOKEN_TYPES(X)                                                                                                \
-    X(LEFT_PAREN)                                                                                                     \
-    X(RIGHT_PAREN)                                                                                                    \
-    X(LEFT_BRACE) X(RIGHT_BRACE) X(LEFT_BRACKET) X(RIGHT_BRACKET) X(COMMA) X(DOT) X(SEMICOLON) X(PLUS) X(MINUS)       \
-        X(STAR) X(SLASH) X(PERCENT) X(BANG) X(EQUAL) X(BANG_EQUAL) X(EQUAL_EQUAL) X(GREATER) X(GREATER_EQUAL) X(LESS) \
-            X(LESS_EQUAL) X(INCREMENT) X(DECREMENT) X(PLUS_EQUAL) X(MINUS_EQUAL) X(STAR_EQUAL) X(SLASH_EQUAL)         \
-                X(PERCENT_EQUAL) X(AND) X(OR) X(IDENTIFIER) X(STRING) X(NUMBER) X(KEYWORD) X(END_OF_FILE) X(UNKNOWN)
+#define TOKEN_TYPES(X)                                                                                             \
+    X(LEFT_PAREN)                                                                                                  \
+    X(RIGHT_PAREN)                                                                                                 \
+    X(LEFT_BRACE)                                                                                                  \
+    X(RIGHT_BRACE) X(LEFT_BRACKET) X(RIGHT_BRACKET) X(COMMA) X(DOT) X(SEMICOLON) X(PLUS) X(MINUS) X(STAR) X(SLASH) \
+        X(PERCENT) X(BANG) X(EQUAL) X(BANG_EQUAL) X(EQUAL_EQUAL) X(GREATER) X(GREATER_EQUAL) X(LESS) X(LESS_EQUAL) \
+            X(INCREMENT) X(DECREMENT) X(PLUS_EQUAL) X(MINUS_EQUAL) X(STAR_EQUAL) X(SLASH_EQUAL) X(PERCENT_EQUAL)   \
+                X(AND) X(OR) X(IDENTIFIER) X(STRING) X(NUMBER) X(KEYWORD) X(END_OF_FILE) X(UNKNOWN)
 
 enum class token_type : uint8_t {
 #define X(name) name,

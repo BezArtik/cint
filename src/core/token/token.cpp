@@ -3,6 +3,7 @@
 #include "core/token/token.hpp"
 
 #include "core/token/keywords.hpp"
+#include "core/token/token_types.hpp"
 
 #include <optional>
 #include <string_view>
@@ -23,6 +24,10 @@ bool token::is_keyword() const noexcept {
 
 bool token::is_double_literal() const noexcept {
     return type_ == token_type::NUMBER && is_double_;
+}
+
+bool token::is_number_literal() const noexcept {
+    return type_ == token_type::NUMBER;
 }
 
 bool token::is_string_literal() const noexcept {
