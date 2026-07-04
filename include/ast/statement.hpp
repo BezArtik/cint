@@ -100,7 +100,7 @@ struct func_declaration {
     core::type return_type_;
     core::token name_;
     std::vector<func_param> params_;
-    std::unique_ptr<block_stmt> body_;
+    core::arena_ptr<block_stmt> body_;
     core::location loc_;
 
     func_declaration(core::type ret_type, const core::token& n)

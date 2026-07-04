@@ -262,9 +262,11 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
-    if (std::holds_alternative<ast::variable_expr>(expr)) return true;
-    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr)) return is_lvalue((*idx)->object_);
-    return false;
+    return core::visit(
+        core::overloaded{[](const ast::variable_expr&) { return true; },
+                         [this](const core::arena_ptr<ast::index_expr>& idx) { return is_lvalue(idx->object_); },
+                         [](const auto&) { return false; }},
+        expr);
 }
 
 t type_checker::type_of_unary(const ast::unary_expr& expr) {

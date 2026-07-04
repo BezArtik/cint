@@ -44,7 +44,7 @@ int main(int argc, char* argv[]) {
         const auto start = std::chrono::steady_clock::now();
         std::stringstream buffer;
         buffer << file.rdbuf();
-        std::string source = buffer.str();
+        auto source = buffer.str();
 
         core::arena arena;
         core::error_reporter reporter(source);

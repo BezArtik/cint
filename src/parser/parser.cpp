@@ -2,6 +2,7 @@
 
 #include "parser/parser.hpp"
 
+#include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
@@ -120,7 +121,8 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 
     auto body = block_statement();
     auto& block = std::get<ast::block_stmt>(body->data_);
-    func.body_ = std::make_unique<ast::block_stmt>(std::move(block));
+    auto* body_copy = arena_.allocate<ast::block_stmt>(std::move(block));
+    func.body_ = core::arena_ptr<ast::block_stmt>(body_copy);
 
     return ast::make_stmt(arena_, std::move(func));
 }
