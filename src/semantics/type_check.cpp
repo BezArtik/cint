@@ -347,21 +347,24 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
         return func_type.return_type();
     }
 
-    std::vector<t> arg_types;
-    arg_types.reserve(expr.args_.size());
-    std::ranges::transform(expr.args_, std::back_inserter(arg_types), [this](const auto& arg) { return type_of(arg); });
-
     for (const auto& def : core::builtins) {
         if (def.name_ != name) continue;
-        for (const auto& ov : def.overloads_) {
-            if (ov.param_types_.size() == arg_types.size() &&
-                std::ranges::equal(ov.param_types_, arg_types,
-                                   [](const auto& p, const auto& a) { return p.is_assignable_from(a); })) {
-                return ov.return_type_;
+
+        if (expr.args_.size() != def.param_types_.size()) {
+            reporter_.error(expr, err::argument_count_mismatch, name, def.param_types_.size(), expr.args_.size());
+            return t::unknown_type();
+        }
+
+        for (size_t i = 0; i < expr.args_.size(); i++) {
+            auto arg_type = type_of(expr.args_[i]);
+            if (arg_type.is_unknown()) return t::unknown_type();
+            if (!def.param_types_[i].is_assignable_from(arg_type)) {
+                reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
+                return t::unknown_type();
             }
         }
-        reporter_.error(expr, err::no_matching_overload, name);
-        return t::unknown_type();
+
+        return def.return_type_;
     }
 
     reporter_.error(expr, err::undefined_function, name);

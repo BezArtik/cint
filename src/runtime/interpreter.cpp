@@ -417,17 +417,21 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     } catch (const core::interpret_error&) { return core::value(); }
 
     auto it = functions_.find(name);
-    return std::visit(
-        core::overloaded{[&](core::builtin_fn_ptr builtin) {
-                             try {
-                                 return (*builtin)(args);
-                             } catch (const core::interpret_error& e) {
-                                 reporter_.interpret_error(expr, e.code_, name);
-                                 return core::value();
-                             }
-                         },
-                         [&](const ast::func_declaration* func) { return call_user_function(*func, args, expr); }},
-        it->second);
+    if (it == functions_.end()) reporter_.interpret_error(expr, err::undefined_function, name);
+
+    const auto& callable = it->second;
+
+    if (auto* builtin = std::get_if<core::builtin_fn_ptr>(&callable)) {
+        try {
+            return (*builtin)(args);
+        } catch (const core::interpret_error& e) {
+            reporter_.interpret_error(expr, e.code_, name);
+            return core::value();
+        }
+    }
+
+    auto* func = std::get<const ast::func_declaration*>(callable);
+    return call_user_function(*func, args, expr);
 }
 
 core::value interpreter::call_user_function(const ast::func_declaration& func, const std::vector<core::value>& args,

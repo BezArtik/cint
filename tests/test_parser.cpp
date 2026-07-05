@@ -256,7 +256,7 @@ TEST_P(call_test, parsed) {
 
 INSTANTIATE_TEST_SUITE_P(various, call_test,
                          ::testing::Values(call_case{"void f() { print(); }", "print", 0},
-                                           call_case{"void f() { print(42); }", "print", 1},
+                                           call_case{"void f() { print_int(42); }", "print_int", 1},
                                            call_case{"void f() { add(1, 2); }", "add", 2},
                                            call_case{"void f() { foo(a, b, c); }", "foo", 3}));
 
