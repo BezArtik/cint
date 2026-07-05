@@ -246,8 +246,8 @@ void print_tokens(const std::vector<core::token>& tokens) {
         std::string lexeme(tok.lexeme_);
         if (lexeme.empty()) lexeme = "(empty)";
 
-        std::cerr << std::left << std::setw(20) << core::to_string(tok.type_) << std::setw(20) << lexeme
-                  << tok.loc_.line_ << ":" << tok.loc_.column_ << "\n";
+        std::cerr << std::left << std::setw(20) << core::token_type_names[static_cast<size_t>(tok.type_)]
+                  << std::setw(20) << lexeme << tok.loc_.line_ << ":" << tok.loc_.column_ << "\n";
     }
 
     std::cerr << "\n";

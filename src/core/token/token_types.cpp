@@ -131,12 +131,6 @@ bool type::is_assignable_from(const type& source) const noexcept {
     return false;
 }
 
-type type::common_arithmetic_type(const type& other) const noexcept {
-    if (!is_numeric() || !other.is_numeric()) return unknown_type();
-    if (kind_ == kind::DOUBLE || other.kind_ == kind::DOUBLE) return double_type();
-    return int_type();
-}
-
 const type& type::return_type() const {
     assert(is_function());
     return *std::get<function_info>(info_).return_type_;

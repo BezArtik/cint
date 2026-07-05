@@ -9,14 +9,44 @@
 
 namespace core {
 
-#define TOKEN_TYPES(X)                                                                                             \
-    X(LEFT_PAREN)                                                                                                  \
-    X(RIGHT_PAREN)                                                                                                 \
-    X(LEFT_BRACE)                                                                                                  \
-    X(RIGHT_BRACE) X(LEFT_BRACKET) X(RIGHT_BRACKET) X(COMMA) X(DOT) X(SEMICOLON) X(PLUS) X(MINUS) X(STAR) X(SLASH) \
-        X(PERCENT) X(BANG) X(EQUAL) X(BANG_EQUAL) X(EQUAL_EQUAL) X(GREATER) X(GREATER_EQUAL) X(LESS) X(LESS_EQUAL) \
-            X(INCREMENT) X(DECREMENT) X(PLUS_EQUAL) X(MINUS_EQUAL) X(STAR_EQUAL) X(SLASH_EQUAL) X(PERCENT_EQUAL)   \
-                X(AND) X(OR) X(IDENTIFIER) X(STRING) X(NUMBER) X(KEYWORD) X(END_OF_FILE) X(UNKNOWN)
+#define TOKEN_TYPES(X) \
+    X(LEFT_PAREN)      \
+    X(RIGHT_PAREN)     \
+    X(LEFT_BRACE)      \
+    X(RIGHT_BRACE)     \
+    X(LEFT_BRACKET)    \
+    X(RIGHT_BRACKET)   \
+    X(COMMA)           \
+    X(DOT)             \
+    X(SEMICOLON)       \
+    X(PLUS)            \
+    X(MINUS)           \
+    X(STAR)            \
+    X(SLASH)           \
+    X(PERCENT)         \
+    X(BANG)            \
+    X(EQUAL)           \
+    X(BANG_EQUAL)      \
+    X(EQUAL_EQUAL)     \
+    X(GREATER)         \
+    X(GREATER_EQUAL)   \
+    X(LESS)            \
+    X(LESS_EQUAL)      \
+    X(INCREMENT)       \
+    X(DECREMENT)       \
+    X(PLUS_EQUAL)      \
+    X(MINUS_EQUAL)     \
+    X(STAR_EQUAL)      \
+    X(SLASH_EQUAL)     \
+    X(PERCENT_EQUAL)   \
+    X(AND)             \
+    X(OR)              \
+    X(IDENTIFIER)      \
+    X(STRING)          \
+    X(NUMBER)          \
+    X(KEYWORD)         \
+    X(END_OF_FILE)     \
+    X(UNKNOWN)
 
 enum class token_type : uint8_t {
 #define X(name) name,
@@ -29,10 +59,6 @@ inline constexpr std::array token_type_names = {
     TOKEN_TYPES(X)
 #undef X
 };
-
-constexpr std::string_view to_string(token_type t) {
-    return token_type_names[static_cast<size_t>(t)];
-}
 
 class type {
 public:
@@ -68,7 +94,6 @@ public:
     const std::vector<type>& param_types() const;
 
     bool is_assignable_from(const type& source) const noexcept;
-    type common_arithmetic_type(const type& other) const noexcept;
 
     bool is_array() const noexcept;
     const type& element_type() const;
