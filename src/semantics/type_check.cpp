@@ -172,6 +172,7 @@ t type_checker::type_of(const ast::expression& expr) {
             [this](const ast::literal_expr& e) { return type_of_literal(e); },
             [this](const ast::variable_expr& e) { return type_of_variable(e); },
             [this](const core::arena_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
+            [this](const core::arena_ptr<ast::assignment_expr>& e) { return type_of_assignment(*e); },
             [this](const core::arena_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
             [this](const core::arena_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
             [this](const core::arena_ptr<ast::call_expr>& e) { return type_of_call(*e); },
@@ -211,27 +212,6 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 
     auto op = expr.op_.type_;
 
-    if (op == tt::EQUAL) {
-        if (!left.is_assignable_from(right) || !is_lvalue(expr.left_)) {
-            reporter_.error(expr, err::type_mismatch_assignment);
-            return t::unknown_type();
-        }
-        return left;
-    }
-
-    if (op == tt::PLUS_EQUAL || op == tt::MINUS_EQUAL || op == tt::STAR_EQUAL || op == tt::SLASH_EQUAL ||
-        op == tt::PERCENT_EQUAL) {
-        if (!is_lvalue(expr.left_)) {
-            reporter_.error(expr, err::compound_requires_lvalue);
-            return t::unknown_type();
-        }
-        if (!left.is_numeric() || !right.is_numeric()) {
-            reporter_.error(expr, err::compound_requires_numeric);
-            return t::unknown_type();
-        }
-        return left;
-    }
-
     if (op == tt::PLUS || op == tt::MINUS || op == tt::STAR || op == tt::SLASH || op == tt::PERCENT) {
         if (!left.is_numeric() || !right.is_numeric()) {
             reporter_.error(expr, err::arithmetic_requires_numeric);
@@ -259,6 +239,32 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 
     reporter_.error(expr, err::unsupported_binary_operator);
     return t::unknown_type();
+}
+
+t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
+    auto target_type = type_of(expr.target_);
+    auto value_type = type_of(expr.value_);
+    if (target_type.is_unknown() || value_type.is_unknown()) return t::unknown_type();
+
+    auto op = expr.op_.type_;
+
+    if (op == tt::EQUAL) {
+        if (!target_type.is_assignable_from(value_type) || !is_lvalue(expr.target_)) {
+            reporter_.error(expr, err::type_mismatch_assignment);
+            return t::unknown_type();
+        }
+        return target_type;
+    }
+
+    if (!is_lvalue(expr.target_)) {
+        reporter_.error(expr, err::compound_requires_lvalue);
+        return t::unknown_type();
+    }
+    if (!target_type.is_numeric() || !value_type.is_numeric()) {
+        reporter_.error(expr, err::compound_requires_numeric);
+        return t::unknown_type();
+    }
+    return target_type;
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {

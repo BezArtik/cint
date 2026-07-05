@@ -2,6 +2,7 @@
 
 #include "debug/debug.hpp"
 
+#include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
@@ -40,6 +41,15 @@ void print_binary(const core::arena_ptr<ast::binary_expr>& e, uint32_t level) {
 
     std::cerr << indent_str(level + 1) << "Right:\n";
     print_expression(e->right_, level + 2);
+}
+
+void print_assignment(const core::arena_ptr<ast::assignment_expr>& e, uint32_t level) {
+    std::cerr << indent_str(level) << "Assignment: " << e->op_.lexeme_ << " [line " << e->loc_.line_ << ":"
+              << e->loc_.column_ << "]\n";
+    std::cerr << indent_str(level + 1) << "Target:\n";
+    print_expression(e->target_, level + 2);
+    std::cerr << indent_str(level + 1) << "Value:\n";
+    print_expression(e->value_, level + 2);
 }
 
 void print_unary(const core::arena_ptr<ast::unary_expr>& e, uint32_t level) {
@@ -199,6 +209,7 @@ void print_expression(const ast::expression& expr, uint32_t level) {
                     [level](const ast::literal_expr& e) { print_literal(e, level); },
                     [level](const ast::variable_expr& e) { print_variable(e, level); },
                     [level](const core::arena_ptr<ast::binary_expr>& e) { print_binary(e, level); },
+                    [level](const core::arena_ptr<ast::assignment_expr>& e) { print_assignment(e, level); },
                     [level](const core::arena_ptr<ast::unary_expr>& e) { print_unary(e, level); },
                     [level](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(e, level); },
                     [level](const core::arena_ptr<ast::call_expr>& e) { print_call(e, level); },

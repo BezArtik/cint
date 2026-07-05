@@ -33,6 +33,7 @@ private:
     core::type type_of_literal(const ast::literal_expr& expr);
     core::type type_of_variable(const ast::variable_expr& expr);
     core::type type_of_binary(const ast::binary_expr& expr);
+    core::type type_of_assignment(const ast::assignment_expr& expr);
     core::type type_of_unary(const ast::unary_expr& expr);
     core::type type_of_postfix(const ast::postfix_expr& expr);
     core::type type_of_call(const ast::call_expr& expr);

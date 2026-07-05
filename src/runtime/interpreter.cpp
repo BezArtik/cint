@@ -151,6 +151,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             [this](const ast::literal_expr& e) { return evaluate_literal(e); },
             [this](const ast::variable_expr& e) { return evaluate_variable(e); },
             [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
+            [this](const core::arena_ptr<ast::assignment_expr>& e) { return evaluate_assignment(*e); },
             [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
             [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
             [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
@@ -201,36 +202,50 @@ core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
 
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     switch (expr.op_.type_) {
-        case tt::EQUAL:
-        case tt::PLUS_EQUAL:
-        case tt::MINUS_EQUAL:
-        case tt::STAR_EQUAL:
-        case tt::SLASH_EQUAL:
-        case tt::PERCENT_EQUAL:
-            return evaluate_assignment(expr);
-
         case tt::AND:
         case tt::OR:
             return evaluate_logical(expr);
-
         default:
             return evaluate_arithmetic(expr);
     }
 }
 
-core::value interpreter::evaluate_assignment(const ast::binary_expr& expr) {
-    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr.left_)) {
-        return evaluate_index_assignment(expr, **idx);
+core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
+    auto op = expr.op_.type_;
+    auto right = evaluate(expr.value_);
+
+    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr.target_)) {
+        const auto& var_expr = std::get<ast::variable_expr>((*idx)->object_);
+        auto* var = values_.get(var_expr.name_.lexeme_);
+        auto* arr = var->value_.as_array();
+
+        auto index_val = evaluate((*idx)->index_);
+        auto i = *index_val.as_int();
+
+        if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
+
+        auto& element = (*arr)[i];
+
+        if (op == tt::EQUAL) {
+            element = convert(std::move(right), var->static_type_.element_type());
+            return element;
+        }
+
+        core::value result;
+        switch (op) {
+            case tt::PLUS_EQUAL:  result = element.add(right); break;
+            case tt::MINUS_EQUAL: result = element.sub(right); break;
+            case tt::STAR_EQUAL:  result = element.mul(right); break;
+            case tt::SLASH_EQUAL: result = element.div(right); break;
+            case tt::PERCENT_EQUAL: result = element.mod(right); break;
+            default: break;
+        }
+        element = convert(std::move(result), var->static_type_.element_type());
+        return element;
     }
 
-    const auto& var = std::get<ast::variable_expr>(expr.left_);
-    return evaluate_simple_assignment(expr, var);
-}
-
-core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr, const ast::variable_expr& var_expr) {
+    const auto& var_expr = std::get<ast::variable_expr>(expr.target_);
     auto* var = values_.get(var_expr.name_.lexeme_);
-    auto right = evaluate(expr.right_);
-    auto op = expr.op_.type_;
     auto& val = var->value_;
 
     if (op == tt::EQUAL) {
@@ -240,72 +255,15 @@ core::value interpreter::evaluate_simple_assignment(const ast::binary_expr& expr
 
     core::value result;
     switch (op) {
-        case tt::PLUS_EQUAL:
-            result = val.add(right);
-            break;
-        case tt::MINUS_EQUAL:
-            result = val.sub(right);
-            break;
-        case tt::STAR_EQUAL:
-            result = val.mul(right);
-            break;
-        case tt::SLASH_EQUAL:
-            result = val.div(right);
-            break;
-        case tt::PERCENT_EQUAL:
-            result = val.mod(right);
-            break;
-        default:
-            break;
+        case tt::PLUS_EQUAL:  result = val.add(right); break;
+        case tt::MINUS_EQUAL: result = val.sub(right); break;
+        case tt::STAR_EQUAL:  result = val.mul(right); break;
+        case tt::SLASH_EQUAL: result = val.div(right); break;
+        case tt::PERCENT_EQUAL: result = val.mod(right); break;
+        default: break;
     }
-
     val = convert(std::move(result), var->static_type_);
     return val;
-}
-
-core::value interpreter::evaluate_index_assignment(const ast::binary_expr& expr, const ast::index_expr& idx) {
-    const auto& var_expr = std::get<ast::variable_expr>(idx.object_);
-    auto* var = values_.get(var_expr.name_.lexeme_);
-    auto* arr = var->value_.as_array();
-
-    auto index_val = evaluate(idx.index_);
-    auto right = evaluate(expr.right_);
-
-    auto i = *index_val.as_int();
-
-    if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
-
-    auto& element = (*arr)[i];
-
-    auto op = expr.op_.type_;
-    if (op == tt::EQUAL) {
-        element = convert(std::move(right), var->static_type_.element_type());
-        return element;
-    }
-
-    core::value result;
-    switch (op) {
-        case tt::PLUS_EQUAL:
-            result = element.add(right);
-            break;
-        case tt::MINUS_EQUAL:
-            result = element.sub(right);
-            break;
-        case tt::STAR_EQUAL:
-            result = element.mul(right);
-            break;
-        case tt::SLASH_EQUAL:
-            result = element.div(right);
-            break;
-        case tt::PERCENT_EQUAL:
-            result = element.mod(right);
-            break;
-        default:
-            break;
-    }
-
-    element = convert(std::move(result), var->static_type_.element_type());
-    return element;
 }
 
 core::value interpreter::evaluate_logical(const ast::binary_expr& expr) {

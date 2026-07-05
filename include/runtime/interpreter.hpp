@@ -41,7 +41,7 @@ private:
     core::value evaluate(const ast::expression& expr);
     core::value evaluate_literal(const ast::literal_expr& expr);
     core::value evaluate_variable(const ast::variable_expr& expr);
-    core::value evaluate_assignment(const ast::binary_expr& expr);
+    core::value evaluate_assignment(const ast::assignment_expr& expr);
     core::value evaluate_simple_assignment(const ast::binary_expr& expr, const ast::variable_expr& var);
     core::value evaluate_index_assignment(const ast::binary_expr& expr, const ast::index_expr& idx);
     core::value evaluate_logical(const ast::binary_expr& expr);

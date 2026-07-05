@@ -133,6 +133,20 @@ TEST_P(binary_expr_test, parsed) {
     EXPECT_FALSE(h.had_error());
 }
 
+TEST(parser_test, assignment_expression) {
+    parser_harness h("int x; x = 42;");
+
+    ASSERT_GE(h.ast().size(), 2);
+    auto* es = as<ast::expression_stmt>(*h.ast()[1]);
+    ASSERT_NE(es, nullptr);
+
+    auto* assign = as<ast::assignment_expr>(es->expr_);
+    ASSERT_NE(assign, nullptr);
+    EXPECT_EQ(assign->op_.lexeme_, "=");
+    EXPECT_TRUE(is_variable(assign->target_, "x"));
+    EXPECT_TRUE(is_literal(assign->value_, "42"));
+}
+
 INSTANTIATE_TEST_SUITE_P(arithmetic, binary_expr_test,
                          ::testing::Values(expr_case{"int r = x + 1;", "+", "x", "1"},
                                            expr_case{"int r = x - 1;", "-", "x", "1"},

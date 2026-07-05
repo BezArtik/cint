@@ -2,6 +2,7 @@
 
 #include "parser/parser.hpp"
 
+#include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/token/keywords.hpp"
@@ -253,7 +254,7 @@ ast::expression parser::assignment() {
     if (match({tt::EQUAL, tt::PLUS_EQUAL, tt::MINUS_EQUAL, tt::STAR_EQUAL, tt::SLASH_EQUAL, tt::PERCENT_EQUAL})) {
         const auto& op = prev();
         auto value = assignment();
-        return ast::make_expr<ast::binary_expr>(arena_, op, std::move(expr), op, std::move(value));
+        return ast::make_expr<ast::assignment_expr>(arena_, op, std::move(expr), op, std::move(value));
     }
     return expr;
 }
