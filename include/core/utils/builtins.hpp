@@ -26,14 +26,13 @@ value print_bool(const std::vector<value>& args);
 value print_str(const std::vector<value>& args);
 value print_newline(const std::vector<value>& args);
 value input(const std::vector<value>& args);
-value sqrt_dbl(const std::vector<value>& args);
-value sin_dbl(const std::vector<value>& args);
-value to_int_from_int(const std::vector<value>& args);
-value to_int_from_dbl(const std::vector<value>& args);
-value to_int_from_str(const std::vector<value>& args);
-value to_dbl_from_int(const std::vector<value>& args);
-value to_dbl_from_dbl(const std::vector<value>& args);
-value to_dbl_from_str(const std::vector<value>& args);
+value sqrt(const std::vector<value>& args);
+value sin(const std::vector<value>& args);
+value exp(const std::vector<value>& args);
+value dtoi(const std::vector<value>& args);
+value stoi(const std::vector<value>& args);
+value itod(const std::vector<value>& args);
+value stod(const std::vector<value>& args);
 }  // namespace builtin_impl
 
 inline const std::array builtins = {
@@ -45,14 +44,15 @@ inline const std::array builtins = {
 
     builtin_def{"input", type::string_type(), {}, builtin_impl::input},
 
-    builtin_def{"sqrt", type::double_type(), {type::double_type()}, builtin_impl::sqrt_dbl},
-    builtin_def{"sin", type::double_type(), {type::double_type()}, builtin_impl::sin_dbl},
+    builtin_def{"sqrt", type::double_type(), {type::double_type()}, builtin_impl::sqrt},
+    builtin_def{"sin", type::double_type(), {type::double_type()}, builtin_impl::sin},
+    builtin_def{"exp", type::double_type(), {type::double_type()}, builtin_impl::exp},
 
-    builtin_def{"dbl_to_int", type::int_type(), {type::double_type()}, builtin_impl::to_int_from_dbl},
-    builtin_def{"str_to_int", type::int_type(), {type::string_type()}, builtin_impl::to_int_from_str},
+    builtin_def{"dtoi", type::int_type(), {type::double_type()}, builtin_impl::dtoi},
+    builtin_def{"stoi", type::int_type(), {type::string_type()}, builtin_impl::stoi},
 
-    builtin_def{"int_to_dbl", type::double_type(), {type::int_type()}, builtin_impl::to_dbl_from_int},
-    builtin_def{"str_to_dbl", type::double_type(), {type::string_type()}, builtin_impl::to_dbl_from_str},
+    builtin_def{"itod", type::double_type(), {type::int_type()}, builtin_impl::itod},
+    builtin_def{"stod", type::double_type(), {type::string_type()}, builtin_impl::stod},
 };
 
 }  // namespace core

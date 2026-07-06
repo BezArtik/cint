@@ -1,3 +1,4 @@
+// samples/bubble_sort.c
 
 int arr[] = {64, 34, 25, 12, 22, 11, 90, 45};
 
@@ -11,4 +12,4 @@ for (int i = 0; i < 7; i++) {
     }
 }
 
-for (int i = 0; i < 8; i++) { print(arr[i]); }
+for (int i = 0; i < 8; i++) { print_int(arr[i]); }

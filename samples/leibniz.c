@@ -1,4 +1,4 @@
-
+// samples/leibniz.c
 
 double leibniz_pi(int terms) {
     double pi = 0.0;
@@ -17,4 +17,4 @@ double leibniz_pi(int terms) {
 }
 
 double result = leibniz_pi(100000);
-print(result);
+print_dbl(result);

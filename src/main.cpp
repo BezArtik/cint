@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
         }
         const auto finish = std::chrono::steady_clock::now();
         const std::chrono::duration<double> time_program = finish - start;
-        std::cout << "Program execution time (" << time_program << ")\n";
+        std::cout << "\nProgram execution time (" << time_program << ")\n";
         std::cout << "Program finished successfully.\n";
 
     } catch (const std::exception& e) {

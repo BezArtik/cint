@@ -1,9 +1,7 @@
-
+// samples/fib.c
 
 int fib(int n) {
-    if (n < 2) {
-        return n;
-    }
+    if (n < 2) { return n; }
     int a = 0;
     int b = 1;
     int i = 2;
@@ -18,6 +16,6 @@ int fib(int n) {
 
 int i = 0;
 while (i < 20) {
-    print(fib(i));
+    print_int(fib(i));
     i = i + 1;
 }

@@ -1,3 +1,4 @@
+// samples/prime.c
 
 bool is_prime(int n) {
     if (n <= 1) { return false; }
@@ -10,14 +11,14 @@ bool is_prime(int n) {
 }
 
 int count = 0;
-print("Enter the upper limit for prime numbers: ");
-int n = to_int(input());
+print_str("Enter the upper limit for prime numbers: ");
+int n = stoi(input());
 for (int i = 2; i <= n; ++i) {
     bool prime = is_prime(i);
     if (prime) {
-        print(i);
+        print_int(i);
         ++count;
     }
 }
-print("total:");
-print(count);
+print_str("total:");
+print_int(count);

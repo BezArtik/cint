@@ -1,4 +1,4 @@
-
+// samples/monte_carlo.c
 
 int monte_carlo_pi(int iterations) {
     int inside = 0;
@@ -22,7 +22,7 @@ int monte_carlo_pi(int iterations) {
     }
 
     double pi = 4.0 * inside / iterations;
-    print(pi);
+    print_dbl(pi);
     return inside;
 }
 
