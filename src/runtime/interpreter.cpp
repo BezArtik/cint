@@ -11,6 +11,7 @@
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug.hpp"
 
@@ -233,12 +234,23 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
 
         core::value result;
         switch (op) {
-            case tt::PLUS_EQUAL:  result = element.add(right); break;
-            case tt::MINUS_EQUAL: result = element.sub(right); break;
-            case tt::STAR_EQUAL:  result = element.mul(right); break;
-            case tt::SLASH_EQUAL: result = element.div(right); break;
-            case tt::PERCENT_EQUAL: result = element.mod(right); break;
-            default: break;
+            case tt::PLUS_EQUAL:
+                result = core::ops::add(element, right);
+                break;
+            case tt::MINUS_EQUAL:
+                result = core::ops::sub(element, right);
+                break;
+            case tt::STAR_EQUAL:
+                result = core::ops::mul(element, right);
+                break;
+            case tt::SLASH_EQUAL:
+                result = core::ops::div(element, right);
+                break;
+            case tt::PERCENT_EQUAL:
+                result = core::ops::mod(element, right);
+                break;
+            default:
+                break;
         }
         element = convert(std::move(result), var->static_type_.element_type());
         return element;
@@ -255,12 +267,23 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
 
     core::value result;
     switch (op) {
-        case tt::PLUS_EQUAL:  result = val.add(right); break;
-        case tt::MINUS_EQUAL: result = val.sub(right); break;
-        case tt::STAR_EQUAL:  result = val.mul(right); break;
-        case tt::SLASH_EQUAL: result = val.div(right); break;
-        case tt::PERCENT_EQUAL: result = val.mod(right); break;
-        default: break;
+        case tt::PLUS_EQUAL:
+            result = core::ops::add(val, right);
+            break;
+        case tt::MINUS_EQUAL:
+            result = core::ops::sub(val, right);
+            break;
+        case tt::STAR_EQUAL:
+            result = core::ops::mul(val, right);
+            break;
+        case tt::SLASH_EQUAL:
+            result = core::ops::div(val, right);
+            break;
+        case tt::PERCENT_EQUAL:
+            result = core::ops::mod(val, right);
+            break;
+        default:
+            break;
     }
     val = convert(std::move(result), var->static_type_);
     return val;
@@ -283,27 +306,27 @@ core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
     try {
         switch (expr.op_.type_) {
             case tt::PLUS:
-                return left.add(right);
+                return core::ops::add(left, right);
             case tt::MINUS:
-                return left.sub(right);
+                return core::ops::sub(left, right);
             case tt::STAR:
-                return left.mul(right);
+                return core::ops::mul(left, right);
             case tt::SLASH:
-                return left.div(right);
+                return core::ops::div(left, right);
             case tt::PERCENT:
-                return left.mod(right);
+                return core::ops::mod(left, right);
             case tt::EQUAL_EQUAL:
-                return left.eq(right);
+                return core::ops::eq(left, right);
             case tt::BANG_EQUAL:
-                return left.neq(right);
+                return core::ops::neq(left, right);
             case tt::LESS:
-                return left.lt(right);
+                return core::ops::lt(left, right);
             case tt::LESS_EQUAL:
-                return left.le(right);
+                return core::ops::le(left, right);
             case tt::GREATER:
-                return left.gt(right);
+                return core::ops::gt(left, right);
             case tt::GREATER_EQUAL:
-                return left.ge(right);
+                return core::ops::ge(left, right);
             default:
                 reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
         }
@@ -336,7 +359,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
             return core::value(-operand.to_double());
         }
         case tt::BANG:
-            return operand.not_op();
+            return core::ops::not_op(operand);
 
         case tt::INCREMENT:
         case tt::DECREMENT: {

@@ -8,7 +8,6 @@
 
 #include <cassert>
 #include <charconv>
-#include <functional>
 
 namespace core {
 
@@ -98,80 +97,6 @@ const value::array_t* value::as_array() const noexcept {
 value::array_t* value::as_array() noexcept {
     if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
     return nullptr;
-}
-
-value value::add(const value& other) const {
-    return arithmetic_op(other, std::plus<>{});
-}
-value value::sub(const value& other) const {
-    return arithmetic_op(other, std::minus<>{});
-}
-value value::mul(const value& other) const {
-    return arithmetic_op(other, std::multiplies<>{});
-}
-value value::div(const value& other) const {
-    return arithmetic_op(other, [](auto a, auto b) {
-        if (b == 0) throw core::interpret_error{err::division_by_zero};
-        return a / b;
-    });
-}
-
-value value::mod(const value& other) const {
-    assert(type().is_int() && other.type().is_int());
-    auto li = as_int();
-    auto ri = other.as_int();
-    if (!li || !ri) throw core::interpret_error{err::modulo_requires_int};
-    if (*ri == 0) throw core::interpret_error{err::modulo_by_zero};
-    return value(*li % *ri);
-}
-
-value value::eq(const value& other) const {
-    auto lt = type();
-    auto rt = other.type();
-    if (lt != rt) {
-        if (lt.is_numeric() && rt.is_numeric()) return value(to_double() == other.to_double());
-        return value(false);
-    }
-    if (lt.is_int()) return value(to_int() == other.to_int());
-    if (lt.is_double()) return value(to_double() == other.to_double());
-    if (lt.is_bool()) return value(to_bool() == other.to_bool());
-    if (lt.is_string()) return value(to_string() == other.to_string());
-    return value(false);
-}
-
-value value::neq(const value& other) const {
-    return eq(other).not_op();
-}
-
-value value::lt(const value& other) const {
-    if (type().is_int() && other.type().is_int()) return value(to_int() < other.to_int());
-    return value(to_double() < other.to_double());
-}
-
-value value::le(const value& other) const {
-    return lt(other).or_op(eq(other));
-}
-
-value value::gt(const value& other) const {
-    return le(other).not_op();
-}
-
-value value::ge(const value& other) const {
-    return lt(other).not_op();
-}
-
-value value::and_op(const value& other) const {
-    assert(type().is_bool() && other.type().is_bool());
-    return value(to_bool() && other.to_bool());
-}
-
-value value::or_op(const value& other) const {
-    assert(type().is_bool() && other.type().is_bool());
-    return value(to_bool() || other.to_bool());
-}
-
-value value::not_op() const {
-    return value(!to_bool());
 }
 
 }  // namespace core

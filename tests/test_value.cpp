@@ -2,9 +2,9 @@
 
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
+#include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 
-#include <cstdint>
 #include <gtest/gtest.h>
 #include <string>
 
@@ -12,6 +12,7 @@ namespace tests {
 
 using t = core::type;
 using v = core::value;
+namespace op = core::ops;
 
 TEST(value_test, default_is_void) {
     v v;
@@ -70,7 +71,7 @@ TEST(value_test, double_to_int) {
 TEST(value_test, add_ints) {
     v a(v::int_t{10});
     v b(v::int_t{20});
-    auto result = a.add(b);
+    auto result = op::add(a, b);
     EXPECT_EQ(result.type(), t::int_type());
     EXPECT_EQ(result.as_int().value(), 30);
 }
@@ -78,7 +79,7 @@ TEST(value_test, add_ints) {
 TEST(value_test, add_int_and_double) {
     v a(v::int_t{10});
     v b(3.5);
-    auto result = a.add(b);
+    auto result = op::add(a, b);
     EXPECT_EQ(result.type(), t::double_type());
     EXPECT_DOUBLE_EQ(result.as_double().value(), 13.5);
 }
@@ -86,85 +87,85 @@ TEST(value_test, add_int_and_double) {
 TEST(value_test, sub_ints) {
     v a(v::int_t{30});
     v b(v::int_t{10});
-    auto result = a.sub(b);
+    auto result = op::sub(a, b);
     EXPECT_EQ(result.as_int().value(), 20);
 }
 
 TEST(value_test, mul_ints) {
     v a(v::int_t{6});
     v b(v::int_t{7});
-    auto result = a.mul(b);
+    auto result = op::mul(a, b);
     EXPECT_EQ(result.as_int().value(), 42);
 }
 
 TEST(value_test, div_ints) {
     v a(v::int_t{20});
     v b(v::int_t{4});
-    auto result = a.div(b);
+    auto result = op::div(a, b);
     EXPECT_EQ(result.as_int().value(), 5);
 }
 
 TEST(value_test, div_by_zero) {
     v a(v::int_t{1});
     v b(v::int_t{0});
-    EXPECT_THROW(a.div(b), core::interpret_error);
+    EXPECT_THROW(op::div(a, b), core::interpret_error);
 }
 
 TEST(value_test, mod_ints) {
     v a(v::int_t{17});
     v b(v::int_t{5});
-    auto result = a.mod(b);
+    auto result = op::mod(a, b);
     EXPECT_EQ(result.as_int().value(), 2);
 }
 
 TEST(value_test, mod_by_zero) {
     v a(v::int_t{1});
     v b(v::int_t{0});
-    EXPECT_THROW(a.mod(b), core::interpret_error);
+    EXPECT_THROW(op::mod(a, b), core::interpret_error);
 }
 
 TEST(value_test, eq_ints) {
     v a(v::int_t{42});
     v b(v::int_t{42});
     v c(v::int_t{0});
-    EXPECT_TRUE(a.eq(b).as_bool().value());
-    EXPECT_FALSE(a.eq(c).as_bool().value());
+    EXPECT_TRUE(op::eq(a, b).as_bool().value());
+    EXPECT_FALSE(op::eq(a, c).as_bool().value());
 }
 
 TEST(value_test, lt_ints) {
     v a(v::int_t{10});
     v b(v::int_t{20});
-    EXPECT_TRUE(a.lt(b).as_bool().value());
-    EXPECT_FALSE(b.lt(a).as_bool().value());
+    EXPECT_TRUE(op::lt(a, b).as_bool().value());
+    EXPECT_FALSE(op::lt(b, a).as_bool().value());
 }
 
 TEST(value_test, and_op) {
     v t(true);
     v f(false);
-    EXPECT_TRUE(t.and_op(t).as_bool().value());
-    EXPECT_FALSE(t.and_op(f).as_bool().value());
-    EXPECT_FALSE(f.and_op(t).as_bool().value());
+    EXPECT_TRUE(op::and_op(t, t).as_bool().value());
+    EXPECT_FALSE(op::and_op(t, f).as_bool().value());
+    EXPECT_FALSE(op::and_op(f, t).as_bool().value());
 }
 
 TEST(value_test, or_op) {
     v t(true);
     v f(false);
-    EXPECT_TRUE(t.or_op(t).as_bool().value());
-    EXPECT_TRUE(t.or_op(f).as_bool().value());
-    EXPECT_FALSE(f.or_op(f).as_bool().value());
+    EXPECT_TRUE(op::or_op(t, t).as_bool().value());
+    EXPECT_TRUE(op::or_op(t, f).as_bool().value());
+    EXPECT_FALSE(op::or_op(f, f).as_bool().value());
 }
 
 TEST(value_test, not_op) {
     v t(true);
     v f(false);
-    EXPECT_FALSE(t.not_op().as_bool().value());
-    EXPECT_TRUE(f.not_op().as_bool().value());
+    EXPECT_FALSE(op::not_op(t).as_bool().value());
+    EXPECT_TRUE(op::not_op(f).as_bool().value());
 }
 
 TEST(value_test, invalid_add) {
     v a(true);
     v b(v::int_t{1});
-    EXPECT_THROW(a.add(b), core::interpret_error);
+    EXPECT_THROW(op::add(a, b), core::interpret_error);
 }
 
 }  // namespace tests

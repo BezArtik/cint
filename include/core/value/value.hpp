@@ -43,28 +43,6 @@ public:
     const array_t* as_array() const noexcept;
     array_t* as_array() noexcept;
 
-    template <typename Op>
-    value arithmetic_op(const value& other, Op&& op) const {
-        if (type().is_int() && other.type().is_int()) return value(op(to_int(), other.to_int()));
-        return value(op(to_double(), other.to_double()));
-    }
-    value add(const value& other) const;
-    value sub(const value& other) const;
-    value mul(const value& other) const;
-    value div(const value& other) const;
-    value mod(const value& other) const;
-
-    value eq(const value& other) const;
-    value neq(const value& other) const;
-    value lt(const value& other) const;
-    value le(const value& other) const;
-    value gt(const value& other) const;
-    value ge(const value& other) const;
-
-    value and_op(const value& other) const;
-    value or_op(const value& other) const;
-    value not_op() const;
-
 private:
     struct array_info {
         core::type element_type_;
