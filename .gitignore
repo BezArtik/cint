@@ -7,4 +7,3 @@ merged_project.txt
 /out
 .cache/
 compile_commands.json
-.clang-format
