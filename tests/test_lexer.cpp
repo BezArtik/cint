@@ -6,7 +6,6 @@
 
 #include <gtest/gtest.h>
 #include <string>
-#include <tuple>
 #include <vector>
 
 namespace tests {
@@ -82,7 +81,7 @@ INSTANTIATE_TEST_SUITE_P(
                       single_token_case{"*=", tt::STAR_EQUAL}, single_token_case{"/=", tt::SLASH_EQUAL},
                       single_token_case{"%=", tt::PERCENT_EQUAL},
 
-                      single_token_case{"&&", tt::AND}, single_token_case{"||", tt::OR}));
+                      single_token_case{"&&", tt::LOGICAL_AND}, single_token_case{"||", tt::LOGICAL_OR}));
 
 struct keyword_case {
     std::string_view source_;

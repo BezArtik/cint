@@ -28,6 +28,7 @@ using tt = core::token_type;
 using t = core::type;
 using k = core::type::kind;
 using err = core::error_code;
+namespace op = core::ops;
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug) : reporter_(reporter), debug_(debug) {
     for (const auto& def : core::builtins) functions_.emplace(def.name_, def.impl_);
@@ -47,7 +48,7 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
             core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
-            } catch (const return_exception& ret) {
+            } catch (const interpreter::return_exception& ret) {
                 if (debug_) {
                     std::cerr << "[main] returned ";
                     debug::print_value(ret.return_value_);
@@ -139,7 +140,7 @@ void interpreter::execute_if(const ast::if_stmt& stmt) {
 void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
     stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = core::value();
-    throw return_exception{std::move(ret_val)};
+    throw interpreter::return_exception{std::move(ret_val)};
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
@@ -203,8 +204,8 @@ core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
 
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     switch (expr.op_.type_) {
-        case tt::AND:
-        case tt::OR:
+        case tt::LOGICAL_AND:
+        case tt::LOGICAL_OR:
             return evaluate_logical(expr);
         default:
             return evaluate_arithmetic(expr);
@@ -223,7 +224,8 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
         auto index_val = evaluate((*idx)->index_);
         auto i = *index_val.as_int();
 
-        if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
+        if (i < 0 || i >= static_cast<core::value::int_t>(arr->size()))
+            reporter_.interpret_error(expr, err::index_out_of_bounds);
 
         auto& element = (*arr)[i];
 
@@ -235,20 +237,36 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
         core::value result;
         switch (op) {
             case tt::PLUS_EQUAL:
-                result = core::ops::add(element, right);
+                result = op::add(element, right);
                 break;
             case tt::MINUS_EQUAL:
-                result = core::ops::sub(element, right);
+                result = op::sub(element, right);
                 break;
             case tt::STAR_EQUAL:
-                result = core::ops::mul(element, right);
+                result = op::mul(element, right);
                 break;
             case tt::SLASH_EQUAL:
-                result = core::ops::div(element, right);
+                result = op::div(element, right);
                 break;
             case tt::PERCENT_EQUAL:
-                result = core::ops::mod(element, right);
+                result = op::mod(element, right);
                 break;
+            case tt::BIT_AND_EQUAL:
+                result = op::bit_and(element, right);
+                break;
+            case tt::BIT_OR_EQUAL:
+                result = op::bit_or(element, right);
+                break;
+            case tt::XOR_EQUAL:
+                result = op::bit_xor(element, right);
+                break;
+            case tt::SHL_EQUAL:
+                result = op::shl(element, right);
+                break;
+            case tt::SHR_EQUAL:
+                result = op::shr(element, right);
+                break;
+
             default:
                 break;
         }
@@ -268,19 +286,34 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     core::value result;
     switch (op) {
         case tt::PLUS_EQUAL:
-            result = core::ops::add(val, right);
+            result = op::add(val, right);
             break;
         case tt::MINUS_EQUAL:
-            result = core::ops::sub(val, right);
+            result = op::sub(val, right);
             break;
         case tt::STAR_EQUAL:
-            result = core::ops::mul(val, right);
+            result = op::mul(val, right);
             break;
         case tt::SLASH_EQUAL:
-            result = core::ops::div(val, right);
+            result = op::div(val, right);
             break;
         case tt::PERCENT_EQUAL:
-            result = core::ops::mod(val, right);
+            result = op::mod(val, right);
+            break;
+        case tt::BIT_AND_EQUAL:
+            result = op::bit_and(val, right);
+            break;
+        case tt::BIT_OR_EQUAL:
+            result = op::bit_or(val, right);
+            break;
+        case tt::XOR_EQUAL:
+            result = op::bit_xor(val, right);
+            break;
+        case tt::SHL_EQUAL:
+            result = op::shl(val, right);
+            break;
+        case tt::SHR_EQUAL:
+            result = op::shr(val, right);
             break;
         default:
             break;
@@ -291,7 +324,7 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
 
 core::value interpreter::evaluate_logical(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
-    if (expr.op_.type_ == tt::AND) {
+    if (expr.op_.type_ == tt::LOGICAL_AND) {
         if (!left.to_bool()) return core::value(false);
     } else {
         if (left.to_bool()) return core::value(true);
@@ -306,27 +339,37 @@ core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
     try {
         switch (expr.op_.type_) {
             case tt::PLUS:
-                return core::ops::add(left, right);
+                return op::add(left, right);
             case tt::MINUS:
-                return core::ops::sub(left, right);
+                return op::sub(left, right);
             case tt::STAR:
-                return core::ops::mul(left, right);
+                return op::mul(left, right);
             case tt::SLASH:
-                return core::ops::div(left, right);
+                return op::div(left, right);
             case tt::PERCENT:
-                return core::ops::mod(left, right);
+                return op::mod(left, right);
             case tt::EQUAL_EQUAL:
-                return core::ops::eq(left, right);
+                return op::eq(left, right);
             case tt::BANG_EQUAL:
-                return core::ops::neq(left, right);
+                return op::neq(left, right);
             case tt::LESS:
-                return core::ops::lt(left, right);
+                return op::lt(left, right);
             case tt::LESS_EQUAL:
-                return core::ops::le(left, right);
+                return op::le(left, right);
             case tt::GREATER:
-                return core::ops::gt(left, right);
+                return op::gt(left, right);
             case tt::GREATER_EQUAL:
-                return core::ops::ge(left, right);
+                return op::ge(left, right);
+            case tt::BIT_AND:
+                return op::bit_and(left, right);
+            case tt::BIT_OR:
+                return op::bit_or(left, right);
+            case tt::XOR:
+                return op::bit_xor(left, right);
+            case tt::SHL:
+                return op::shl(left, right);
+            case tt::SHR:
+                return op::shr(left, right);
             default:
                 reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
         }
@@ -359,7 +402,10 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
             return core::value(-operand.to_double());
         }
         case tt::BANG:
-            return core::ops::not_op(operand);
+            return op::not_op(operand);
+
+        case tt::BIT_NOT:
+            return op::bit_not(operand);
 
         case tt::INCREMENT:
         case tt::DECREMENT: {
@@ -412,24 +458,20 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     }
 
     auto* func = std::get<const ast::func_declaration*>(callable);
-    return call_user_function(*func, args, expr);
-}
-
-core::value interpreter::call_user_function(const ast::func_declaration& func, const std::vector<core::value>& args,
-                                            const ast::call_expr& expr) {
     core::scope_guard guard(values_);
 
-    for (size_t i = 0; i < func.params_.size(); ++i) {
-        auto&& param = func.params_[i];
-        auto&& param_t = param.type_;
+    auto fn_param = func->params_;
+    for (size_t i = 0; i < fn_param.size(); ++i) {
+        auto& param = fn_param[i];
+        auto& param_t = param.type_;
         auto converted = convert(std::move(args[i]), param_t);
         values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
     }
 
     try {
-        for (const auto& s : func.body_->statements_) execute(*s);
-    } catch (const return_exception& ret) { return ret.return_value_; }
-    return default_value(func.return_type_);
+        for (const auto& s : func->body_->statements_) execute(*s);
+    } catch (const interpreter::return_exception& ret) { return ret.return_value_; }
+    return default_value(func->return_type_);
 }
 
 core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
@@ -451,7 +493,8 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     const auto* arr = obj.as_array();
     auto i = *idx.as_int();
 
-    if (i < 0 || i >= arr->size()) reporter_.interpret_error(expr, err::index_out_of_bounds);
+    if (i < 0 || i >= static_cast<core::value::int_t>(arr->size()))
+        reporter_.interpret_error(expr, err::index_out_of_bounds);
 
     return (*arr)[i];
 }
@@ -468,8 +511,11 @@ core::value interpreter::default_value(const core::type& t) {
             return core::value(core::value::string_t(""));
         case k::VOID:
             return core::value();
-        case k::ARRAY:
-            return core::value(t.element_type(), core::value::array_t{});
+        case k::ARRAY: {
+            core::value::array_t elements;
+            elements.resize(t.array_size(), default_value(t.element_type()));
+            return core::value(t.element_type(), std::move(elements));
+        }
         default:
             return core::value();
     }

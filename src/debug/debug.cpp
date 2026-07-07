@@ -118,7 +118,7 @@ void print_var_declaration(const ast::var_declaration& s, uint32_t level) {
 void print_block(const ast::block_stmt& s, uint32_t level) {
     std::cerr << indent_str(level) << "BlockStmt [" << s.statements_.size() << " statements]\n";
 
-    for (const auto& inner : s.statements_) { print_statement(*inner, level + 1); }
+    for (const auto& inner : s.statements_) print_statement(*inner, level + 1);
 }
 
 void print_while(const ast::while_stmt& s, uint32_t level) {
@@ -183,14 +183,14 @@ void print_func_declaration(const ast::func_declaration& s, uint32_t level) {
 
     std::cerr << indent_str(level + 1) << "Params: ";
     if (s.params_.empty()) { std::cerr << "(none)"; }
-    for (const auto& p : s.params_) { std::cerr << p.name_.lexeme_ << " : " << type_name(p.type_) << " "; }
+    for (const auto& p : s.params_) std::cerr << p.name_.lexeme_ << " : " << type_name(p.type_) << " ";
     std::cerr << "\n";
 
     std::cerr << indent_str(level + 1) << "Body:\n";
-    for (const auto& inner : s.body_->statements_) { print_statement(*inner, level + 2); }
+    for (const auto& inner : s.body_->statements_) print_statement(*inner, level + 2);
 }
 
-}  // anonymous namespace
+}  // namespace
 
 const char* type_name(const core::type& t) {
     if (t.is_int()) return "int";

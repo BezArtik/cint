@@ -36,24 +36,9 @@ private:
     ast::stmt_ptr block_statement();
     ast::stmt_ptr return_statement();
 
-    template <typename F>
-    ast::expression parse_binary(std::initializer_list<core::token_type> operators, F&& sub_parser) {
-        auto left = sub_parser();
-        while (match(operators)) {
-            const auto& op = prev();
-            auto right = sub_parser();
-            left = ast::make_expr<ast::binary_expr>(arena_, op, std::move(left), op, std::move(right));
-        }
-        return left;
-    }
+    ast::expression parse_expression(int8_t precedence);
     ast::expression expression();
-    ast::expression equality();
     ast::expression assignment();
-    ast::expression logic_or();
-    ast::expression logic_and();
-    ast::expression comparison();
-    ast::expression term();
-    ast::expression factor();
     ast::expression unary();
     ast::expression postfix();
     ast::expression array_literal();

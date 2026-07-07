@@ -39,8 +39,20 @@ namespace core {
     X(STAR_EQUAL)      \
     X(SLASH_EQUAL)     \
     X(PERCENT_EQUAL)   \
-    X(AND)             \
-    X(OR)              \
+    X(BIT_AND)         \
+    X(BIT_OR)          \
+    X(XOR)             \
+    X(BIT_NOT)         \
+    X(SHL)             \
+    X(SHR)             \
+    X(BIT_AND_EQUAL)   \
+    X(BIT_OR_EQUAL)    \
+    X(XOR_EQUAL)       \
+    X(BIT_NOT_EQUAL)   \
+    X(SHL_EQUAL)       \
+    X(SHR_EQUAL)       \
+    X(LOGICAL_AND)     \
+    X(LOGICAL_OR)      \
     X(IDENTIFIER)      \
     X(STRING)          \
     X(NUMBER)          \

@@ -44,7 +44,6 @@ value div(const value& a, const value& b) {
 value mod(const value& a, const value& b) {
     auto li = a.as_int();
     auto ri = b.as_int();
-    if (!li || !ri) throw core::interpret_error{err::modulo_requires_int};
     if (*ri == 0) throw core::interpret_error{err::modulo_by_zero};
     return value(*li % *ri);
 }
@@ -94,6 +93,30 @@ value or_op(const value& a, const value& b) {
 
 value not_op(const value& a) {
     return value(!a.to_bool());
+}
+
+value bit_and(const value& a, const value& b) {
+    return value(a.to_int() & b.to_int());
+}
+
+value bit_or(const value& a, const value& b) {
+    return value(a.to_int() | b.to_int());
+}
+
+value bit_xor(const value& a, const value& b) {
+    return value(a.to_int() ^ b.to_int());
+}
+
+value bit_not(const value& a) {
+    return value(~a.to_int());
+}
+
+value shl(const value& a, const value& b) {
+    return value(a.to_int() << b.to_int());
+}
+
+value shr(const value& a, const value& b) {
+    return value(a.to_int() >> b.to_int());
 }
 
 }  // namespace core::ops

@@ -1,6 +1,8 @@
 // samples/sieve.c
 
-int MAX = 1000000;
+print_str("Enter the upper limit for prime numbers: ");
+print();
+int MAX = stoi(input());
 int BITS_PER_INT = 32;
 
 int bits[31250];
@@ -8,28 +10,14 @@ int bits[31250];
 void set_bit(int n) {
     int idx = n / BITS_PER_INT;
     int bit = n % BITS_PER_INT;
-
-    int mask = 1;
-    int i = 0;
-    while (i < bit) {
-        mask = mask * 2;
-        i++;
-    }
-
+    int mask = 1 << bit;
     bits[idx] = bits[idx] | mask;
 }
 
 bool get_bit(int n) {
     int idx = n / BITS_PER_INT;
     int bit = n % BITS_PER_INT;
-
-    int mask = 1;
-    int i = 0;
-    while (i < bit) {
-        mask = mask * 2;
-        i = i + 1;
-    }
-
+    int mask = 1 << bit;
     return (bits[idx] & mask) != 0;
 }
 
@@ -37,17 +25,15 @@ int count_primes() {
     int count = 0;
     int printed = 0;
 
-    int i = 2;
-    while (i < MAX) {
+    for (int i = 2; i < MAX; ++i) {
         if (!get_bit(i)) {
-            count = count + 1;
+            ++count;
             if (printed < 20) {
                 print_int(i);
                 print_str(" ");
-                printed = printed + 1;
+                ++printed;
             }
         }
-        i = i + 1;
     }
 
     print();
@@ -60,16 +46,10 @@ print();
 print_str("====================================");
 print();
 
-int i = 2;
-while (i * i < MAX) {
+for (int i = 2; i * i < MAX; ++i) {
     if (!get_bit(i)) {
-        int j = i * i;
-        while (j < MAX) {
-            set_bit(j);
-            j = j + i;
-        }
+        for (int j = i * i; j < MAX; j += i) { set_bit(j); }
     }
-    i = i + 1;
 }
 
 print_str("First 20 primes: ");

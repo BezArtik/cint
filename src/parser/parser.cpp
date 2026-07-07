@@ -9,13 +9,59 @@
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <utility>
 
 namespace parser {
 
 using tt = core::token_type;
 using err = core::error_code;
+
+namespace {
+
+struct infix_rule {
+    tt type_;
+    int8_t precedence_;
+    bool right_assoc_;
+};
+
+constexpr std::array infix_table = {
+    infix_rule{tt::LOGICAL_OR, 2, false},  infix_rule{tt::LOGICAL_AND, 3, false},
+
+    infix_rule{tt::BIT_OR, 4, false},      infix_rule{tt::XOR, 5, false},
+    infix_rule{tt::BIT_AND, 6, false},
+
+    infix_rule{tt::EQUAL_EQUAL, 7, false}, infix_rule{tt::BANG_EQUAL, 7, false},
+    infix_rule{tt::LESS, 8, false},        infix_rule{tt::LESS_EQUAL, 8, false},
+    infix_rule{tt::GREATER, 8, false},     infix_rule{tt::GREATER_EQUAL, 8, false},
+
+    infix_rule{tt::SHL, 9, false},         infix_rule{tt::SHR, 9, false},
+
+    infix_rule{tt::PLUS, 10, false},       infix_rule{tt::MINUS, 10, false},
+
+    infix_rule{tt::STAR, 11, false},       infix_rule{tt::SLASH, 11, false},
+    infix_rule{tt::PERCENT, 11, false},
+};
+
+int8_t get_precedence(tt type) {
+    auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
+    return it != infix_table.end() ? it->precedence_ : -1;
+}
+
+bool is_right_assoc(tt type) {
+    auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
+    return it != infix_table.end() ? it->right_assoc_ : false;
+}
+
+bool is_assignment(tt type) noexcept {
+    return type == tt::EQUAL || type == tt::PLUS_EQUAL || type == tt::MINUS_EQUAL || type == tt::STAR_EQUAL ||
+           type == tt::SLASH_EQUAL || type == tt::PERCENT_EQUAL || type == tt::BIT_AND_EQUAL ||
+           type == tt::BIT_OR_EQUAL || type == tt::XOR_EQUAL || type == tt::SHL_EQUAL || type == tt::SHR_EQUAL;
+}
+
+}  // namespace
 
 parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena)
     : tokens_(tokens), reporter_(reporter), arena_(arena) {}
@@ -93,19 +139,24 @@ ast::stmt_ptr parser::declaration() {
 
 ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
     if (match({tt::LEFT_BRACKET})) {
-        if (!check(tt::RIGHT_BRACKET)) { reporter_.parse_error(peek(), err::expected_right_bracket); }
+        size_t array_size = 0;
+
+        if (match({tt::NUMBER})) {
+            auto size_token = prev();
+            auto lex = size_token.lexeme_;
+            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), array_size);
+            if (ec != std::errc{} || ptr != lex.data() + lex.size() || array_size == 0)
+                reporter_.parse_error(size_token, err::unexpected_token);
+        } else if (!check(tt::RIGHT_BRACKET)) {
+            reporter_.parse_error(peek(), err::expected_right_bracket);
+        }
+
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
-        type = core::type::array_type(type, 0);
+        type = core::type::array_type(type, array_size);
     }
 
     std::optional<ast::expression> initializer;
-    if (match({tt::EQUAL})) {
-        if (match({tt::LEFT_BRACE})) {
-            initializer = array_literal();
-        } else {
-            initializer = expression();
-        }
-    }
+    if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? array_literal() : expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
     return ast::make_stmt<ast::var_declaration>(arena_, name, std::move(type), name, std::move(initializer));
 }
@@ -129,10 +180,10 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 }
 
 ast::func_param parser::parse_param() {
-    if (!match({tt::KEYWORD})) { reporter_.parse_error(peek(), err::expected_type); }
+    if (!match({tt::KEYWORD})) reporter_.parse_error(peek(), err::expected_type);
 
     auto kw = prev().as_keyword();
-    if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) { reporter_.parse_error(prev(), err::expected_type); }
+    if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) reporter_.parse_error(prev(), err::expected_type);
 
     const auto& type = kw->semantic_type_;
     const auto& name = consume(tt::IDENTIFIER, err::expected_identifier);
@@ -249,38 +300,32 @@ ast::expression parser::expression() {
 }
 
 ast::expression parser::assignment() {
-    auto expr = logic_or();
+    auto left = parse_expression(0);
 
-    if (match({tt::EQUAL, tt::PLUS_EQUAL, tt::MINUS_EQUAL, tt::STAR_EQUAL, tt::SLASH_EQUAL, tt::PERCENT_EQUAL})) {
-        const auto& op = prev();
-        auto value = assignment();
-        return ast::make_expr<ast::assignment_expr>(arena_, op, std::move(expr), op, std::move(value));
+    if (is_assignment(peek().type_)) {
+        auto op = advance();
+        auto right = assignment();
+        return ast::make_expr<ast::assignment_expr>(arena_, op, std::move(left), op, std::move(right));
     }
-    return expr;
+
+    return left;
 }
 
-ast::expression parser::logic_or() {
-    return parse_binary({tt::OR}, [this] { return logic_and(); });
-}
+ast::expression parser::parse_expression(int8_t precedence) {
+    auto left = unary();
 
-ast::expression parser::logic_and() {
-    return parse_binary({tt::AND}, [this] { return equality(); });
-}
+    while (true) {
+        auto op_type = peek().type_;
+        auto p = get_precedence(op_type);
+        if (p < precedence) break;
 
-ast::expression parser::equality() {
-    return parse_binary({tt::EQUAL_EQUAL, tt::BANG_EQUAL}, [this] { return comparison(); });
-}
+        auto op = advance();
+        auto next_prec = is_right_assoc(op_type) ? p : p + 1;
+        auto right = parse_expression(next_prec);
+        left = ast::make_expr<ast::binary_expr>(arena_, op, std::move(left), op, std::move(right));
+    }
 
-ast::expression parser::comparison() {
-    return parse_binary({tt::GREATER, tt::GREATER_EQUAL, tt::LESS, tt::LESS_EQUAL}, [this] { return term(); });
-}
-
-ast::expression parser::term() {
-    return parse_binary({tt::PLUS, tt::MINUS}, [this] { return factor(); });
-}
-
-ast::expression parser::factor() {
-    return parse_binary({tt::STAR, tt::SLASH, tt::PERCENT}, [this] { return unary(); });
+    return left;
 }
 
 ast::expression parser::unary() {
@@ -320,7 +365,7 @@ ast::expression parser::array_literal() {
 }
 
 ast::expression parser::primary() {
-    if (match({tt::NUMBER, tt::STRING})) { return ast::make_expr_val<ast::literal_expr>(prev()); }
+    if (match({tt::NUMBER, tt::STRING})) return ast::make_expr_val<ast::literal_expr>(prev());
 
     if (match({tt::KEYWORD})) {
         auto kw = prev().as_keyword();

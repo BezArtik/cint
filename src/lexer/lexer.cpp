@@ -66,6 +66,10 @@ void lexer::scan_token() {
         case '%':
             add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT);
             break;
+        case '^':
+            add_token(match('=') ? tt::XOR_EQUAL : tt::XOR);
+        case '~':
+            add_token(match('=') ? tt::BIT_NOT_EQUAL : tt::BIT_NOT);
         case ';':
             add_token(tt::SEMICOLON);
             break;
@@ -77,17 +81,17 @@ void lexer::scan_token() {
             add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL);
             break;
         case '<':
-            add_token(match('=') ? tt::LESS_EQUAL : tt::LESS);
+            add_token(match('=') ? tt::LESS_EQUAL : match('<') ? tt::SHL : match('=') ? tt::SHL_EQUAL : tt::LESS);
             break;
         case '>':
-            add_token(match('=') ? tt::GREATER_EQUAL : tt::GREATER);
+            add_token(match('=') ? tt::GREATER_EQUAL : match('>') ? tt::SHR : match('=') ? tt::SHR_EQUAL : tt::GREATER);
             break;
 
         case '&':
-            add_token(match('&') ? tt::AND : tt::UNKNOWN);
+            add_token(match('&') ? tt::LOGICAL_AND : match('=') ? tt::BIT_AND_EQUAL : tt::BIT_AND);
             break;
         case '|':
-            add_token(match('|') ? tt::OR : tt::UNKNOWN);
+            add_token(match('|') ? tt::LOGICAL_OR : match('=') ? tt::BIT_OR_EQUAL : tt::BIT_OR);
             break;
 
         case '/':

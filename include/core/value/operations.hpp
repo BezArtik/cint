@@ -19,5 +19,11 @@ value ge(const value& a, const value& b);
 value and_op(const value& a, const value& b);
 value or_op(const value& a, const value& b);
 value not_op(const value& a);
+value bit_and(const value& a, const value& b);
+value bit_or(const value& a, const value& b);
+value bit_xor(const value& a, const value& b);
+value bit_not(const value& a);
+value shl(const value& a, const value& b);
+value shr(const value& a, const value& b);
 
 }  // namespace core::ops

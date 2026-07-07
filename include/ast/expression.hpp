@@ -5,8 +5,6 @@
 #include "core/token/token.hpp"
 #include "core/utils/arena.hpp"
 
-#include <cstdint>
-#include <memory>
 #include <variant>
 #include <vector>
 

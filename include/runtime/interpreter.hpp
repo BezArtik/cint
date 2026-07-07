@@ -16,10 +16,6 @@
 
 namespace runtime {
 
-struct return_exception {
-    core::value return_value_;
-};
-
 class interpreter {
 public:
     interpreter(core::error_reporter& reporter, bool debug = false);
@@ -55,12 +51,13 @@ private:
     core::value evaluate_array_literal(const ast::array_literal_expr& expr);
     core::value evaluate_index(const ast::index_expr& expr);
 
-    core::value call_user_function(const ast::func_declaration& func, const std::vector<core::value>& args,
-                                   const ast::call_expr& expr);
-
     core::value default_value(const core::type& type);
 
     core::value convert(core::value val, const core::type& target);
+
+    struct return_exception {
+        core::value return_value_;
+    };
 
     struct runtime_var {
         core::type static_type_;

@@ -229,7 +229,15 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
         return t::bool_type();
     }
 
-    if (op == tt::AND || op == tt::OR) {
+    if (op == tt::BIT_AND || op == tt::BIT_OR || op == tt::XOR || op == tt::SHL || op == tt::SHR) {
+        if (!left.is_int() || !right.is_int()) {
+            reporter_.error(expr, err::arithmetic_requires_numeric);
+            return t::unknown_type();
+        }
+        return t::int_type();
+    }
+
+    if (op == tt::LOGICAL_AND || op == tt::LOGICAL_OR) {
         if (!left.is_bool() || !right.is_bool()) {
             reporter_.error(expr, err::logical_requires_bool);
             return t::unknown_type();
@@ -307,6 +315,14 @@ t type_checker::type_of_unary(const ast::unary_expr& expr) {
             return t::unknown_type();
         }
         return t::bool_type();
+    }
+
+    if (op == tt::BIT_NOT) {
+        if (!operand_type.is_int()) {
+            reporter_.error(expr, err::arithmetic_requires_numeric);
+            return t::unknown_type();
+        }
+        return t::int_type();
     }
 
     reporter_.error(expr, err::unsupported_unary_operator);

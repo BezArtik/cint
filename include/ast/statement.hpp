@@ -7,7 +7,6 @@
 #include "core/utils/arena.hpp"
 
 #include <algorithm>
-#include <memory>
 #include <variant>
 #include <vector>
 
