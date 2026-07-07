@@ -48,20 +48,20 @@ string msg = "hello";
 ```cpp
 int x = -4;
 if (x > 0) {
-    print("positive");
+    print_str("positive");
 } else {
-    print("non-positive");
+    print_str("non-positive");
 }
 ```
 ```cpp
 int x = 10;
 while (x > 0) {
-    x = x - 1;
+    --x;
 }
 ```
 ```cpp
 for (int i = 0; i < 10; i++) {
-    print(i);
+    print_int(i);
 }
 ```
 ### Functions
@@ -71,21 +71,13 @@ int add(int a, int b) {
 }
 
 void greet(string name) {
-    print("Hello, ");
-    print(name);
+    print_str("Hello, ");
+    print_str(name);
 }
 
 int result = add(3, 4);
-print(result); // 7
+print_int(result); // 7
 greet("world");
-```
-
-### Built-in print
-```cpp
-print(42);
-print(3.14);
-print(true);
-print("text");
 ```
 
 ## Project Structure
