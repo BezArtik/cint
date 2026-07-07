@@ -45,7 +45,7 @@ void expect_eof(const lexer_harness& h, size_t index) {
 struct single_token_case {
     std::string_view source_;
     tt expected_type_;
-    std::string_view expected_lexeme_;
+    std::string_view expected_lexeme_{};
 };
 
 class single_token_test : public ::testing::TestWithParam<single_token_case> {};

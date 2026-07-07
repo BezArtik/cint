@@ -74,7 +74,7 @@ struct var_decl_case {
     std::string_view expected_name_;
     t expected_type_;
     bool has_initializer_;
-    std::string_view init_lexeme_;
+    std::string_view init_lexeme_{};
 };
 
 class var_decl_test : public ::testing::TestWithParam<var_decl_case> {};

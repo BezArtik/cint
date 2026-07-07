@@ -68,8 +68,10 @@ void lexer::scan_token() {
             break;
         case '^':
             add_token(match('=') ? tt::XOR_EQUAL : tt::XOR);
+            break;
         case '~':
             add_token(match('=') ? tt::BIT_NOT_EQUAL : tt::BIT_NOT);
+            break;
         case ';':
             add_token(tt::SEMICOLON);
             break;

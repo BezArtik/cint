@@ -17,8 +17,19 @@ add_executable(tests
 
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
-    interpreter
+    interpreter-lib
 )
 
 include(GoogleTest)
 gtest_discover_tests(tests)
+
+if(ENABLE_SANITIZERS)
+    set(SAN_FLAGS -fsanitize=address,undefined -fno-omit-frame-pointer)
+    target_compile_options(tests PRIVATE ${SAN_FLAGS})
+    target_link_options(tests PRIVATE ${SAN_FLAGS})
+endif()
+
+if(ENABLE_WARNINGS_AS_ERRORS)
+    set(WARN_FLAGS -Wall -Wextra -Wpedantic -Werror)
+    target_compile_options(tests PRIVATE ${WARN_FLAGS})
+endif()
