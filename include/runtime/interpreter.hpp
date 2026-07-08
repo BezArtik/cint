@@ -38,10 +38,6 @@ private:
     core::value evaluate_literal(const ast::literal_expr& expr);
     core::value evaluate_variable(const ast::variable_expr& expr);
     core::value evaluate_assignment(const ast::assignment_expr& expr);
-    core::value evaluate_simple_assignment(const ast::binary_expr& expr, const ast::variable_expr& var);
-    core::value evaluate_index_assignment(const ast::binary_expr& expr, const ast::index_expr& idx);
-    core::value evaluate_logical(const ast::binary_expr& expr);
-    core::value evaluate_arithmetic(const ast::binary_expr& expr);
     core::value evaluate_binary(const ast::binary_expr& expr);
     core::value evaluate_unary(const ast::unary_expr& expr);
     core::value evaluate_postfix(const ast::postfix_expr& expr);
@@ -49,11 +45,7 @@ private:
     core::value evaluate_array_literal(const ast::array_literal_expr& expr);
     core::value evaluate_index(const ast::index_expr& expr);
 
-    core::value default_value(const core::type& type);
-
-    core::value convert(core::value val, const core::type& target);
-
-    struct return_exception {
+    struct return_value {
         core::value return_value_;
     };
 

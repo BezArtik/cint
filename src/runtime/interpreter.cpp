@@ -36,12 +36,43 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
     auto old_val = val;
 
     if (auto* i = val.as_mut<core::value::int_t>()) {
-        val = core::value(op == tt::INCREMENT ? *i + 1 : *i - 1);
+        val = (op == tt::INCREMENT ? *i + 1 : *i - 1);
     } else if (auto* d = val.as_mut<core::value::double_t>()) {
-        val = core::value(op == tt::INCREMENT ? *d + 1.0 : *d - 1.0);
+        val = (op == tt::INCREMENT ? *d + 1.0 : *d - 1.0);
     }
 
     return return_old ? old_val : val;
+}
+
+core::value default_value(const core::type& t) {
+    switch (t.get_kind()) {
+        case k::INT:
+            return core::value::int_t{};
+        case k::DOUBLE:
+            return core::value::double_t{};
+        case k::BOOL:
+            return core::value::bool_t{};
+        case k::STRING:
+            return std::string{};
+        case k::VOID:
+            return {};
+        case k::ARRAY: {
+            core::value::array_t elements(t.array_size(), default_value(t.element_type()));
+            return elements;
+        }
+        default:
+            return {};
+    }
+}  // namespace
+
+core::value convert(core::value val, const core::type& target) {
+    auto val_t = val.type();
+    if (val_t == target) return val;
+
+    if (target.is_int() && val.is_double()) return static_cast<core::value::int_t>(*val.as<core::value::double_t>());
+    if (target.is_double() && val.is_int()) return static_cast<core::value::double_t>(*val.as<core::value::int_t>());
+
+    return val;
 }
 
 }  // namespace
@@ -64,7 +95,7 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
             core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
-            } catch (const interpreter::return_exception& ret) {
+            } catch (const interpreter::return_value& ret) {
                 if (debug_) {
                     std::cerr << "[main] returned ";
                     debug::print_value(ret.return_value_);
@@ -155,8 +186,8 @@ void interpreter::execute_if(const ast::if_stmt& stmt) {
 
 void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
-    stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = core::value();
-    throw interpreter::return_exception{std::move(ret_val)};
+    stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = {};
+    throw interpreter::return_value{std::move(ret_val)};
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
@@ -198,18 +229,18 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
         auto lex = token.lexeme_;
         if (token.is_double_literal()) {
             core::value::double_t d;
-            return core::value(to_number(lex, d));
+            return to_number(lex, d);
         }
         core::value::int_t i;
-        return core::value(to_number(lex, i));
+        return to_number(lex, i);
     }
 
     if (token.is_string_literal()) {
         auto lex = token.lexeme_;
-        return core::value(std::string(lex.substr(1, lex.size() - 2)));
+        return std::string(lex.substr(1, lex.size() - 2));
     }
 
-    return core::value(token.as_keyword()->lexeme_ == "true");
+    return token.as_keyword()->lexeme_ == "true";
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
@@ -218,13 +249,57 @@ core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
 }
 
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
-    switch (expr.op_.type_) {
-        case tt::LOGICAL_AND:
-        case tt::LOGICAL_OR:
-            return evaluate_logical(expr);
-        default:
-            return evaluate_arithmetic(expr);
+    auto left = evaluate(expr.left_);
+    auto type = expr.op_.type_;
+
+    if (type == tt::LOGICAL_AND) {
+        if (!left.to_bool()) return false;
+        return evaluate(expr.right_).to_bool();
     }
+    if (type == tt::LOGICAL_OR) {
+        if (left.to_bool()) return true;
+        return evaluate(expr.right_).to_bool();
+    }
+
+    auto right = evaluate(expr.right_);
+    try {
+        switch (type) {
+            case tt::PLUS:
+                return op::add(left, right);
+            case tt::MINUS:
+                return op::sub(left, right);
+            case tt::STAR:
+                return op::mul(left, right);
+            case tt::SLASH:
+                return op::div(left, right);
+            case tt::PERCENT:
+                return op::mod(left, right);
+            case tt::EQUAL_EQUAL:
+                return op::eq(left, right);
+            case tt::BANG_EQUAL:
+                return op::neq(left, right);
+            case tt::LESS:
+                return op::lt(left, right);
+            case tt::LESS_EQUAL:
+                return op::le(left, right);
+            case tt::GREATER:
+                return op::gt(left, right);
+            case tt::GREATER_EQUAL:
+                return op::ge(left, right);
+            case tt::BIT_AND:
+                return op::bit_and(left, right);
+            case tt::BIT_OR:
+                return op::bit_or(left, right);
+            case tt::XOR:
+                return op::bit_xor(left, right);
+            case tt::SHL:
+                return op::shl(left, right);
+            case tt::SHR:
+                return op::shr(left, right);
+            default:
+                reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
+        }
+    } catch (const core::interpret_error& e) { reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_); }
 }
 
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
@@ -300,67 +375,14 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     return *target;
 }
 
-core::value interpreter::evaluate_logical(const ast::binary_expr& expr) {
-    auto left = evaluate(expr.left_);
-    if (expr.op_.type_ == tt::LOGICAL_AND) {
-        if (!left.to_bool()) return core::value(false);
-    } else {
-        if (left.to_bool()) return core::value(true);
-    }
-    return core::value(evaluate(expr.right_).to_bool());
-}
-
-core::value interpreter::evaluate_arithmetic(const ast::binary_expr& expr) {
-    auto left = evaluate(expr.left_);
-    auto right = evaluate(expr.right_);
-    try {
-        switch (expr.op_.type_) {
-            case tt::PLUS:
-                return op::add(left, right);
-            case tt::MINUS:
-                return op::sub(left, right);
-            case tt::STAR:
-                return op::mul(left, right);
-            case tt::SLASH:
-                return op::div(left, right);
-            case tt::PERCENT:
-                return op::mod(left, right);
-            case tt::EQUAL_EQUAL:
-                return op::eq(left, right);
-            case tt::BANG_EQUAL:
-                return op::neq(left, right);
-            case tt::LESS:
-                return op::lt(left, right);
-            case tt::LESS_EQUAL:
-                return op::le(left, right);
-            case tt::GREATER:
-                return op::gt(left, right);
-            case tt::GREATER_EQUAL:
-                return op::ge(left, right);
-            case tt::BIT_AND:
-                return op::bit_and(left, right);
-            case tt::BIT_OR:
-                return op::bit_or(left, right);
-            case tt::XOR:
-                return op::bit_xor(left, right);
-            case tt::SHL:
-                return op::shl(left, right);
-            case tt::SHR:
-                return op::shr(left, right);
-            default:
-                reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
-        }
-    } catch (const core::interpret_error& e) { reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_); }
-}
-
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     auto operand = evaluate(expr.operand_);
     auto op = expr.op_.type_;
 
     switch (op) {
         case tt::MINUS: {
-            if (auto* i = operand.as<core::value::int_t>()) return core::value(-*i);
-            return core::value(-operand.to_double());
+            if (auto* i = operand.as<core::value::int_t>()) return -*i;
+            return -operand.to_double();
         }
         case tt::BANG:
             return op::not_op(operand);
@@ -399,7 +421,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
 
     try {
         std::ranges::transform(expr.args_, std::back_inserter(args), [this](const auto& arg) { return evaluate(arg); });
-    } catch (const core::interpret_error&) { return core::value(); }
+    } catch (const core::interpret_error&) { return {}; }
 
     auto it = functions_.find(name);
     if (it == functions_.end()) reporter_.interpret_error(expr, err::undefined_function, name);
@@ -411,7 +433,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             return (*builtin)(args);
         } catch (const core::interpret_error& e) {
             reporter_.interpret_error(expr, e.code_, name);
-            return core::value();
+            return {};
         }
     }
 
@@ -428,7 +450,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
 
     try {
         for (const auto& s : func->body_->statements_) execute(*s);
-    } catch (const interpreter::return_exception& ret) { return ret.return_value_; }
+    } catch (const interpreter::return_value& ret) { return ret.return_value_; }
     return default_value(func->return_type_);
 }
 
@@ -438,12 +460,12 @@ core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& e
     std::ranges::transform(expr.elements_, std::back_inserter(elements),
                            [this](const auto& elem) { return evaluate(elem); });
 
-    if (elements.empty()) return core::value(std::vector<core::value>{});
+    if (elements.empty()) return std::vector<core::value>{};
 
     auto elem_type = elements[0].type();
     for (auto& e : elements) e = convert(std::move(e), elem_type);
 
-    return core::value(std::move(elements));
+    return elements;
 }
 
 core::value interpreter::evaluate_index(const ast::index_expr& expr) {
@@ -457,39 +479,6 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
         reporter_.interpret_error(expr, err::index_out_of_bounds);
 
     return (*arr)->at(static_cast<size_t>(i));
-}
-
-core::value interpreter::default_value(const core::type& t) {
-    switch (t.get_kind()) {
-        case k::INT:
-            return core::value{core::value::int_t{}};
-        case k::DOUBLE:
-            return core::value{core::value::double_t{}};
-        case k::BOOL:
-            return core::value{core::value::bool_t{}};
-        case k::STRING:
-            return core::value{std::string{}};
-        case k::VOID:
-            return core::value{};
-        case k::ARRAY: {
-            core::value::array_t elements(t.array_size(), default_value(t.element_type()));
-            return core::value{std::move(elements)};
-        }
-        default:
-            return core::value{};
-    }
-}
-
-core::value interpreter::convert(core::value val, const core::type& target) {
-    auto val_t = val.type();
-    if (val_t == target) return val;
-
-    if (target.is_int() && val.is_double())
-        return core::value{static_cast<core::value::int_t>(*val.as<core::value::double_t>())};
-    if (target.is_double() && val.is_int())
-        return core::value{static_cast<core::value::double_t>(*val.as<core::value::int_t>())};
-
-    return val;
 }
 
 }  // namespace runtime

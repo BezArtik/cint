@@ -13,6 +13,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 namespace debug {
 
@@ -192,7 +193,7 @@ void print_func_declaration(const ast::func_declaration& s, uint32_t level) {
 
 }  // namespace
 
-const char* type_name(const core::type& t) {
+std::string_view type_name(const core::type& t) {
     if (t.is_int()) return "int";
     if (t.is_double()) return "double";
     if (t.is_bool()) return "bool";
