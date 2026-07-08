@@ -43,8 +43,6 @@ private:
     core::value evaluate_logical(const ast::binary_expr& expr);
     core::value evaluate_arithmetic(const ast::binary_expr& expr);
     core::value evaluate_binary(const ast::binary_expr& expr);
-    struct runtime_var;
-    core::value apply_increment(runtime_var* var, core::token_type op, bool return_old);
     core::value evaluate_unary(const ast::unary_expr& expr);
     core::value evaluate_postfix(const ast::postfix_expr& expr);
     core::value evaluate_call(const ast::call_expr& expr);

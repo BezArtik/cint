@@ -35,7 +35,7 @@ value print_newline(const std::vector<value>&) {
 }
 
 value input(const std::vector<value>&) {
-    value::string_t line;
+    std::string line;
     std::getline(std::cin, line);
     return value{std::move(line)};
 }

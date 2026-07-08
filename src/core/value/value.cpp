@@ -11,92 +11,90 @@
 
 namespace core {
 
-using err = core::error_code;
-
 value::value() : data_(std::monostate{}) {}
 
-value::value(core::type element_type, array_t elements)
-    : data_(array_info{std::move(element_type), std::move(elements)}) {}
-
+// clang-format off
 core::type value::type() const {
-    return std::visit(
-        overloaded{[](int_t) { return type::int_type(); }, [](double_t) { return type::double_type(); },
-                   [](bool_t) { return type::bool_type(); }, [](const string_t&) { return type::string_type(); },
-                   [](const array_info& a) { return type::array_type(a.element_type_, a.elements_.size()); },
-                   [](std::monostate) { return type::void_type(); }},
+    return visit(
+        overloaded{
+            [](int_t) { return type::int_type(); },
+            [](double_t) { return type::double_type(); },
+            [](bool_t) { return type::bool_type(); },
+            [](const string_t&) { return type::string_type(); },
+            [](const array_t& a) {
+                if (a.empty() || a->empty()) return type::array_type(type::unknown_type(), 0);
+                return type::array_type(a->front().type(), a->size());
+            },
+            [](std::monostate) { return type::void_type(); }
+        },
         data_);
 }
 
 value::int_t value::to_int() const {
-    if (auto i = as_int()) return *i;
-    if (auto d = as_double()) return static_cast<int_t>(*d);
-    if (auto s = as_string()) {
+    if (auto* i = as<int_t>()) return *i;
+    if (auto* d = as<double_t>()) return static_cast<int_t>(*d);
+    if (auto* s = as<string_t>()) {
         int_t result;
-        auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
-        if (ec != std::errc{} || ptr != s->data() + s->size()) throw core::interpret_error{err::invalid_conversion};
+        auto [_, ec] = std::from_chars(s->get().data(), s->get().data() + s->get().size(), result);
+        if (ec != std::errc{}) throw core::interpret_error{error_code::invalid_conversion};
         return result;
     }
-    throw core::interpret_error{err::invalid_conversion};
+    throw core::interpret_error{error_code::invalid_conversion};
 }
 
 value::double_t value::to_double() const {
-    if (auto i = as_int()) return static_cast<double_t>(*i);
-    if (auto d = as_double()) return *d;
-    if (auto s = as_string()) {
+    if (auto* i = as<int_t>()) return static_cast<double_t>(*i);
+    if (auto* d = as<double_t>()) return *d;
+    if (auto* s = as<string_t>()) {
         double_t result;
-        auto [ptr, ec] = std::from_chars(s->data(), s->data() + s->size(), result);
-        if (ec != std::errc{} || ptr != s->data() + s->size()) throw core::interpret_error{err::invalid_conversion};
+        auto [_, ec] = std::from_chars(s->get().data(), s->get().data() + s->get().size(), result);
+        if (ec != std::errc{}) throw core::interpret_error{error_code::invalid_conversion};
         return result;
     }
-    throw core::interpret_error{err::invalid_conversion};
-}
-
-value::string_t value::to_string() const {
-    return std::visit(
-        overloaded{[](int_t v) { return std::to_string(v); }, [](double_t v) { return std::to_string(v); },
-                   [](bool_t v) { return string_t(v ? "true" : "false"); }, [](const string_t& v) { return v; },
-                   [](const array_info& a) {
-                       string_t result = "{";
-                       result.reserve(a.elements_.size() * 16);
-                       for (size_t i = 0; i < a.elements_.size(); ++i) {
-                           if (i > 0) result += ", ";
-                           result += a.elements_[i].to_string();
-                       }
-                       result += "}";
-                       return result;
-                   },
-                   [](std::monostate) { return string_t("void"); }},
-        data_);
+    throw core::interpret_error{error_code::invalid_conversion};
 }
 
 value::bool_t value::to_bool() const {
-    return std::visit(
-        core::overloaded{[](int_t v) { return v != 0; }, [](double_t v) { return v != 0.0; },
-                         [](bool_t v) { return v; }, [](const string_t& v) { return !v.empty(); },
-                         [](const array_info& a) { return !a.elements_.empty(); },
-                         [](std::monostate) -> bool_t { throw core::interpret_error{err::invalid_conversion}; }},
+    return visit(
+        overloaded{
+            [](int_t v) { return v != 0; },
+            [](double_t v) { return v != 0.0; },
+            [](bool_t v) { return v; },
+            [](const string_t& s) { return !s->empty(); },
+            [](const array_t& a) { return !a->empty(); },
+            [](std::monostate) -> bool_t { throw core::interpret_error{error_code::invalid_conversion}; }
+        },
         data_);
 }
 
-std::optional<value::int_t> value::as_int() const noexcept {
-    return as<int_t>();
+std::string value::to_string() const {
+    return visit(
+        overloaded{
+            [](int_t v) { return std::to_string(v); },
+            [](double_t v) { return std::to_string(v); },
+            [](bool_t v) { return std::string(v ? "true" : "false"); },
+            [](const string_t& s) { return s.get(); },
+            [](const array_t& a) {
+                std::string result = "{";
+                result.reserve(a->size() * 16);
+                for (size_t i = 0; i < a->size(); ++i) {
+                    if (i > 0) result += ", ";
+                    result += (*a)[i].to_string();
+                }
+                result += "}";
+                return result;
+            },
+            [](std::monostate) { return std::string("void"); }
+        },
+        data_);
 }
-std::optional<value::double_t> value::as_double() const noexcept {
-    return as<double_t>();
-}
-std::optional<value::bool_t> value::as_bool() const noexcept {
-    return as<bool_t>();
-}
-std::optional<value::string_t> value::as_string() const noexcept {
-    return as<string_t>();
-}
-const value::array_t* value::as_array() const noexcept {
-    if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
-    return nullptr;
-}
-value::array_t* value::as_array() noexcept {
-    if (auto* p = std::get_if<array_info>(&data_)) return &p->elements_;
-    return nullptr;
-}
+
+bool value::is_int() const noexcept { return std::holds_alternative<int_t>(data_); }
+bool value::is_double() const noexcept { return std::holds_alternative<double_t>(data_); }
+bool value::is_bool() const noexcept { return std::holds_alternative<bool_t>(data_); }
+bool value::is_string() const noexcept { return std::holds_alternative<string_t>(data_); }
+bool value::is_array() const noexcept { return std::holds_alternative<array_t>(data_); }
+bool value::is_void() const noexcept { return std::holds_alternative<std::monostate>(data_); }
+// clang-format on
 
 }  // namespace core
