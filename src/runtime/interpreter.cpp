@@ -63,15 +63,13 @@ core::value default_value(const core::type& t) {
         default:
             return {};
     }
-}  // namespace
+}
 
 core::value convert(core::value val, const core::type& target) {
-    auto val_t = val.type();
-    if (val_t == target) return val;
+    if (val.type() == target) return val;
 
-    if (target.is_int() && val.is_double()) return static_cast<core::value::int_t>(*val.as<core::value::double_t>());
-    if (target.is_double() && val.is_int()) return static_cast<core::value::double_t>(*val.as<core::value::int_t>());
-
+    if (target.is_int() && val.is_double()) return val.to_int();
+    if (target.is_double() && val.is_int()) return val.to_double();
     return val;
 }
 
@@ -424,34 +422,33 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     } catch (const core::interpret_error&) { return {}; }
 
     auto it = functions_.find(name);
-    if (it == functions_.end()) reporter_.interpret_error(expr, err::undefined_function, name);
-
-    const auto& callable = it->second;
-
-    if (auto* builtin = std::get_if<core::builtin_fn_ptr>(&callable)) {
-        try {
-            return (*builtin)(args);
-        } catch (const core::interpret_error& e) {
-            reporter_.interpret_error(expr, e.code_, name);
-            return {};
-        }
-    }
-
-    auto* func = std::get<const ast::func_declaration*>(callable);
-    core::scope_guard guard(values_);
-
-    auto fn_param = func->params_;
-    for (size_t i = 0; i < fn_param.size(); ++i) {
-        auto& param = fn_param[i];
-        auto& param_t = param.type_;
-        auto converted = convert(std::move(args[i]), param_t);
-        values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
-    }
-
-    try {
-        for (const auto& s : func->body_->statements_) execute(*s);
-    } catch (const interpreter::return_value& ret) { return ret.return_value_; }
-    return default_value(func->return_type_);
+    // clang-format off
+    return core::visit(
+            core::overloaded{
+            [&](core::builtin_fn_ptr builtin) {
+                try {
+                    return (*builtin)(args);
+                } catch (const core::interpret_error& e) {
+                    reporter_.interpret_error(expr, e.code_, name);
+                    return core::value{};
+                }
+            },
+                                        
+            [&](const ast::func_declaration* func) {
+                core::scope_guard guard(values_);
+                auto fn_param = func->params_;
+                for (size_t i = 0; i < fn_param.size(); ++i) {
+                    auto& param = fn_param[i];
+                    auto& param_t = param.type_;
+                    auto converted = convert(std::move(args[i]), param_t);
+                    values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
+                }
+                try {
+                    for (const auto& s : func->body_->statements_) execute(*s);
+                } catch (const interpreter::return_value& ret) { return ret.return_value_; }
+                    return default_value(func->return_type_);
+            }}, it->second);
+    // clang-format on
 }
 
 core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
