@@ -48,7 +48,7 @@ private:
     };
 
     struct runtime_var {
-        core::type static_type_;
+        const core::type* static_type_;
         core::value value_;
     };
 

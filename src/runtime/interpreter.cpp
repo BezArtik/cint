@@ -133,7 +133,7 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         init_val = convert(std::move(init), stmt.type_);
     }
 
-    values_.define(stmt.name_.lexeme_, {stmt.type_, std::move(init_val)});
+    values_.define(stmt.name_.lexeme_, {&stmt.type_, std::move(init_val)});
 }
 
 void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
@@ -449,7 +449,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                     auto& param = fn_params[i];
                     auto& param_t = param.type_;
                     auto converted = convert(std::move(args_buf[i]), param_t);
-                    values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
+                    values_.define(param.name_.lexeme_, {&param_t, std::move(converted)});
                 }
                 try {
                     for (const auto& s : func->body_->statements_) execute(*s);

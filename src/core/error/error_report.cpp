@@ -17,6 +17,7 @@ bool error_reporter::has_error() const noexcept {
 }
 
 void error_reporter::build_line_cache() {
+    if (!lines_.empty()) return;
     if (source_.empty()) return;
 
     size_t start = 0;
