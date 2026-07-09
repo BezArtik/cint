@@ -77,7 +77,8 @@ core::value convert(core::value val, const core::type& target) {
 }  // namespace
 
 interpreter::interpreter(core::error_reporter& reporter, bool debug) : reporter_(reporter), debug_(debug) {
-    for (const auto& def : core::builtins) functions_.emplace(def.name_, def.impl_);
+    functions_.reserve(64);
+    for (const auto& def : core::builtins) functions_.emplace_back(def.name_, def.impl_);
 }
 
 void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
@@ -88,9 +89,9 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
         for (const auto& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
-        auto main_it = functions_.find("main");
+        auto main_it = std::ranges::find(functions_, "main", &function_entry::name_);
         if (main_it != functions_.end()) {
-            const auto& func = *std::get<const ast::func_declaration*>(main_it->second);
+            const auto& func = *std::get<const ast::func_declaration*>(main_it->impl_);
             core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
@@ -190,7 +191,13 @@ void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
-    functions_.insert_or_assign(stmt.name_.lexeme_, &stmt);
+    auto name = stmt.name_.lexeme_;
+
+    auto it = std::ranges::find(functions_, name, &function_entry::name_);
+    if (it != functions_.end())
+        it->impl_ = &stmt;
+    else
+        functions_.emplace_back(name, &stmt);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
@@ -421,7 +428,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         std::ranges::transform(expr.args_, args_buf.begin(), [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
-    auto it = functions_.find(name);
+    auto it = std::ranges::find(functions_, name, &function_entry::name_);
     std::span<const core::value> args(args_buf.data(), expr.args_.size());
     // clang-format off
     return core::visit(
@@ -448,7 +455,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                     for (const auto& s : func->body_->statements_) execute(*s);
                 } catch (const interpreter::return_value& ret) { return ret.return_value_; }
                     return default_value(func->return_type_);
-            }}, it->second);
+            }}, it->impl_);
     // clang-format on
 }
 

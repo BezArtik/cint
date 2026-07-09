@@ -6,12 +6,10 @@
 #include "core/error/error_report.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/builtins.hpp"
-#include "core/utils/hash.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/value/value.hpp"
 
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 namespace runtime {
@@ -54,11 +52,15 @@ private:
         core::value value_;
     };
 
+    using callable = std::variant<const ast::func_declaration*, core::builtin_fn_ptr>;
+    struct function_entry {
+        std::string_view name_;
+        callable impl_;
+    };
+
     core::error_reporter& reporter_;
     core::scoped_map<runtime_var> values_;
-    using callable = std::variant<const ast::func_declaration*, core::builtin_fn_ptr>;
-    std::unordered_map<std::string_view, callable, core::transparent_string_hash, core::transparent_string_equal>
-        functions_;
+    std::vector<function_entry> functions_;
     uint32_t recursion_depth_ = 0;
     bool debug_;
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
