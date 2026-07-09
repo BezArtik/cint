@@ -15,6 +15,7 @@ namespace ast {
 struct statement;
 
 using stmt_ptr = core::arena_ptr<statement>;
+using stmt_list = std::pmr::vector<stmt_ptr>;
 
 struct expression_stmt {
     expression expr_;
@@ -34,11 +35,11 @@ struct var_declaration {
 };
 
 struct block_stmt {
-    std::vector<stmt_ptr> statements_;
+    stmt_list statements_;
     core::location loc_;
 
     block_stmt() = default;
-    block_stmt(std::vector<stmt_ptr> statements, core::location loc) : statements_(std::move(statements)), loc_(loc) {}
+    block_stmt(stmt_list statements, core::location loc) : statements_(std::move(statements)), loc_(loc) {}
 };
 
 struct while_stmt {
@@ -98,7 +99,7 @@ struct func_param {
 struct func_declaration {
     core::type return_type_;
     core::token name_;
-    std::vector<func_param> params_;
+    std::pmr::vector<func_param> params_;
     core::arena_ptr<block_stmt> body_;
     core::location loc_;
 

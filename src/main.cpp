@@ -47,6 +47,7 @@ int main(int argc, char* argv[]) {
         auto source = buffer.str();
 
         core::arena arena;
+        core::arena_memory_resource mr(arena);
         core::error_reporter reporter(source);
         lexer::lexer lex(source, reporter);
         auto tokens = lex.scan_tokens();
@@ -56,7 +57,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        parser::parser p(tokens, reporter, arena);
+        parser::parser p(tokens, reporter, arena, mr);
         auto ast = p.parse();
         if (debug) debug::print_ast(ast);
         if (reporter.has_error()) {

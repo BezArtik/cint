@@ -13,7 +13,8 @@ namespace parser {
 
 class parser {
 public:
-    parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena);
+    parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
+           core::arena_memory_resource& mr);
 
     std::vector<ast::stmt_ptr> parse();
 
@@ -53,6 +54,7 @@ private:
     core::error_reporter& reporter_;
     size_t current_ = 0;
     core::arena& arena_;
+    core::arena_memory_resource& mr_;
 };
 
 }  // namespace parser

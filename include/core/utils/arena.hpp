@@ -24,12 +24,26 @@ public:
 
     template <typename T, typename... Args>
     T* allocate(Args&&... args) {
-        auto* ptr = alloc(sizeof(T), alignof(T));
+        auto* ptr = allocate_raw(sizeof(T), alignof(T));
         auto* obj = ::new (ptr) T(std::forward<Args>(args)...);
 
         if constexpr (!std::is_trivially_destructible_v<T>) destructors_.push_back([obj] { obj->~T(); });
 
         return obj;
+    }
+
+    void* allocate_raw(size_t size, size_t alignment) {
+        auto* ptr = align_ptr(current_, alignment);
+        auto remaining = static_cast<size_t>(end_ - ptr);
+
+        if (size > remaining) {
+            allocate_block();
+            ptr = align_ptr(current_, alignment);
+        }
+
+        current_ = ptr + size;
+        total_allocated_ += size;
+        return ptr;
     }
 
     void reset() noexcept {
@@ -47,20 +61,6 @@ public:
     size_t block_count() const noexcept { return blocks_.size(); }
 
 private:
-    void* alloc(size_t size, size_t alignment) {
-        auto* ptr = align_ptr(current_, alignment);
-        auto remaining = static_cast<size_t>(end_ - ptr);
-
-        if (size > remaining) {
-            allocate_block();
-            ptr = align_ptr(current_, alignment);
-        }
-
-        current_ = ptr + size;
-        total_allocated_ += size;
-        return ptr;
-    }
-
     void allocate_block() {
         auto block = std::make_unique<char[]>(BLOCK_SIZE);
         current_ = block.get();
@@ -79,6 +79,20 @@ private:
     char* current_ = nullptr;
     char* end_ = nullptr;
     size_t total_allocated_ = 0;
+};
+
+class arena_memory_resource : public std::pmr::memory_resource {
+public:
+    arena_memory_resource(arena& arena) noexcept : arena_(arena) {}
+
+private:
+    void* do_allocate(size_t bytes, size_t alignment) override { return arena_.allocate_raw(bytes, alignment); }
+
+    void do_deallocate(void*, size_t, size_t) noexcept override {}
+
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
+
+    arena& arena_;
 };
 
 template <typename T>

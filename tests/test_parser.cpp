@@ -18,10 +18,10 @@ using t = core::type;
 
 class parser_harness {
 public:
-    parser_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
+    parser_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_), mr_(arena_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = lex.scan_tokens();
-        parser::parser p(tokens_, reporter_, arena_);
+        parser::parser p(tokens_, reporter_, arena_, mr_);
         ast_ = p.parse();
     }
 
@@ -34,6 +34,7 @@ private:
     std::vector<core::token> tokens_;
     std::vector<ast::stmt_ptr> ast_;
     core::arena arena_;
+    core::arena_memory_resource mr_;
 };
 
 template <typename T>

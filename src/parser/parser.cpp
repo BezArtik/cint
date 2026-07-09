@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 #include <utility>
 
 namespace parser {
@@ -63,8 +62,9 @@ bool is_assignment(tt type) noexcept {
 
 }  // namespace
 
-parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena)
-    : tokens_(tokens), reporter_(reporter), arena_(arena) {}
+parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
+               core::arena_memory_resource& mr)
+    : tokens_(tokens), reporter_(reporter), arena_(arena), mr_(mr) {}
 
 std::vector<ast::stmt_ptr> parser::parse() {
     std::vector<ast::stmt_ptr> statements_;
@@ -285,14 +285,14 @@ ast::stmt_ptr parser::return_statement() {
 }
 
 ast::stmt_ptr parser::block_statement() {
-    ast::block_stmt block;
+    ast::stmt_list statements(&mr_);
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto stmt = declaration();
-        if (stmt) block.statements_.push_back(std::move(stmt));
+        if (stmt) statements.push_back(std::move(stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     const auto& brace = prev();
-    return ast::make_stmt<ast::block_stmt>(arena_, brace, std::move(block.statements_));
+    return ast::make_stmt<ast::block_stmt>(arena_, brace, std::move(statements));
 }
 
 ast::expression parser::expression() {
@@ -355,7 +355,7 @@ ast::expression parser::postfix() {
 }
 
 ast::expression parser::array_literal() {
-    std::vector<ast::expression> elements;
+    ast::expr_list elements(&mr_);
     const auto& brace = prev();
     if (!check(tt::RIGHT_BRACE)) {
         do { elements.push_back(expression()); } while (match({tt::COMMA}));
@@ -394,7 +394,7 @@ ast::expression parser::primary() {
 }
 
 ast::expression parser::finish_call(const core::token& callee) {
-    std::vector<ast::expression> args;
+    ast::expr_list args(&mr_);
 
     if (!check(tt::RIGHT_PAREN)) {
         do { args.push_back(expression()); } while (match({tt::COMMA}));

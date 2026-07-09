@@ -25,6 +25,8 @@ using expression =
                  core::arena_ptr<unary_expr>, core::arena_ptr<postfix_expr>, core::arena_ptr<call_expr>,
                  core::arena_ptr<array_literal_expr>, core::arena_ptr<index_expr> >;
 
+using expr_list = std::pmr::vector<expression>;
+
 struct literal_expr {
     core::token value_;
     core::location loc_;
@@ -79,19 +81,18 @@ struct postfix_expr {
 
 struct call_expr {
     core::token callee_;
-    std::vector<expression> args_;
+    expr_list args_;
     core::location loc_;
 
-    call_expr(const core::token& callee, std::vector<expression> args, core::location loc)
+    call_expr(const core::token& callee, expr_list args, core::location loc)
         : callee_(callee), args_(std::move(args)), loc_(loc) {}
 };
 
 struct array_literal_expr {
-    std::vector<expression> elements_;
+    expr_list elements_;
     core::location loc_;
 
-    array_literal_expr(std::vector<expression> elements, core::location loc)
-        : elements_(std::move(elements)), loc_(loc) {}
+    array_literal_expr(expr_list elements, core::location loc) : elements_(std::move(elements)), loc_(loc) {}
 };
 
 struct index_expr {

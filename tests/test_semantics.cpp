@@ -14,10 +14,10 @@ namespace tests {
 
 class semantics_harness {
 public:
-    semantics_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_) {
+    semantics_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_), mr_(arena_) {
         lexer::lexer lex(source_code_, reporter_);
         tokens_ = lex.scan_tokens();
-        parser::parser p(tokens_, reporter_, arena_);
+        parser::parser p(tokens_, reporter_, arena_, mr_);
         ast_ = p.parse();
         semantics::type_checker checker(reporter_);
         check_ok_ = checker.check(ast_);
@@ -33,6 +33,7 @@ private:
     std::vector<core::token> tokens_;
     std::vector<ast::stmt_ptr> ast_;
     core::arena arena_;
+    core::arena_memory_resource mr_;
     bool check_ok_ = false;
     bool had_error_ = false;
 };
