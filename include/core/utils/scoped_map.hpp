@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <string_view>
@@ -25,17 +26,16 @@ public:
     void pop() noexcept {
         assert(current_depth_ > 0 && "Cannot pop global scope");
 
-        while (!entries_.empty() && entries_.back().scope_depth_ == current_depth_) { entries_.pop_back(); }
+        while (!entries_.empty() && entries_.back().scope_depth_ == current_depth_) entries_.pop_back();
         --current_depth_;
     }
 
-    void define(std::string_view name, T value) { entries_.push_back({name, std::move(value), current_depth_}); }
+    void define(std::string_view name, T value) { entries_.emplace_back(name, std::move(value), current_depth_); }
 
     T* get(std::string_view name) noexcept {
-        for (auto it = entries_.rbegin(); it != entries_.rend(); ++it) {
-            if (it->name_ == name) { return &it->value_; }
-        }
-        return nullptr;
+        auto it =
+            std::find_if(entries_.rbegin(), entries_.rend(), [&](const auto& entry) { return entry.name_ == name; });
+        return it != entries_.rend() ? &it->value_ : nullptr;
     }
 
     const T* get(std::string_view name) const noexcept { return const_cast<scoped_map*>(this)->get(name); }
@@ -54,9 +54,6 @@ public:
         }
         return false;
     }
-
-    size_t size() const noexcept { return entries_.size(); }
-    size_t depth() const noexcept { return current_depth_; }
 
 private:
     std::vector<entry> entries_;

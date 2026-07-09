@@ -57,9 +57,6 @@ public:
         total_allocated_ = 0;
     }
 
-    size_t total_allocated() const noexcept { return total_allocated_; }
-    size_t block_count() const noexcept { return blocks_.size(); }
-
 private:
     void allocate_block() {
         auto block = std::make_unique<char[]>(BLOCK_SIZE);
