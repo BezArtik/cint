@@ -6,6 +6,7 @@
 #include "core/error/error_report.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 
 #include <cctype>
 #include <string_view>
@@ -15,9 +16,10 @@ namespace lexer {
 using tt = core::token_type;
 using err = core::error_code;
 
-lexer::lexer(std::string_view source, core::error_reporter& reporter) : source_(source), reporter_(reporter) {}
+lexer::lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
+    : source_(source), reporter_(reporter), mr_(mr), tokens_(&mr_) {}
 
-std::vector<core::token> lexer::scan_tokens() {
+std::pmr::vector<core::token> lexer::scan_tokens() {
     while (!is_at_end()) {
         start_ = current_;
         scan_token();

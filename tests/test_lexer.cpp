@@ -2,6 +2,7 @@
 
 #include "core/error/error_report.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/arena.hpp"
 #include "lexer/lexer.hpp"
 
 #include <gtest/gtest.h>
@@ -15,9 +16,11 @@ using tt = core::token_type;
 class lexer_harness {
 public:
     lexer_harness(std::string source)
-        : source_code_(std::move(source)), reporter_(source_code_), lex_(source_code_, reporter_) {
-        tokens_ = lex_.scan_tokens();
-    }
+        : source_code_(std::move(source)),
+          reporter_(source_code_),
+          mr_(arena_),
+          lex_(source_code_, reporter_, mr_),
+          tokens_(lex_.scan_tokens()) {}
 
     size_t size() const noexcept { return tokens_.size(); }
     const core::token& operator[](size_t i) const noexcept { return tokens_[i]; }
@@ -26,8 +29,10 @@ public:
 private:
     std::string source_code_;
     core::error_reporter reporter_;
+    core::arena arena_;
+    core::arena_memory_resource mr_;
     lexer::lexer lex_;
-    std::vector<core::token> tokens_;
+    std::pmr::vector<core::token> tokens_;
 };
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {

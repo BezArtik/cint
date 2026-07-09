@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <cassert>
 #include <utility>
+#include <vector>
 
 namespace parser {
 
@@ -62,17 +63,17 @@ bool is_assignment(tt type) noexcept {
 
 }  // namespace
 
-parser::parser(const std::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
+parser::parser(const std::pmr::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
                core::arena_memory_resource& mr)
     : tokens_(tokens), reporter_(reporter), arena_(arena), mr_(mr) {}
 
 std::vector<ast::stmt_ptr> parser::parse() {
-    std::vector<ast::stmt_ptr> statements_;
+    std::pmr::vector<ast::stmt_ptr> statements(&mr_);
     while (!is_at_end()) {
         auto stmt = declaration();
-        if (stmt) statements_.push_back(std::move(stmt));
+        if (stmt) statements.push_back(std::move(stmt));
     }
-    return statements_;
+    return {std::make_move_iterator(statements.begin()), std::make_move_iterator(statements.end())};
 }
 
 bool parser::match(std::initializer_list<tt> types) noexcept {

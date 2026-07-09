@@ -234,7 +234,7 @@ void print_statement(const ast::statement& stmt, uint32_t level) {
                 stmt.data_);
 }
 
-void print_tokens(const std::vector<core::token>& tokens) {
+void print_tokens(const std::pmr::vector<core::token>& tokens) {
     out << "\n";
     out << "═══════════════════════════════════════════════════════\n";
     out << "  LEXICAL ANALYSIS\n";

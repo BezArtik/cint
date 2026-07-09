@@ -49,7 +49,7 @@ int main(int argc, char* argv[]) {
         core::arena arena;
         core::arena_memory_resource mr(arena);
         core::error_reporter reporter(source);
-        lexer::lexer lex(source, reporter);
+        lexer::lexer lex(source, reporter, mr);
         auto tokens = lex.scan_tokens();
         if (debug) debug::print_tokens(tokens);
         if (reporter.has_error()) {
