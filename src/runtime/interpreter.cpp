@@ -16,6 +16,7 @@
 #include "debug/debug.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <charconv>
 #include <iostream>
@@ -414,14 +415,14 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    std::vector<core::value> args;
-    args.reserve(expr.args_.size());
+    std::array<core::value, 16> args_buf;
 
     try {
-        std::ranges::transform(expr.args_, std::back_inserter(args), [this](const auto& arg) { return evaluate(arg); });
+        std::ranges::transform(expr.args_, args_buf.begin(), [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
     auto it = functions_.find(name);
+    std::span<const core::value> args(args_buf.data(), expr.args_.size());
     // clang-format off
     return core::visit(
             core::overloaded{
@@ -436,11 +437,11 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                                         
             [&](const ast::func_declaration* func) {
                 core::scope_guard guard(values_);
-                auto fn_param = func->params_;
-                for (size_t i = 0; i < fn_param.size(); ++i) {
-                    auto& param = fn_param[i];
+                auto& fn_params = func->params_;
+                for (size_t i = 0; i < fn_params.size(); ++i) {
+                    auto& param = fn_params[i];
                     auto& param_t = param.type_;
-                    auto converted = convert(std::move(args[i]), param_t);
+                    auto converted = convert(std::move(args_buf[i]), param_t);
                     values_.define(param.name_.lexeme_, {param_t, std::move(converted)});
                 }
                 try {

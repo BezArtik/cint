@@ -3,6 +3,7 @@
 #pragma once
 #include "core/token/token_types.hpp"
 
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -10,7 +11,7 @@ namespace core {
 
 class value;
 
-using builtin_fn_ptr = value (*)(const std::vector<value>&);
+using builtin_fn_ptr = value (*)(std::span<const value>);
 
 struct builtin_def {
     std::string_view name_;
@@ -20,19 +21,19 @@ struct builtin_def {
 };
 
 namespace builtin_impl {
-value print_int(const std::vector<value>& args);
-value print_dbl(const std::vector<value>& args);
-value print_bool(const std::vector<value>& args);
-value print_str(const std::vector<value>& args);
-value print_newline(const std::vector<value>& args);
-value input(const std::vector<value>& args);
-value sqrt(const std::vector<value>& args);
-value sin(const std::vector<value>& args);
-value exp(const std::vector<value>& args);
-value dtoi(const std::vector<value>& args);
-value stoi(const std::vector<value>& args);
-value itod(const std::vector<value>& args);
-value stod(const std::vector<value>& args);
+value print_int(std::span<const value> args);
+value print_dbl(std::span<const value> args);
+value print_bool(std::span<const value> args);
+value print_str(std::span<const value> args);
+value print_newline(std::span<const value> args);
+value input(std::span<const value> args);
+value sqrt(std::span<const value> args);
+value sin(std::span<const value> args);
+value exp(std::span<const value> args);
+value dtoi(std::span<const value> args);
+value stoi(std::span<const value> args);
+value itod(std::span<const value> args);
+value stod(std::span<const value> args);
 }  // namespace builtin_impl
 
 inline const std::array builtins = {
