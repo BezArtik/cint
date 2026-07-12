@@ -25,6 +25,18 @@ std::string indent_str(uint32_t level) {
 
 auto& out = std::cerr;
 
+std::string_view type_name(const core::type& t) {
+    if (t.is_int()) return "int";
+    if (t.is_double()) return "double";
+    if (t.is_bool()) return "bool";
+    if (t.is_string()) return "string";
+    if (t.is_void()) return "void";
+    if (t.is_function()) return "function";
+    if (t.is_array()) return "array";
+    if (t.is_unknown()) return "unknown";
+    return "???";
+}
+
 void print_literal(const ast::literal_expr& e, uint32_t level) {
     out << indent_str(level) << "Literal: " << e.value_.lexeme_ << " [line " << e.loc_.line_ << ":" << e.loc_.column_
         << "]\n";
@@ -193,18 +205,6 @@ void print_func_declaration(const ast::func_declaration& s, uint32_t level) {
 
 }  // namespace
 
-std::string_view type_name(const core::type& t) {
-    if (t.is_int()) return "int";
-    if (t.is_double()) return "double";
-    if (t.is_bool()) return "bool";
-    if (t.is_string()) return "string";
-    if (t.is_void()) return "void";
-    if (t.is_function()) return "function";
-    if (t.is_array()) return "array";
-    if (t.is_unknown()) return "unknown";
-    return "???";
-}
-
 void print_expression(const ast::expression& expr, uint32_t level) {
     core::visit(core::overloaded{
                     [level](const ast::literal_expr& e) { print_literal(e, level); },
@@ -244,7 +244,7 @@ void print_tokens(const std::pmr::vector<core::token>& tokens) {
     out << std::string(60, '-') << "\n";
 
     for (const auto& tok : tokens) {
-        std::string lexeme(tok.lexeme_);
+        auto lexeme = tok.lexeme_;
         if (lexeme.empty()) lexeme = "(empty)";
 
         out << std::left << std::setw(20) << core::token_type_names[static_cast<size_t>(tok.type_)] << std::setw(20)
@@ -268,28 +268,7 @@ void print_ast(const std::vector<ast::stmt_ptr>& statements) {
 
 void print_value(const core::value& val, uint32_t indent) {
     out << indent_str(indent);
-
-    auto t = val.type();
-
-    if (auto* i = val.as<core::value::int_t>()) {
-        out << "int: " << *i << '\n';
-    } else if (auto* d = val.as<core::value::double_t>()) {
-        out << "double: " << *d << '\n';
-    } else if (auto* b = val.as<core::value::bool_t>()) {
-        out << "bool: " << (*b ? "true" : "false") << '\n';
-    } else if (auto* s = val.as<core::value::string_t>()) {
-        out << "string: \"" << s->get() << '"';
-        if (s->is_shared()) out << " [shared:" << s->use_count() << ']';
-        out << '\n';
-    } else if (auto* a = val.as<core::value::array_t>()) {
-        out << "array: [" << a->get().size() << " elements]";
-        if (a->is_shared()) out << " [shared:" << a->use_count() << ']';
-        out << '\n';
-    } else if (val.is_void()) {
-        out << "void\n";
-    } else {
-        out << "unknown\n";
-    }
+    out << val.to_string() << "\n";
 }
 
 void print_execution(const std::string& message, uint32_t indent) {

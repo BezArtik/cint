@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace core {
@@ -17,7 +16,6 @@ class value;
 namespace debug {
 
 void print_tokens(const std::pmr::vector<core::token>& tokens);
-std::string_view type_name(const core::type& t);
 
 void print_ast(const std::vector<ast::stmt_ptr>& statements);
 void print_statement(const ast::statement& stmt, uint32_t level = 0);
