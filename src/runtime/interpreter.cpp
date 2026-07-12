@@ -109,7 +109,7 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
 }
 
 void interpreter::execute(const ast::statement& stmt) {
-    if (debug_) debug::print_execution("Executing statement...");
+    if (debug_) debug::print_statement(stmt);
     core::visit(core::overloaded{
                     [this](const ast::expression_stmt& s) { execute_expression_stmt(s); },
                     [this](const ast::var_declaration& s) { execute_var_declaration(s); },
@@ -136,6 +136,12 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
     }
 
     values_.define(stmt.name_.lexeme_, {&stmt.type_, std::move(init_val)});
+
+    if (debug_) {
+        auto* var = values_.get(stmt.name_.lexeme_);
+        std::cerr << "  " << stmt.name_.lexeme_ << " = ";
+        debug::print_value(var->value_);
+    }
 }
 
 void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
@@ -216,10 +222,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
         },
         expr);
-    if (debug_) {
-        std::cerr << "  → ";
-        debug::print_value(result);
-    }
+    if (debug_) debug::print_expression(expr, 0, &result);
     return result;
 }
 
@@ -252,8 +255,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
-    auto* var = values_.get(expr.name_.lexeme_);
-    return var->value_;
+    return evaluate_lvalue(expr);
 }
 
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
@@ -310,77 +312,78 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     } catch (const core::interpret_error& e) { reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_); }
 }
 
+// clang-format off
+core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
+    return core::visit(core::overloaded{
+            [this](const ast::variable_expr& e) -> core::value& {                             
+                auto* var = values_.get(e.name_.lexeme_);                            
+                return var->value_;
+            },
+            [this](const core::arena_ptr<ast::index_expr>& e) -> core::value& {
+                auto& obj = evaluate_lvalue(e->object_);
+                auto index_val = evaluate(e->index_);
+                auto i = *index_val.as<core::value::int_t>();
+
+                auto* arr = obj.as_mut<core::value::array_t>();
+                if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
+                    throw core::interpret_error{err::index_out_of_bounds};
+
+                return (*arr)->at(static_cast<size_t>(i));
+            },
+            [](const auto&) -> core::value& {
+                throw core::interpret_error{err::type_mismatch_assignment};
+            }
+    }, expr);
+}
+// clang-format on
+
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     auto op = expr.op_.type_;
     auto right = evaluate(expr.value_);
 
-    core::value* target = nullptr;
-
-    if (auto* idx = std::get_if<core::arena_ptr<ast::index_expr>>(&expr.target_)) {
-        const auto& var_expr = std::get<ast::variable_expr>((*idx)->object_);
-        auto* var = values_.get(var_expr.name_.lexeme_);
-
-        var->value_.as_mut<core::value::array_t>()->detach();
-        auto* arr = var->value_.as_mut<core::value::array_t>();
-
-        auto index_val = evaluate((*idx)->index_);
-        auto i = *index_val.as<core::value::int_t>();
-
-        if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
-            reporter_.interpret_error(expr, err::index_out_of_bounds);
-
-        target = &(*arr)->at(static_cast<size_t>(i));
-    } else {
-        const auto& var_expr = std::get<ast::variable_expr>(expr.target_);
-        auto* var = values_.get(var_expr.name_.lexeme_);
-
-        if (auto* s = var->value_.as_mut<core::value::string_t>()) s->detach();
-        if (auto* a = var->value_.as_mut<core::value::array_t>()) a->detach();
-
-        target = &var->value_;
-    }
+    auto& target = evaluate_lvalue(expr.target_);
 
     if (op == tt::EQUAL) {
-        *target = convert(std::move(right), target->type());
-        return *target;
+        target = convert(std::move(right), target.type());
+        return target;
     }
 
     switch (op) {
         case tt::PLUS_EQUAL:
-            *target = op::add(*target, right);
+            target = op::add(target, right);
             break;
         case tt::MINUS_EQUAL:
-            *target = op::sub(*target, right);
+            target = op::sub(target, right);
             break;
         case tt::STAR_EQUAL:
-            *target = op::mul(*target, right);
+            target = op::mul(target, right);
             break;
         case tt::SLASH_EQUAL:
-            *target = op::div(*target, right);
+            target = op::div(target, right);
             break;
         case tt::PERCENT_EQUAL:
-            *target = op::mod(*target, right);
+            target = op::mod(target, right);
             break;
         case tt::BIT_AND_EQUAL:
-            *target = op::bit_and(*target, right);
+            target = op::bit_and(target, right);
             break;
         case tt::BIT_OR_EQUAL:
-            *target = op::bit_or(*target, right);
+            target = op::bit_or(target, right);
             break;
         case tt::XOR_EQUAL:
-            *target = op::bit_xor(*target, right);
+            target = op::bit_xor(target, right);
             break;
         case tt::SHL_EQUAL:
-            *target = op::shl(*target, right);
+            target = op::shl(target, right);
             break;
         case tt::SHR_EQUAL:
-            *target = op::shr(*target, right);
+            target = op::shr(target, right);
             break;
         default:
             break;
     }
 
-    return *target;
+    return target;
 }
 
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
@@ -397,20 +400,15 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
         case tt::BIT_NOT:
             return op::bit_not(operand);
         case tt::INCREMENT:
-        case tt::DECREMENT: {
-            const auto& var_expr = std::get<ast::variable_expr>(expr.operand_);
-            auto* var = values_.get(var_expr.name_.lexeme_);
-            return apply_increment(var->value_, op, false);
-        }
+        case tt::DECREMENT:
+            return apply_increment(evaluate_lvalue(expr.operand_), op, false);
         default:
             reporter_.interpret_error(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
     }
 }
 
 core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
-    const auto& var_expr = std::get<ast::variable_expr>(expr.operand_);
-    auto* var = values_.get(var_expr.name_.lexeme_);
-    return apply_increment(var->value_, expr.op_.type_, true);
+    return apply_increment(evaluate_lvalue(expr.operand_), expr.op_.type_, true);
 }
 
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
@@ -437,7 +435,9 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             core::overloaded{
             [&](core::builtin_fn_ptr builtin) {
                 try {
-                    return (*builtin)(args);
+                    auto r = (*builtin)(args);
+                    if (debug_) debug::print_return(name, r);
+                    return r;
                 } catch (const core::interpret_error& e) {
                     reporter_.interpret_error(expr, e.code_, name);
                     return core::value{};
@@ -455,8 +455,13 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 }
                 try {
                     for (const auto& s : func->body_->statements_) execute(*s);
-                } catch (const interpreter::return_value& ret) { return ret.return_value_; }
-                    return default_value(func->return_type_);
+                } catch (const interpreter::return_value& ret) { 
+                    if (debug_) debug::print_return(name, ret.return_value_);
+                    return ret.return_value_; 
+                }
+                auto r = default_value(func->return_type_);
+                if (debug_) debug::print_return(name, r);
+                return r;
             }}, it->impl_);
     // clang-format on
 }

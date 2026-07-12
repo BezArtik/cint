@@ -42,6 +42,7 @@ private:
     core::value evaluate_call(const ast::call_expr& expr);
     core::value evaluate_array_literal(const ast::array_literal_expr& expr);
     core::value evaluate_index(const ast::index_expr& expr);
+    core::value& evaluate_lvalue(const ast::expression& expr);
 
     struct return_value {
         core::value return_value_;
