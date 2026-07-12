@@ -63,12 +63,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         auto init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
-        if (stmt.type_.is_array() && init_type.is_array()) {
-            if (!stmt.type_.is_assignable_from(init_type)) {
-                reporter_.error(stmt, err::type_mismatch_initialization, name);
-                return;
-            }
-        } else if (!stmt.type_.is_assignable_from(init_type)) {
+        if (!stmt.type_.is_assignable_from(init_type)) {
             reporter_.error(stmt, err::type_mismatch_initialization, name);
             return;
         }
@@ -154,9 +149,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
 
     core::scope_guard guard(symbols_);
 
-    for (const auto& param : stmt.params_) {
-        symbols_.define(param.name_.lexeme_, {param.type_, symbol_kind::VARIABLE});
-    }
+    for (const auto& param : stmt.params_) symbols_.define(param.name_.lexeme_, {param.type_, symbol_kind::VARIABLE});
 
     const auto& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
@@ -217,7 +210,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
             reporter_.error(expr, err::arithmetic_requires_numeric);
             return t::unknown_type();
         }
-        return (left == t::int_type() && right == t::int_type()) ? t::int_type() : t::double_type();
+        return (left.is_int() && right.is_int()) ? t::int_type() : t::double_type();
     }
 
     if (op == tt::EQUAL_EQUAL || op == tt::BANG_EQUAL || op == tt::LESS || op == tt::LESS_EQUAL || op == tt::GREATER ||
@@ -347,47 +340,30 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 t type_checker::type_of_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
-    auto info = symbols_.get(name);
-    if (info && info->kind_ == symbol_kind::FUNCTION) {
-        const auto& func_type = info->type_;
-        const auto& param_types = func_type.param_types();
-
+    auto check_args = [&](auto&& expr, auto&& name, auto&& param_types) {
         if (expr.args_.size() != param_types.size()) {
             reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
-            return t::unknown_type();
+            return false;
         }
 
-        for (size_t i = 0; i < expr.args_.size(); i++) {
+        for (size_t i = 0; i < expr.args_.size(); ++i) {
             auto arg_type = type_of(expr.args_[i]);
-            if (arg_type.is_unknown()) return t::unknown_type();
+            if (arg_type.is_unknown()) return false;
             if (!param_types[i].is_assignable_from(arg_type)) {
                 reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
-                return t::unknown_type();
+                return false;
             }
         }
+        return true;
+    };
 
-        return func_type.return_type();
-    }
+    auto info = symbols_.get(name);
+    if (info && info->kind_ == symbol_kind::FUNCTION)
+        return check_args(expr, name, info->type_.param_types()) ? info->type_.return_type() : t::unknown_type();
 
-    for (const auto& def : core::builtins) {
-        if (def.name_ != name) continue;
-
-        if (expr.args_.size() != def.param_types_.size()) {
-            reporter_.error(expr, err::argument_count_mismatch, name, def.param_types_.size(), expr.args_.size());
-            return t::unknown_type();
-        }
-
-        for (size_t i = 0; i < expr.args_.size(); i++) {
-            auto arg_type = type_of(expr.args_[i]);
-            if (arg_type.is_unknown()) return t::unknown_type();
-            if (!def.param_types_[i].is_assignable_from(arg_type)) {
-                reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
-                return t::unknown_type();
-            }
-        }
-
-        return def.return_type_;
-    }
+    auto builtin = std::ranges::find(core::builtins, name, &core::builtin_def::name_);
+    if (builtin != core::builtins.end())
+        return check_args(expr, name, builtin->param_types_) ? builtin->return_type_ : t::unknown_type();
 
     reporter_.error(expr, err::undefined_function, name);
     return t::unknown_type();
