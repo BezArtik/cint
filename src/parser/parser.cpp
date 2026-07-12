@@ -143,23 +143,30 @@ ast::stmt_ptr parser::declaration() {
     }
 }
 
-ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
-    if (match({tt::LEFT_BRACKET})) {
-        size_t array_size = 0;
+core::type parser::parse_array_dimensions(core::type base_type) {
+    std::vector<size_t> dimensions;
 
+    while (match({tt::LEFT_BRACKET})) {
+        size_t dim_size = 0;
         if (match({tt::NUMBER})) {
             auto size_token = prev();
             auto lex = size_token.lexeme_;
-            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), array_size);
-            if (ec != std::errc{} || ptr != lex.data() + lex.size() || array_size == 0)
+            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), dim_size);
+            if (ec != std::errc{} || ptr != lex.data() + lex.size() || dim_size == 0)
                 reporter_.parse_error(size_token, err::unexpected_token);
-        } else if (!check(tt::RIGHT_BRACKET)) {
-            reporter_.parse_error(peek(), err::expected_right_bracket);
         }
-
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
-        type = core::type::array_type(type, array_size);
+        dimensions.push_back(dim_size);
     }
+
+    for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it)
+        base_type = core::type::array_type(base_type, *it);
+
+    return base_type;
+}
+
+ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) {
+    type = parse_array_dimensions(type);
 
     std::optional<ast::expression> initializer;
     if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? array_literal() : expression();
@@ -191,8 +198,11 @@ ast::func_param parser::parse_param() {
     auto kw = prev().as_keyword();
     if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) reporter_.parse_error(prev(), err::expected_type);
 
-    const auto& type = kw->semantic_type_;
-    const auto& name = consume(tt::IDENTIFIER, err::expected_identifier);
+    auto type = kw->semantic_type_;
+    auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+
+    type = parse_array_dimensions(type);
+
     return {type, name};
 }
 
@@ -363,8 +373,11 @@ ast::expression parser::postfix() {
 ast::expression parser::array_literal() {
     ast::expr_list elements(&mr_);
     const auto& brace = prev();
+
     if (!check(tt::RIGHT_BRACE)) {
-        do { elements.push_back(expression()); } while (match({tt::COMMA}));
+        do {
+            match({tt::LEFT_BRACE}) ? elements.push_back(array_literal()) : elements.push_back(expression());
+        } while (match({tt::COMMA}));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     return ast::make_expr<ast::array_literal_expr>(arena_, brace, std::move(elements));

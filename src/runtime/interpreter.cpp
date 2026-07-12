@@ -58,8 +58,10 @@ core::value default_value(const core::type& t) {
         case k::VOID:
             return {};
         case k::ARRAY: {
-            core::value::array_t elements(t.array_size(), default_value(t.element_type()));
-            return elements;
+            std::vector<core::value> elements;
+            elements.reserve(t.array_size());
+            for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
+            return core::value::array_t(std::move(elements));
         }
         default:
             return {};

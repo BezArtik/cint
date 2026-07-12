@@ -48,6 +48,8 @@ private:
     ast::expression finish_index(ast::expression object);
     ast::func_param parse_param();
 
+    core::type parse_array_dimensions(core::type base_type);
+
     void synchronize();
 
     const std::pmr::vector<core::token>& tokens_;
