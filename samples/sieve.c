@@ -5,7 +5,7 @@ print();
 int MAX = stoi(input());
 int BITS_PER_INT = 32;
 
-int bits[31250];
+int bits[1000000];
 
 void set_bit(int n) {
     int idx = n / BITS_PER_INT;
