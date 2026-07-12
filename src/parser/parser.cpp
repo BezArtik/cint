@@ -27,23 +27,33 @@ struct infix_rule {
     bool right_assoc_;
 };
 
+// clang-format off
 constexpr std::array infix_table = {
-    infix_rule{tt::LOGICAL_OR, 2, false},  infix_rule{tt::LOGICAL_AND, 3, false},
+    infix_rule{tt::LOGICAL_OR, 2, false},  
+    infix_rule{tt::LOGICAL_AND, 3, false},
 
-    infix_rule{tt::BIT_OR, 4, false},      infix_rule{tt::XOR, 5, false},
+    infix_rule{tt::BIT_OR, 4, false},      
+    infix_rule{tt::XOR, 5, false},
     infix_rule{tt::BIT_AND, 6, false},
 
-    infix_rule{tt::EQUAL_EQUAL, 7, false}, infix_rule{tt::BANG_EQUAL, 7, false},
-    infix_rule{tt::LESS, 8, false},        infix_rule{tt::LESS_EQUAL, 8, false},
-    infix_rule{tt::GREATER, 8, false},     infix_rule{tt::GREATER_EQUAL, 8, false},
+    infix_rule{tt::EQUAL_EQUAL, 7, false}, 
+    infix_rule{tt::BANG_EQUAL, 7, false},
+    infix_rule{tt::LESS, 8, false},        
+    infix_rule{tt::LESS_EQUAL, 8, false},
+    infix_rule{tt::GREATER, 8, false},     
+    infix_rule{tt::GREATER_EQUAL, 8, false},
 
-    infix_rule{tt::SHL, 9, false},         infix_rule{tt::SHR, 9, false},
+    infix_rule{tt::SHL, 9, false},        
+    infix_rule{tt::SHR, 9, false},
 
-    infix_rule{tt::PLUS, 10, false},       infix_rule{tt::MINUS, 10, false},
+    infix_rule{tt::PLUS, 10, false},       
+    infix_rule{tt::MINUS, 10, false},
 
-    infix_rule{tt::STAR, 11, false},       infix_rule{tt::SLASH, 11, false},
+    infix_rule{tt::STAR, 11, false},      
+    infix_rule{tt::SLASH, 11, false},
     infix_rule{tt::PERCENT, 11, false},
 };
+// clang-format on
 
 int8_t get_precedence(tt type) {
     auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
@@ -124,12 +134,7 @@ ast::stmt_ptr parser::declaration() {
 
             const auto& type = kw->semantic_type_;
             const auto& name = consume(tt::IDENTIFIER, err::expected_identifier);
-
-            if (match({tt::LEFT_PAREN})) {
-                return func_declaration(type, name);
-            } else {
-                return var_declaration(type, name);
-            }
+            return match({tt::LEFT_PAREN}) ? func_declaration(type, name) : var_declaration(type, name);
         }
         return statement();
     } catch (const core::parse_error&) {
@@ -378,9 +383,7 @@ ast::expression parser::primary() {
 
     if (match({tt::IDENTIFIER})) {
         const auto& name = prev();
-
-        if (match({tt::LEFT_PAREN})) return finish_call(name);
-        return ast::make_expr_val<ast::variable_expr>(name);
+        return match({tt::LEFT_PAREN}) ? finish_call(name) : ast::make_expr_val<ast::variable_expr>(name);
     }
 
     if (match({tt::LEFT_PAREN})) {
