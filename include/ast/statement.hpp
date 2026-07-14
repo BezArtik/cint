@@ -118,9 +118,9 @@ struct statement {
     statement(T s) : data_(std::move(s)) {}
 };
 
-template <typename Stmt, typename Loc, typename... Args>
-stmt_ptr make_stmt(core::arena& arena, const Loc& loc, Args&&... args) {
-    auto* p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc.loc_});
+template <typename Stmt, typename... Args>
+stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
+    auto* p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc});
     return stmt_ptr(p);
 }
 

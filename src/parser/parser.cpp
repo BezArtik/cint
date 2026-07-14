@@ -171,7 +171,7 @@ ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) 
     std::optional<ast::expression> initializer;
     if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? array_literal() : expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
-    return ast::make_stmt<ast::var_declaration>(arena_, name, std::move(type), name, std::move(initializer));
+    return ast::make_stmt<ast::var_declaration>(arena_, name.loc_, std::move(type), name, std::move(initializer));
 }
 
 ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token& name) {
@@ -226,7 +226,7 @@ ast::stmt_ptr parser::statement() {
     auto expr = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return ast::make_stmt<ast::expression_stmt>(arena_, prev(), std::move(expr));
+    return ast::make_stmt<ast::expression_stmt>(arena_, prev().loc_, std::move(expr));
 }
 
 ast::stmt_ptr parser::while_statement() {
@@ -235,7 +235,7 @@ ast::stmt_ptr parser::while_statement() {
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
 
     auto body = statement();
-    return ast::make_stmt<ast::while_stmt>(arena_, prev(), std::move(condition), std::move(body));
+    return ast::make_stmt<ast::while_stmt>(arena_, prev().loc_, std::move(condition), std::move(body));
 }
 
 ast::stmt_ptr parser::for_statement() {
@@ -265,7 +265,7 @@ ast::stmt_ptr parser::for_statement() {
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
     auto body = statement();
-    return ast::make_stmt<ast::for_stmt>(arena_, prev(), std::move(initializer), std::move(condition),
+    return ast::make_stmt<ast::for_stmt>(arena_, prev().loc_, std::move(initializer), std::move(condition),
                                          std::move(increment), std::move(body));
 }
 
@@ -286,7 +286,7 @@ ast::stmt_ptr parser::if_statement() {
         }
     }
 
-    return ast::make_stmt<ast::if_stmt>(arena_, prev(), std::move(condition), std::move(then_branch),
+    return ast::make_stmt<ast::if_stmt>(arena_, prev().loc_, std::move(condition), std::move(then_branch),
                                         std::move(else_branch));
 }
 
@@ -297,7 +297,7 @@ ast::stmt_ptr parser::return_statement() {
     if (!check(tt::SEMICOLON)) value = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return ast::make_stmt<ast::return_stmt>(arena_, keyword, keyword, std::move(value));
+    return ast::make_stmt<ast::return_stmt>(arena_, keyword.loc_, keyword, std::move(value));
 }
 
 ast::stmt_ptr parser::block_statement() {
@@ -307,8 +307,7 @@ ast::stmt_ptr parser::block_statement() {
         if (stmt) statements.push_back(std::move(stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    const auto& brace = prev();
-    return ast::make_stmt<ast::block_stmt>(arena_, brace, std::move(statements));
+    return ast::make_stmt<ast::block_stmt>(arena_, prev().loc_, std::move(statements));
 }
 
 ast::expression parser::expression() {
@@ -321,7 +320,7 @@ ast::expression parser::assignment() {
     if (is_assignment(peek().type_)) {
         auto op = advance();
         auto right = assignment();
-        return ast::make_expr<ast::assignment_expr>(arena_, op, std::move(left), op, std::move(right));
+        return ast::make_expr<ast::assignment_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
 
     return left;
@@ -338,7 +337,7 @@ ast::expression parser::parse_expression(int8_t precedence) {
         auto op = advance();
         auto next_prec = is_right_assoc(op_type) ? p : p + 1;
         auto right = parse_expression(next_prec);
-        left = ast::make_expr<ast::binary_expr>(arena_, op, std::move(left), op, std::move(right));
+        left = ast::make_expr<ast::binary_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
 
     return left;
@@ -348,7 +347,7 @@ ast::expression parser::unary() {
     if (match({tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT})) {
         const auto& op = prev();
         auto operand = unary();
-        return ast::make_expr<ast::unary_expr>(arena_, op, op, std::move(operand));
+        return ast::make_expr<ast::unary_expr>(arena_, op.loc_, op, std::move(operand));
     }
     return postfix();
 }
@@ -361,7 +360,7 @@ ast::expression parser::postfix() {
             expr = finish_index(std::move(expr));
         } else if (match({tt::INCREMENT, tt::DECREMENT})) {
             const auto& op = prev();
-            expr = ast::make_expr<ast::postfix_expr>(arena_, op, std::move(expr), op);
+            expr = ast::make_expr<ast::postfix_expr>(arena_, op.loc_, std::move(expr), op);
         } else {
             break;
         }
@@ -372,7 +371,6 @@ ast::expression parser::postfix() {
 
 ast::expression parser::array_literal() {
     ast::expr_list elements(&mr_);
-    const auto& brace = prev();
 
     if (!check(tt::RIGHT_BRACE)) {
         do {
@@ -380,7 +378,7 @@ ast::expression parser::array_literal() {
         } while (match({tt::COMMA}));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    return ast::make_expr<ast::array_literal_expr>(arena_, brace, std::move(elements));
+    return ast::make_expr<ast::array_literal_expr>(arena_, prev().loc_, std::move(elements));
 }
 
 ast::expression parser::primary() {
@@ -419,14 +417,13 @@ ast::expression parser::finish_call(const core::token& callee) {
 
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
-    return ast::make_expr<ast::call_expr>(arena_, callee, callee, std::move(args));
+    return ast::make_expr<ast::call_expr>(arena_, callee.loc_, callee, std::move(args));
 }
 
 ast::expression parser::finish_index(ast::expression object) {
-    const auto& bracket = prev();
     auto index = expression();
     consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
-    return ast::make_expr<ast::index_expr>(arena_, bracket, std::move(object), std::move(index));
+    return ast::make_expr<ast::index_expr>(arena_, prev().loc_, std::move(object), std::move(index));
 }
 
 void parser::synchronize() {

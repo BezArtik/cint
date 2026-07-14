@@ -104,9 +104,9 @@ struct index_expr {
         : object_(std::move(object)), index_(std::move(index)), loc_(loc) {}
 };
 
-template <typename T, typename Loc, typename... Args>
-expression make_expr(core::arena& arena, const Loc& loc, Args&&... args) {
-    auto* p = arena.allocate<T>(std::forward<Args>(args)..., loc.loc_);
+template <typename T, typename... Args>
+expression make_expr(core::arena& arena, core::location loc, Args&&... args) {
+    auto* p = arena.allocate<T>(std::forward<Args>(args)..., loc);
     return expression(core::arena_ptr<T>(p));
 }
 
