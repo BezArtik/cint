@@ -27,11 +27,14 @@ namespace runtime {
 
 using tt = core::token_type;
 using t = core::type;
-using k = core::type::kind;
 using err = core::error_code;
 namespace op = core::ops;
 
 namespace {
+
+struct return_value {
+    core::value return_value_;
+};
 
 core::value apply_increment(core::value& val, core::token_type op, bool return_old) {
     auto old_val = val;
@@ -43,37 +46,6 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
     }
 
     return return_old ? old_val : val;
-}
-
-core::value default_value(const core::type& t) {
-    switch (t.get_kind()) {
-        case k::INT:
-            return core::value::int_t{};
-        case k::DOUBLE:
-            return core::value::double_t{};
-        case k::BOOL:
-            return core::value::bool_t{};
-        case k::STRING:
-            return std::string{};
-        case k::VOID:
-            return {};
-        case k::ARRAY: {
-            std::vector<core::value> elements;
-            elements.reserve(t.array_size());
-            for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
-            return core::value::array_t(std::move(elements));
-        }
-        default:
-            return {};
-    }
-}
-
-core::value convert(core::value val, const core::type& target) {
-    if (val.type() == target) return val;
-
-    if (target.is_int() && val.is_double()) return val.to_int();
-    if (target.is_double() && val.is_int()) return val.to_double();
-    return val;
 }
 
 }  // namespace
@@ -97,7 +69,7 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
             core::scope_guard guard(values_);
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
-            } catch (const interpreter::return_value& ret) {
+            } catch (const return_value& ret) {
                 if (debug_) {
                     std::cerr << "[main] returned ";
                     debug::print_value(ret.return_value_);
@@ -128,11 +100,11 @@ void interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
 }
 
 void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
-    auto init_val = default_value(stmt.type_);
+    auto init_val = core::value::default_value(stmt.type_);
 
     if (stmt.initializer_) {
         auto init = evaluate(*stmt.initializer_);
-        init_val = convert(std::move(init), stmt.type_);
+        init_val = core::value::convert(std::move(init), stmt.type_);
     }
 
     values_.define(stmt.name_.lexeme_, {&stmt.type_, std::move(init_val)});
@@ -195,7 +167,7 @@ void interpreter::execute_if(const ast::if_stmt& stmt) {
 void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
     stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = {};
-    throw interpreter::return_value{std::move(ret_val)};
+    throw return_value{std::move(ret_val)};
 }
 
 void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
@@ -344,7 +316,7 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     auto& target = evaluate_lvalue(expr.target_);
 
     if (op == tt::EQUAL) {
-        target = convert(std::move(right), target.type());
+        target = core::value::convert(std::move(right), target.type());
         return target;
     }
 
@@ -422,7 +394,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    std::array<core::value, 16> args_buf;
+    std::array<core::value, MAX_ARGUMENTS> args_buf;
 
     try {
         std::ranges::transform(expr.args_, args_buf.begin(), [this](const auto& arg) { return evaluate(arg); });
@@ -450,16 +422,16 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 for (size_t i = 0; i < fn_params.size(); ++i) {
                     auto& param = fn_params[i];
                     auto& param_t = param.type_;
-                    auto converted = convert(std::move(args_buf[i]), param_t);
+                    auto converted = core::value::convert(std::move(args_buf[i]), param_t);
                     values_.define(param.name_.lexeme_, {&param_t, std::move(converted)});
                 }
                 try {
                     for (const auto& s : func->body_->statements_) execute(*s);
-                } catch (const interpreter::return_value& ret) { 
+                } catch (const return_value& ret) { 
                     if (debug_) debug::print_return(name, ret.return_value_);
                     return ret.return_value_; 
                 }
-                auto r = default_value(func->return_type_);
+                auto r = core::value::default_value(func->return_type_);
                 if (debug_) debug::print_return(name, r);
                 return r;
             }}, it->impl_);
@@ -475,7 +447,7 @@ core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& e
     if (elements.empty()) return std::vector<core::value>{};
 
     auto elem_type = elements[0].type();
-    for (auto& e : elements) e = convert(std::move(e), elem_type);
+    for (auto& e : elements) e = core::value::convert(std::move(e), elem_type);
 
     return elements;
 }

@@ -13,6 +13,38 @@ namespace core {
 
 value::value() : data_(std::monostate{}) {}
 
+core::value value::default_value(const core::type& t) {
+    using k = core::type::kind;
+    switch (t.get_kind()) {
+        case k::INT:
+            return core::value::int_t{};
+        case k::DOUBLE:
+            return core::value::double_t{};
+        case k::BOOL:
+            return core::value::bool_t{};
+        case k::STRING:
+            return std::string{};
+        case k::VOID:
+            return {};
+        case k::ARRAY: {
+            std::vector<core::value> elements;
+            elements.reserve(t.array_size());
+            for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
+            return core::value::array_t(std::move(elements));
+        }
+        default:
+            return {};
+    }
+}
+
+core::value value::convert(core::value val, const core::type& target) {
+    if (val.type() == target) return val;
+
+    if (target.is_int() && val.is_double()) return val.to_int();
+    if (target.is_double() && val.is_int()) return val.to_double();
+    return val;
+}
+
 // clang-format off
 core::type value::type() const {
     return visit(

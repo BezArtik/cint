@@ -27,6 +27,9 @@ public:
 
     core::type type() const;
 
+    static core::value default_value(const core::type& t);
+    static core::value convert(core::value val, const core::type& target);
+
     int_t to_int() const;
     double_t to_double() const;
     bool_t to_bool() const;

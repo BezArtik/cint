@@ -133,7 +133,7 @@ private:
     void swap(type& other) noexcept;
 
     kind kind_ = kind::UNKNOWN;
-    std::variant<std::monostate, function_info, array_info> info_;
+    std::variant<function_info, array_info, std::monostate> info_;
 };
 
 }  // namespace core

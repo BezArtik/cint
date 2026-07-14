@@ -44,10 +44,6 @@ private:
     core::value evaluate_index(const ast::index_expr& expr);
     core::value& evaluate_lvalue(const ast::expression& expr);
 
-    struct return_value {
-        core::value return_value_;
-    };
-
     struct runtime_var {
         const core::type* static_type_;
         core::value value_;
@@ -65,6 +61,7 @@ private:
     uint32_t recursion_depth_ = 0;
     bool debug_;
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
+    static constexpr uint32_t MAX_ARGUMENTS = 16;
 };
 
 }  // namespace runtime
