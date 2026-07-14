@@ -85,10 +85,20 @@ void lexer::scan_token() {
             add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL);
             break;
         case '<':
-            add_token(match('=') ? tt::LESS_EQUAL : match('<') ? tt::SHL : match('=') ? tt::SHL_EQUAL : tt::LESS);
+            if (match('='))
+                add_token(tt::LESS_EQUAL);
+            else if (match('<'))
+                add_token(match('=') ? tt::SHR_EQUAL : tt::SHR);
+            else
+                add_token(tt::LESS);
             break;
         case '>':
-            add_token(match('=') ? tt::GREATER_EQUAL : match('>') ? tt::SHR : match('=') ? tt::SHR_EQUAL : tt::GREATER);
+            if (match('='))
+                add_token(tt::GREATER_EQUAL);
+            else if (match('>'))
+                add_token(match('=') ? tt::SHR_EQUAL : tt::SHR);
+            else
+                add_token(tt::GREATER);
             break;
 
         case '&':
