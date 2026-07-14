@@ -14,12 +14,13 @@
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug.hpp"
+#include "debug/debug_writer.hpp"
+#include "debug/trace_level.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <charconv>
-#include <iostream>
 #include <string>
 #include <utility>
 
@@ -50,7 +51,8 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
 
 }  // namespace
 
-interpreter::interpreter(core::error_reporter& reporter, bool debug) : reporter_(reporter), debug_(debug) {
+interpreter::interpreter(core::error_reporter& reporter, const debug::debug_writer& writer)
+    : reporter_(reporter), writer_(writer) {
     functions_.reserve(64);
     for (const auto& def : core::builtins) functions_.emplace_back(def.name_, def.impl_);
 }
@@ -70,10 +72,8 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
             try {
                 for (const auto& s : func.body_->statements_) execute(*s);
             } catch (const return_value& ret) {
-                if (debug_) {
-                    std::cerr << "[main] returned ";
-                    debug::print_value(ret.return_value_);
-                }
+                if (writer_.enabled(debug::trace_level::returns))
+                    debug::print_return(writer_, "main", ret.return_value_);
             }
         }
 
@@ -81,7 +81,7 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
 }
 
 void interpreter::execute(const ast::statement& stmt) {
-    if (debug_) debug::print_statement(stmt);
+    if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
     core::visit(core::overloaded{
                     [this](const ast::expression_stmt& s) { execute_expression_stmt(s); },
                     [this](const ast::var_declaration& s) { execute_var_declaration(s); },
@@ -109,10 +109,9 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
 
     values_.define(stmt.name_.lexeme_, {&stmt.type_, std::move(init_val)});
 
-    if (debug_) {
+    if (writer_.enabled(debug::trace_level::execution)) {
         auto* var = values_.get(stmt.name_.lexeme_);
-        std::cerr << "  " << stmt.name_.lexeme_ << " = ";
-        debug::print_value(var->value_);
+        writer_.emit("  " + std::string(stmt.name_.lexeme_) + " = " + var->value_.to_string() + "\n");
     }
 }
 
@@ -194,7 +193,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
         },
         expr);
-    if (debug_) debug::print_expression(expr, 0, &result);
+    if (writer_.enabled(debug::trace_level::execution)) debug::print_expression(writer_, expr, 0, &result);
     return result;
 }
 
@@ -408,7 +407,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             [&](core::builtin_fn_ptr builtin) {
                 try {
                     auto r = (*builtin)(args);
-                    if (debug_) debug::print_return(name, r);
+                    if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                     return r;
                 } catch (const core::interpret_error& e) {
                     reporter_.interpret_error(expr, e.code_, name);
@@ -428,11 +427,11 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 try {
                     for (const auto& s : func->body_->statements_) execute(*s);
                 } catch (const return_value& ret) { 
-                    if (debug_) debug::print_return(name, ret.return_value_);
+                    if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, ret.return_value_);
                     return ret.return_value_; 
                 }
                 auto r = core::value::default_value(func->return_type_);
-                if (debug_) debug::print_return(name, r);
+                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
             }}, it->impl_);
     // clang-format on

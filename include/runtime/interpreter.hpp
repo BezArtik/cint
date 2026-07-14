@@ -8,6 +8,7 @@
 #include "core/utils/builtins.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/value/value.hpp"
+#include "debug/debug_writer.hpp"
 
 #include <string_view>
 #include <vector>
@@ -16,7 +17,7 @@ namespace runtime {
 
 class interpreter {
 public:
-    interpreter(core::error_reporter& reporter, bool debug = false);
+    interpreter(core::error_reporter& reporter, const debug::debug_writer& writer = {});
 
     void interpret(const std::vector<ast::stmt_ptr>& statements);
 
@@ -56,10 +57,10 @@ private:
     };
 
     core::error_reporter& reporter_;
+    const debug::debug_writer writer_;
     core::scoped_map<runtime_var> values_;
     std::vector<function_entry> functions_;
     uint32_t recursion_depth_ = 0;
-    bool debug_;
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
     static constexpr uint32_t MAX_ARGUMENTS = 16;
 };

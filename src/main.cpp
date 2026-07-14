@@ -15,77 +15,143 @@
 #include <string>
 #include <string_view>
 
+namespace {
+
+struct flag_info {
+    std::string_view name_;
+    debug::trace_level level_;
+};
+
+// clang-format off
+constexpr std::array flag_table = {
+    flag_info{"--debug", debug::trace_level::all},         
+    flag_info{"--trace=tokens", debug::trace_level::tokens},
+    flag_info{"--trace=ast", debug::trace_level::ast},     
+    flag_info{"--trace=exec", debug::trace_level::execution},
+    flag_info{"--trace=calls", debug::trace_level::calls}, 
+    flag_info{"--trace=returns", debug::trace_level::returns},
+    flag_info{"--trace=all", debug::trace_level::all},
+};
+// clang-format on
+
+struct options {
+    bool debug_ = false;
+    std::string filename_;
+    debug::trace_level trace_mask_ = debug::trace_level::none;
+};
+
+options parse_args(int argc, char* argv[]) {
+    options opts;
+    for (int i = 1; i < argc; ++i) {
+        std::string_view arg(argv[i]);
+
+        if (arg == "--help") {
+            std::cout << "Usage: " << argv[0] << " [options] <source_file>\n"
+                      << "Options:\n"
+                      << "  --debug              Enable all debug output\n"
+                      << "  --trace=<level>      Enable specific trace level:\n"
+                      << "                         tokens | ast | exec | calls | returns | all\n"
+                      << "  --help               Show this help\n";
+            std::exit(0);
+        }
+
+        auto it = std::ranges::find(flag_table, arg, &flag_info::name_);
+        if (it != flag_table.end()) {
+            opts.debug_ = true;
+            opts.trace_mask_ = opts.trace_mask_ | it->level_;
+            continue;
+        }
+
+        opts.filename_ = argv[i];
+    }
+    return opts;
+}
+
+struct run_config {
+    std::string_view source_;
+    const debug::debug_writer& writer_;
+};
+
+int run_program(const run_config& config) {
+    core::arena arena;
+    core::arena_memory_resource mr(arena);
+    core::error_reporter reporter(config.source_);
+
+    lexer::lexer lex(config.source_, reporter, mr);
+    auto tokens = lex.scan_tokens();
+
+    debug::print_tokens(config.writer_, tokens);
+    if (reporter.has_error()) {
+        std::cerr << "Lexical errors found.\n";
+        return 1;
+    }
+
+    parser::parser p(tokens, reporter, arena, mr);
+    auto ast = p.parse();
+
+    debug::print_ast(config.writer_, ast);
+    if (reporter.has_error()) {
+        std::cerr << "Syntax errors found.\n";
+        return 1;
+    }
+
+    semantics::type_checker checker(reporter);
+    if (!checker.check(ast)) {
+        std::cerr << "Semantic errors found.\n";
+        return 1;
+    }
+
+    runtime::interpreter interpreter(reporter, config.writer_);
+    interpreter.interpret(ast);
+
+    if (reporter.has_error()) {
+        std::cerr << "Runtime errors found.\n";
+        return 1;
+    }
+
+    return 0;
+}
+
+}  // namespace
+
 int main(int argc, char* argv[]) {
     try {
-        std::cout << "Program execution...\n";
-        bool debug = false;
-        std::string filename;
+        const auto opts = parse_args(argc, argv);
 
-        for (int i = 1; i < argc; ++i) {
-            std::string_view arg(argv[i]);
-            if (arg == "--debug") {
-                debug = true;
-            } else {
-                filename = argv[i];
-            }
-        }
-
-        if (filename.empty()) {
-            std::cerr << "Usage: " << argv[0] << " [--debug] <source_file>\n";
+        if (opts.filename_.empty()) {
+            std::cerr << "Usage: " << argv[0] << " [options] <source_file>\n"
+                      << "Try '" << argv[0] << " --help' for more information.\n";
             return 1;
         }
 
-        std::ifstream file(filename);
+        std::ifstream file(opts.filename_);
         if (!file) {
-            std::cerr << "Error: cannot open file '" << filename << "'\n";
+            std::cerr << "Error: cannot open file '" << opts.filename_ << "'\n";
             return 1;
         }
 
-        const auto start = std::chrono::steady_clock::now();
         std::stringstream buffer;
         buffer << file.rdbuf();
-        auto source = buffer.str();
+        const auto source = buffer.str();
 
-        core::arena arena;
-        core::arena_memory_resource mr(arena);
-        core::error_reporter reporter(source);
-        lexer::lexer lex(source, reporter, mr);
-        auto tokens = lex.scan_tokens();
-        if (debug) debug::print_tokens(tokens);
-        if (reporter.has_error()) {
-            std::cerr << "Lexical errors found.\n";
-            return 1;
-        }
+        debug::debug_writer writer{
+            opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : decltype(debug::debug_writer::write_){},
+            opts.trace_mask_};
+        run_config config{source, writer};
 
-        parser::parser p(tokens, reporter, arena, mr);
-        auto ast = p.parse();
-        if (debug) debug::print_ast(ast);
-        if (reporter.has_error()) {
-            std::cerr << "Syntax errors found.\n";
-            return 1;
-        }
-
-        semantics::type_checker checker(reporter);
-        if (!checker.check(ast)) {
-            std::cerr << "Semantic errors found.\n";
-            return 1;
-        }
-
-        runtime::interpreter interpreter(reporter, debug);
-        interpreter.interpret(ast);
-        if (reporter.has_error()) {
-            std::cerr << "Runtime errors found.\n";
-            return 1;
-        }
+        const auto start = std::chrono::steady_clock::now();
+        const auto exit_code = run_program(config);
         const auto finish = std::chrono::steady_clock::now();
-        const std::chrono::duration<double> time_program = finish - start;
-        std::cout << "\nProgram execution time (" << time_program << ")\n";
-        std::cout << "Program finished successfully.\n";
+
+        const std::chrono::duration<double> elapsed = finish - start;
+        std::cout << "\nProgram execution time (" << elapsed << ")\n";
+
+        if (exit_code == 0) std::cout << "Program finished successfully.\n";
+
+        return exit_code;
 
     } catch (const std::exception& e) {
         std::cerr << "Fatal Error: " << e.what() << "\n";
         return 1;
     }
-
-    return 0;
 }
