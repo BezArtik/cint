@@ -2,6 +2,8 @@
 
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
+#include "core/utils/builtins.hpp"
+#include "core/utils/function_registry.hpp"
 #include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
@@ -95,13 +97,15 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    semantics::type_checker checker(reporter);
+    auto registry = core::function_registry::build(ast, core::builtins);
+
+    semantics::type_checker checker(reporter, registry);
     if (!checker.check(ast)) {
         std::cerr << "Semantic errors found.\n";
         return 1;
     }
 
-    runtime::interpreter interpreter(reporter, config.writer_);
+    runtime::interpreter interpreter(reporter, registry, config.writer_);
     interpreter.interpret(ast);
 
     if (reporter.has_error()) {

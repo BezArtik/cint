@@ -4,6 +4,7 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
+#include "core/utils/function_registry.hpp"
 #include "core/utils/scoped_map.hpp"
 
 #include <optional>
@@ -13,7 +14,7 @@ namespace semantics {
 
 class type_checker {
 public:
-    type_checker(core::error_reporter& reporter);
+    type_checker(core::error_reporter& reporter, const core::function_registry& registry);
 
     bool check(const std::vector<ast::stmt_ptr>& statements);
 
@@ -42,15 +43,9 @@ private:
 
     bool is_lvalue(const ast::expression& expr);
 
-    enum class symbol_kind : uint8_t { VARIABLE, FUNCTION };
-
-    struct symbol_info {
-        core::type type_;
-        symbol_kind kind_;
-    };
-
     core::error_reporter& reporter_;
-    core::scoped_map<symbol_info> symbols_;
+    const core::function_registry& registry_;
+    core::scoped_map<core::type> symbols_;
     std::optional<core::type> curr_return_type_;
 };
 

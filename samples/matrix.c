@@ -25,25 +25,24 @@ void add_matrices(double C[3][3], double A[3][3], double B[3][3]) {
     }
 }
 
-int main() {
-    double A[3][3] = {
-        {1.0, 2.0, 3.0},
-        {4.0, 5.0, 6.0},
-        {7.0, 8.0, 9.0}
-    };
+double A[3][3] = {
+    {1.0, 2.0, 3.0},
+    {4.0, 5.0, 6.0},
+    {7.0, 8.0, 9.0}
+};
 
-    double B[3][3] = {
-        {9.0, 8.0, 7.0},
-        {6.0, 5.0, 4.0},
-        {3.0, 2.0, 1.0}
-    };
+double B[3][3] = {
+    {9.0, 8.0, 7.0},
+    {6.0, 5.0, 4.0},
+    {3.0, 2.0, 1.0}
+};
 
-    double C[3][3]; 
+double C[3][3]; 
 
-    print_matrix(A, "A");
-    print_matrix(B, "B");
+print_matrix(A, "A");
+print_matrix(B, "B");
 
-    add_matrices(C, A, B);
-    print_matrix(C, "A + B");
-}
+add_matrices(C, A, B);
+print_matrix(C, "A + B");
+
 // clang-format on

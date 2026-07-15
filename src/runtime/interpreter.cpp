@@ -9,6 +9,7 @@
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
+#include "core/utils/function_registry.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/value/operations.hpp"
@@ -51,32 +52,15 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
 
 }  // namespace
 
-interpreter::interpreter(core::error_reporter& reporter, const debug::debug_writer& writer)
-    : reporter_(reporter), writer_(writer) {
-    functions_.reserve(64);
-    for (const auto& def : core::builtins) functions_.emplace_back(def.name_, def.impl_);
-}
+interpreter::interpreter(core::error_reporter& reporter, const core::function_registry& registry,
+                         const debug::debug_writer& writer)
+    : reporter_(reporter), registry_(registry), writer_(writer) {}
 
 void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
     try {
         for (const auto& stmt : statements) {
-            if (std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
-        }
-        for (const auto& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
-        auto main_it = std::ranges::find(functions_, "main", &function_entry::name_);
-        if (main_it != functions_.end()) {
-            const auto& func = *std::get<const ast::func_declaration*>(main_it->impl_);
-            core::scope_guard guard(values_);
-            try {
-                for (const auto& s : func.body_->statements_) execute(*s);
-            } catch (const return_value& ret) {
-                if (writer_.enabled(debug::trace_level::returns))
-                    debug::print_return(writer_, "main", ret.return_value_);
-            }
-        }
-
     } catch (const core::interpret_error&) {}
 }
 
@@ -90,7 +74,7 @@ void interpreter::execute(const ast::statement& stmt) {
                     [this](const ast::for_stmt& s) { execute_for(s); },
                     [this](const ast::if_stmt& s) { execute_if(s); },
                     [this](const ast::return_stmt& s) { execute_return_stmt(s); },
-                    [this](const ast::func_declaration& s) { execute_func_declaration(s); },
+                    [](const ast::func_declaration&) {},
                 },
                 stmt.data_);
 }
@@ -167,16 +151,6 @@ void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
     stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = {};
     throw return_value{std::move(ret_val)};
-}
-
-void interpreter::execute_func_declaration(const ast::func_declaration& stmt) {
-    auto name = stmt.name_.lexeme_;
-
-    auto it = std::ranges::find(functions_, name, &function_entry::name_);
-    if (it != functions_.end())
-        it->impl_ = &stmt;
-    else
-        functions_.emplace_back(name, &stmt);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
@@ -394,47 +368,43 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     } d_guard{recursion_depth_};
 
     std::array<core::value, MAX_ARGUMENTS> args_buf;
-
     try {
         std::ranges::transform(expr.args_, args_buf.begin(), [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
-    auto it = std::ranges::find(functions_, name, &function_entry::name_);
+    auto func = registry_.find(name);
     std::span<const core::value> args(args_buf.data(), expr.args_.size());
-    // clang-format off
-    return core::visit(
-            core::overloaded{
-            [&](core::builtin_fn_ptr builtin) {
-                try {
-                    auto r = (*builtin)(args);
-                    if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
-                    return r;
-                } catch (const core::interpret_error& e) {
-                    reporter_.interpret_error(expr, e.code_, name);
-                    return core::value{};
-                }
-            },
-                                        
-            [&](const ast::func_declaration* func) {
-                core::scope_guard guard(values_);
-                auto& fn_params = func->params_;
-                for (size_t i = 0; i < fn_params.size(); ++i) {
-                    auto& param = fn_params[i];
-                    auto& param_t = param.type_;
-                    auto converted = core::value::convert(std::move(args_buf[i]), param_t);
-                    values_.define(param.name_.lexeme_, {&param_t, std::move(converted)});
-                }
-                try {
-                    for (const auto& s : func->body_->statements_) execute(*s);
-                } catch (const return_value& ret) { 
-                    if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, ret.return_value_);
-                    return ret.return_value_; 
-                }
-                auto r = core::value::default_value(func->return_type_);
-                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
-                return r;
-            }}, it->impl_);
-    // clang-format on
+
+    if (func->builtin_) {
+        try {
+            auto r = func->builtin_(args);
+            if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
+            return r;
+        } catch (const core::interpret_error& e) {
+            reporter_.interpret_error(expr, e.code_, name);
+            return {};
+        }
+    }
+
+    if (func->body_) {
+        core::scope_guard guard(values_);
+        for (size_t i = 0; i < func->body_->params_.size(); ++i) {
+            const auto& param = func->body_->params_[i];
+            auto converted = core::value::convert(std::move(args_buf[i]), param.type_);
+            values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
+        }
+        try {
+            for (const auto& s : func->body_->body_->statements_) execute(*s);
+        } catch (const return_value& ret) {
+            if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, ret.return_value_);
+            return ret.return_value_;
+        }
+        auto r = core::value::default_value(func->body_->return_type_);
+        if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
+        return r;
+    }
+
+    reporter_.interpret_error(expr, err::undefined_function, name);
 }
 
 core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {

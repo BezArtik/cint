@@ -88,7 +88,7 @@ void lexer::scan_token() {
             if (match('='))
                 add_token(tt::LESS_EQUAL);
             else if (match('<'))
-                add_token(match('=') ? tt::SHR_EQUAL : tt::SHR);
+                add_token(match('=') ? tt::SHL_EQUAL : tt::SHL);
             else
                 add_token(tt::LESS);
             break;

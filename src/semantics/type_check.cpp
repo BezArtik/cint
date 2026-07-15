@@ -8,11 +8,10 @@
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
-#include "core/utils/builtins.hpp"
+#include "core/utils/function_registry.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
 
-#include <algorithm>
 #include <vector>
 
 namespace semantics {
@@ -21,7 +20,8 @@ using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
 
-type_checker::type_checker(core::error_reporter& reporter) : reporter_(reporter) {}
+type_checker::type_checker(core::error_reporter& reporter, const core::function_registry& registry)
+    : reporter_(reporter), registry_(registry) {}
 
 bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
     for (const auto& stmt : statements) check_statement(*stmt);
@@ -69,11 +69,11 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         }
     }
 
-    symbols_.define(name, {stmt.type_, symbol_kind::VARIABLE});
+    symbols_.define(name, stmt.type_);
 }
 
 void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
-    std::optional<core::scope_guard<symbol_info>> guard;
+    std::optional<core::scope_guard<core::type>> guard;
     if (create_scope) guard.emplace(symbols_);
     for (const auto& s : stmt.statements_) check_statement(*s);
 }
@@ -139,17 +139,8 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
         return;
     }
 
-    std::vector<t> param_types;
-    param_types.reserve(stmt.params_.size());
-    std::ranges::transform(stmt.params_, std::back_inserter(param_types),
-                           [](const auto& param) { return param.type_; });
-
-    auto func_type = t::function_type(stmt.return_type_, param_types);
-    symbols_.define(name, {func_type, symbol_kind::FUNCTION});
-
     core::scope_guard guard(symbols_);
-
-    for (const auto& param : stmt.params_) symbols_.define(param.name_.lexeme_, {param.type_, symbol_kind::VARIABLE});
+    for (const auto& param : stmt.params_) symbols_.define(param.name_.lexeme_, param.type_);
 
     const auto& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
@@ -195,7 +186,7 @@ t type_checker::type_of_variable(const ast::variable_expr& expr_) {
         reporter_.error(expr_, err::undefined_variable, name);
         return t::unknown_type();
     }
-    return info->type_;
+    return *info;
 }
 
 t type_checker::type_of_binary(const ast::binary_expr& expr) {
@@ -340,33 +331,28 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 t type_checker::type_of_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
-    auto check_args = [&](auto&& expr, auto&& name, auto&& param_types) {
-        if (expr.args_.size() != param_types.size()) {
-            reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
-            return false;
+    auto func = registry_.find(name);
+    if (!func) {
+        reporter_.error(expr, err::undefined_function, name);
+        return t::unknown_type();
+    }
+
+    const auto& param_types = func->type_.param_types();
+    if (expr.args_.size() != param_types.size()) {
+        reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
+        return t::unknown_type();
+    }
+
+    for (size_t i = 0; i < expr.args_.size(); ++i) {
+        auto arg_type = type_of(expr.args_[i]);
+        if (arg_type.is_unknown()) return t::unknown_type();
+        if (!param_types[i].is_assignable_from(arg_type)) {
+            reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
+            return t::unknown_type();
         }
+    }
 
-        for (size_t i = 0; i < expr.args_.size(); ++i) {
-            auto arg_type = type_of(expr.args_[i]);
-            if (arg_type.is_unknown()) return false;
-            if (!param_types[i].is_assignable_from(arg_type)) {
-                reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
-                return false;
-            }
-        }
-        return true;
-    };
-
-    auto info = symbols_.get(name);
-    if (info && info->kind_ == symbol_kind::FUNCTION)
-        return check_args(expr, name, info->type_.param_types()) ? info->type_.return_type() : t::unknown_type();
-
-    auto builtin = std::ranges::find(core::builtins, name, &core::builtin_def::name_);
-    if (builtin != core::builtins.end())
-        return check_args(expr, name, builtin->param_types_) ? builtin->return_type_ : t::unknown_type();
-
-    reporter_.error(expr, err::undefined_function, name);
-    return t::unknown_type();
+    return func->type_.return_type();
 }
 
 t type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {

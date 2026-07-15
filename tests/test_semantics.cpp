@@ -2,6 +2,8 @@
 
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
+#include "core/utils/builtins.hpp"
+#include "core/utils/function_registry.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "semantics/type_check.hpp"
@@ -19,7 +21,8 @@ public:
         tokens_ = lex.scan_tokens();
         parser::parser p(tokens_, reporter_, arena_, mr_);
         ast_ = p.parse();
-        semantics::type_checker checker(reporter_);
+        auto registry = core::function_registry::build(ast_, core::builtins);
+        semantics::type_checker checker(reporter_, registry);
         check_ok_ = checker.check(ast_);
         had_error_ = reporter_.has_error();
     }
