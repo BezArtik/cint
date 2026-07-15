@@ -34,10 +34,6 @@ namespace op = core::ops;
 
 namespace {
 
-struct return_value {
-    core::value return_value_;
-};
-
 core::value apply_increment(core::value& val, core::token_type op, bool return_old) {
     auto old_val = val;
 
@@ -52,6 +48,19 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
 
 }  // namespace
 
+struct interpreter::execution_result {
+    enum class kind : uint8_t { normal, return_ };
+
+    kind kind_ = kind::normal;
+    core::value value_;
+
+    static execution_result normal() { return {kind::normal, {}}; }
+    static execution_result return_(core::value v) { return {kind::return_, std::move(v)}; }
+
+    bool is_normal() const noexcept { return kind_ == kind::normal; }
+    bool is_return() const noexcept { return kind_ == kind::return_; }
+};
+
 interpreter::interpreter(core::error_reporter& reporter, const core::function_registry& registry,
                          const debug::debug_writer& writer)
     : reporter_(reporter), registry_(registry), writer_(writer) {}
@@ -64,26 +73,27 @@ void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
     } catch (const core::interpret_error&) {}
 }
 
-void interpreter::execute(const ast::statement& stmt) {
+interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
-    core::visit(core::overloaded{
-                    [this](const ast::expression_stmt& s) { execute_expression_stmt(s); },
-                    [this](const ast::var_declaration& s) { execute_var_declaration(s); },
-                    [this](const ast::block_stmt& s) { execute_block(s); },
-                    [this](const ast::while_stmt& s) { execute_while(s); },
-                    [this](const ast::for_stmt& s) { execute_for(s); },
-                    [this](const ast::if_stmt& s) { execute_if(s); },
-                    [this](const ast::return_stmt& s) { execute_return_stmt(s); },
-                    [](const ast::func_declaration&) {},
-                },
-                stmt.data_);
+    return core::visit(core::overloaded{
+                           [this](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
+                           [this](const ast::var_declaration& s) { return execute_var_declaration(s); },
+                           [this](const ast::block_stmt& s) { return execute_block(s); },
+                           [this](const ast::while_stmt& s) { return execute_while(s); },
+                           [this](const ast::for_stmt& s) { return execute_for(s); },
+                           [this](const ast::if_stmt& s) { return execute_if(s); },
+                           [this](const ast::return_stmt& s) { return execute_return_stmt(s); },
+                           [](const ast::func_declaration&) { return execution_result::normal(); },
+                       },
+                       stmt.data_);
 }
 
-void interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
+interpreter::execution_result interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
     evaluate(stmt.expr_);
+    return execution_result::normal();
 }
 
-void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
+interpreter::execution_result interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
     auto init_val = core::value::default_value(stmt.type_);
 
     if (stmt.initializer_) {
@@ -97,34 +107,41 @@ void interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
         auto* var = values_.get(stmt.name_.lexeme_);
         writer_.emit("  " + std::string(stmt.name_.lexeme_) + " = " + var->value_.to_string() + "\n");
     }
+    return execution_result::normal();
 }
 
-void interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
+interpreter::execution_result interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<runtime_var>> guard;
     if (create_scope) guard.emplace(values_);
-    for (const auto& s : stmt.statements_) execute(*s);
+    for (const auto& s : stmt.statements_) {
+        auto res = execute(*s);
+        if (res.is_return()) return res;
+    }
+    return execution_result::normal();
 }
 
-void interpreter::execute_body(const ast::statement& body) {
+interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
     bool create_scope = false;
     if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
         create_scope = ast::has_declarations(*block);
-        execute_block(*block, create_scope);
-    } else {
-        execute(body);
+        return execute_block(*block, create_scope);
     }
+    return execute(body);
 }
 
-void interpreter::execute_while(const ast::while_stmt& stmt) {
+interpreter::execution_result interpreter::execute_while(const ast::while_stmt& stmt) {
     core::scope_guard guard(values_);
     while (true) {
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
-        execute_body(*stmt.body_);
+
+        auto res = execute_body(*stmt.body_);
+        if (res.is_return()) return res;
     }
+    return execution_result::normal();
 }
 
-void interpreter::execute_for(const ast::for_stmt& stmt) {
+interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt) {
     core::scope_guard guard(values_);
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
@@ -132,25 +149,29 @@ void interpreter::execute_for(const ast::for_stmt& stmt) {
             auto cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        execute_body(*stmt.body_);
+        auto result = execute_body(*stmt.body_);
+        if (result.is_return()) return result;
+
         if (stmt.increment_) evaluate(*stmt.increment_);
     }
+    return execution_result::normal();
 }
 
-void interpreter::execute_if(const ast::if_stmt& stmt) {
+interpreter::execution_result interpreter::execute_if(const ast::if_stmt& stmt) {
     auto cond = evaluate(stmt.condition_);
 
     if (cond.to_bool()) {
-        execute_body(*stmt.then_branch_);
+        return execute_body(*stmt.then_branch_);
     } else if (stmt.else_branch_) {
-        execute_body(*stmt.else_branch_);
+        return execute_body(*stmt.else_branch_);
     }
+    return execution_result::normal();
 }
 
-void interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
+interpreter::execution_result interpreter::execute_return_stmt(const ast::return_stmt& stmt) {
     core::value ret_val;
-    stmt.value_ ? ret_val = evaluate(*stmt.value_) : ret_val = {};
-    throw return_value{std::move(ret_val)};
+    if (stmt.value_) ret_val = evaluate(*stmt.value_);
+    return execution_result::return_(ret_val);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
@@ -393,11 +414,12 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             auto converted = core::value::convert(std::move(args_buf[i]), param.type_);
             values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
         }
-        try {
-            for (const auto& s : func->body_->body_->statements_) execute(*s);
-        } catch (const return_value& ret) {
-            if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, ret.return_value_);
-            return ret.return_value_;
+        for (const auto& s : func->body_->body_->statements_) {
+            auto result = execute(*s);
+            if (result.is_return()) {
+                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, result.value_);
+                return result.value_;
+            }
         }
         auto r = core::value::default_value(func->body_->return_type_);
         if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);

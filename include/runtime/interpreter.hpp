@@ -23,15 +23,17 @@ public:
     void interpret(const std::vector<ast::stmt_ptr>& statements);
 
 private:
-    void execute(const ast::statement& stmt);
-    void execute_expression_stmt(const ast::expression_stmt& stmt);
-    void execute_var_declaration(const ast::var_declaration& stmt);
-    void execute_block(const ast::block_stmt& stmt, bool create_scope = true);
-    void execute_body(const ast::statement& body);
-    void execute_while(const ast::while_stmt& stmt);
-    void execute_for(const ast::for_stmt& stmt);
-    void execute_if(const ast::if_stmt& stmt);
-    void execute_return_stmt(const ast::return_stmt& stmt);
+    struct execution_result;
+
+    execution_result execute(const ast::statement& stmt);
+    execution_result execute_expression_stmt(const ast::expression_stmt& stmt);
+    execution_result execute_var_declaration(const ast::var_declaration& stmt);
+    execution_result execute_block(const ast::block_stmt& stmt, bool create_scope = true);
+    execution_result execute_body(const ast::statement& body);
+    execution_result execute_while(const ast::while_stmt& stmt);
+    execution_result execute_for(const ast::for_stmt& stmt);
+    execution_result execute_if(const ast::if_stmt& stmt);
+    execution_result execute_return_stmt(const ast::return_stmt& stmt);
 
     core::value evaluate(const ast::expression& expr);
     core::value evaluate_literal(const ast::literal_expr& expr);
