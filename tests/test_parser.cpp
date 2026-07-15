@@ -258,9 +258,9 @@ TEST_P(call_test, parsed) {
 
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
-    ASSERT_GE(func->body_->statements_.size(), 1);
+    ASSERT_GE(func->block_->statements_.size(), 1);
 
-    auto* es = as<ast::expression_stmt>(*func->body_->statements_[0]);
+    auto* es = as<ast::expression_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(es, nullptr);
 
     auto* call = as<ast::call_expr>(es->expr_);
@@ -280,28 +280,28 @@ TEST(parser_test, if_statement) {
     ASSERT_EQ(h.ast().size(), 1);
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
-    ASSERT_EQ(func->body_->statements_.size(), 1);
-    auto* ifs = as<ast::if_stmt>(*func->body_->statements_[0]);
+    ASSERT_EQ(func->block_->statements_.size(), 1);
+    auto* ifs = as<ast::if_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(ifs, nullptr);
     EXPECT_TRUE(is_literal(ifs->condition_, "true"));
-    EXPECT_NE(ifs->then_branch_, nullptr);
-    EXPECT_EQ(ifs->else_branch_, nullptr);
+    EXPECT_NE(ifs->then_block_, nullptr);
+    EXPECT_EQ(ifs->else_block_, nullptr);
 }
 
 TEST(parser_test, if_else_statement) {
     parser_harness h("void f() { if (x) { return 0; } else { return 1; } }");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
-    auto* ifs = as<ast::if_stmt>(*func->body_->statements_[0]);
+    auto* ifs = as<ast::if_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(ifs, nullptr);
-    EXPECT_NE(ifs->else_branch_, nullptr);
+    EXPECT_NE(ifs->else_block_, nullptr);
 }
 
 TEST(parser_test, while_statement) {
     parser_harness h("void f() { while (x < 10) { x = x + 1; } }");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
-    auto* ws = as<ast::while_stmt>(*func->body_->statements_[0]);
+    auto* ws = as<ast::while_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(ws, nullptr);
-    EXPECT_NE(ws->body_, nullptr);
+    EXPECT_NE(ws->block_, nullptr);
 }
 
 TEST(parser_test, for_statement) {
@@ -310,18 +310,18 @@ TEST(parser_test, for_statement) {
         "  for (int i = 0; i < 10; i = i + 1) { }"
         "}");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
-    auto* fs = as<ast::for_stmt>(*func->body_->statements_[0]);
+    auto* fs = as<ast::for_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(fs, nullptr);
     EXPECT_NE(fs->initializer_, nullptr);
     EXPECT_TRUE(fs->condition_.has_value());
     EXPECT_TRUE(fs->increment_.has_value());
-    EXPECT_NE(fs->body_, nullptr);
+    EXPECT_NE(fs->block_, nullptr);
 }
 
 TEST(parser_test, return_void) {
     parser_harness h("void f() { return; }");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
-    auto* ret = as<ast::return_stmt>(*func->body_->statements_[0]);
+    auto* ret = as<ast::return_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(ret, nullptr);
     EXPECT_FALSE(ret->value_.has_value());
 }
@@ -329,7 +329,7 @@ TEST(parser_test, return_void) {
 TEST(parser_test, return_with_value) {
     parser_harness h("int f() { return 42; }");
     auto* func = as<ast::func_declaration>(*h.ast()[0]);
-    auto* ret = as<ast::return_stmt>(*func->body_->statements_[0]);
+    auto* ret = as<ast::return_stmt>(*func->block_->statements_[0]);
     ASSERT_NE(ret, nullptr);
     EXPECT_TRUE(ret->value_.has_value());
     EXPECT_TRUE(is_literal(*ret->value_, "42"));

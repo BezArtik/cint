@@ -55,12 +55,12 @@ constexpr std::array infix_table = {
 };
 // clang-format on
 
-int8_t get_precedence(tt type) {
+int8_t get_precedence(tt type) noexcept {
     auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
     return it != infix_table.end() ? it->precedence_ : -1;
 }
 
-bool is_right_assoc(tt type) {
+bool is_right_assoc(tt type) noexcept {
     auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
     return it != infix_table.end() ? it->right_assoc_ : false;
 }
@@ -132,8 +132,8 @@ ast::stmt_ptr parser::declaration() {
                 return statement();
             }
 
-            const auto& type = kw->semantic_type_;
-            const auto& name = consume(tt::IDENTIFIER, err::expected_identifier);
+            auto type = kw->semantic_type_;
+            auto name = consume(tt::IDENTIFIER, err::expected_identifier);
             return match({tt::LEFT_PAREN}) ? func_declaration(type, name) : var_declaration(type, name);
         }
         return statement();
@@ -187,7 +187,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
     auto body = block_statement();
     auto& block = std::get<ast::block_stmt>(body->data_);
     auto* body_copy = arena_.allocate<ast::block_stmt>(std::move(block));
-    func.body_ = core::arena_ptr<ast::block_stmt>(body_copy);
+    func.block_ = core::arena_ptr<ast::block_stmt>(body_copy);
 
     return ast::make_stmt(arena_, std::move(func));
 }
@@ -246,8 +246,7 @@ ast::stmt_ptr parser::for_statement() {
     } else if (match({tt::KEYWORD})) {
         const auto& kw = prev().as_keyword();
         if (kw && kw->is_type_) {
-            const auto& type = kw->semantic_type_;
-            initializer = var_declaration(type, consume(tt::IDENTIFIER, err::expected_identifier));
+            initializer = var_declaration(kw->semantic_type_, consume(tt::IDENTIFIER, err::expected_identifier));
         } else {
             current_--;
             initializer = statement();
@@ -359,8 +358,7 @@ ast::expression parser::postfix() {
         if (match({tt::LEFT_BRACKET})) {
             expr = finish_index(std::move(expr));
         } else if (match({tt::INCREMENT, tt::DECREMENT})) {
-            const auto& op = prev();
-            expr = ast::make_expr<ast::postfix_expr>(arena_, op.loc_, std::move(expr), op);
+            expr = ast::make_expr<ast::postfix_expr>(arena_, prev().loc_, std::move(expr), prev());
         } else {
             break;
         }
@@ -386,9 +384,8 @@ ast::expression parser::primary() {
 
     if (match({tt::KEYWORD})) {
         auto kw = prev().as_keyword();
-        if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) {
+        if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false"))
             return ast::make_expr_val<ast::literal_expr>(prev());
-        }
         reporter_.parse_error(prev(), err::expected_expression);
     }
 

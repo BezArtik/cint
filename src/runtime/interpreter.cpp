@@ -135,7 +135,7 @@ interpreter::execution_result interpreter::execute_while(const ast::while_stmt& 
         auto cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
 
-        auto res = execute_body(*stmt.body_);
+        auto res = execute_body(*stmt.block_);
         if (res.is_return()) return res;
     }
     return execution_result::normal();
@@ -149,7 +149,7 @@ interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt
             auto cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        auto result = execute_body(*stmt.body_);
+        auto result = execute_body(*stmt.block_);
         if (result.is_return()) return result;
 
         if (stmt.increment_) evaluate(*stmt.increment_);
@@ -161,9 +161,9 @@ interpreter::execution_result interpreter::execute_if(const ast::if_stmt& stmt) 
     auto cond = evaluate(stmt.condition_);
 
     if (cond.to_bool()) {
-        return execute_body(*stmt.then_branch_);
-    } else if (stmt.else_branch_) {
-        return execute_body(*stmt.else_branch_);
+        return execute_body(*stmt.then_block_);
+    } else if (stmt.else_block_) {
+        return execute_body(*stmt.else_block_);
     }
     return execution_result::normal();
 }
@@ -414,7 +414,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             auto converted = core::value::convert(std::move(args_buf[i]), param.type_);
             values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
         }
-        for (const auto& s : func->body_->body_->statements_) {
+        for (const auto& s : func->body_->block_->statements_) {
             auto result = execute(*s);
             if (result.is_return()) {
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, result.value_);

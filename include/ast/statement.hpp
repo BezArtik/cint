@@ -44,39 +44,39 @@ struct block_stmt {
 
 struct while_stmt {
     expression condition_;
-    stmt_ptr body_;
+    stmt_ptr block_;
     core::location loc_;
 
-    while_stmt(expression cond, stmt_ptr body, core::location loc)
-        : condition_(std::move(cond)), body_(std::move(body)), loc_(loc) {}
+    while_stmt(expression cond, stmt_ptr block, core::location loc)
+        : condition_(std::move(cond)), block_(std::move(block)), loc_(loc) {}
 };
 
 struct for_stmt {
     stmt_ptr initializer_;
     std::optional<expression> condition_;
     std::optional<expression> increment_;
-    stmt_ptr body_;
+    stmt_ptr block_;
     core::location loc_;
 
-    for_stmt(stmt_ptr init, std::optional<expression> cond, std::optional<expression> inc, stmt_ptr body,
+    for_stmt(stmt_ptr init, std::optional<expression> cond, std::optional<expression> inc, stmt_ptr block,
              core::location loc)
         : initializer_(std::move(init)),
           condition_(std::move(cond)),
           increment_(std::move(inc)),
-          body_(std::move(body)),
+          block_(std::move(block)),
           loc_(loc) {}
 };
 
 struct if_stmt {
     expression condition_;
-    stmt_ptr then_branch_;
-    stmt_ptr else_branch_;
+    stmt_ptr then_block_;
+    stmt_ptr else_block_;
     core::location loc_;
 
-    if_stmt(expression cond, stmt_ptr then_branch, stmt_ptr else_branch, core::location loc)
+    if_stmt(expression cond, stmt_ptr then_block, stmt_ptr else_block, core::location loc)
         : condition_(std::move(cond)),
-          then_branch_(std::move(then_branch)),
-          else_branch_(std::move(else_branch)),
+          then_block_(std::move(then_block)),
+          else_block_(std::move(else_block)),
           loc_(loc) {}
 };
 
@@ -100,7 +100,7 @@ struct func_declaration {
     core::type return_type_;
     core::token name_;
     std::pmr::vector<func_param> params_;
-    core::arena_ptr<block_stmt> body_;
+    core::arena_ptr<block_stmt> block_;
     core::location loc_;
 
     func_declaration(core::type ret_type, const core::token& n)

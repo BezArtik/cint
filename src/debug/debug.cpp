@@ -172,7 +172,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                         writer.emit(indent_str(level + 1) + "Condition:\n");
                         print_expression(writer, s.condition_, level + 2);
                         writer.emit(indent_str(level + 1) + "Body:\n");
-                        print_statement(writer, *s.body_, level + 2);
+                        print_statement(writer, *s.block_, level + 2);
                     },
                     [&](const ast::for_stmt& s) {
                         header << "ForStmt\n";
@@ -190,7 +190,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                             print_expression(writer, *s.increment_, level + 2);
                         }
                         writer.emit(indent_str(level + 1) + "Body:\n");
-                        print_statement(writer, *s.body_, level + 2);
+                        print_statement(writer, *s.block_, level + 2);
                     },
                     [&](const ast::if_stmt& s) {
                         header << "IfStmt\n";
@@ -198,10 +198,10 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                         writer.emit(indent_str(level + 1) + "Condition:\n");
                         print_expression(writer, s.condition_, level + 2);
                         writer.emit(indent_str(level + 1) + "Then:\n");
-                        print_statement(writer, *s.then_branch_, level + 2);
-                        if (s.else_branch_) {
+                        print_statement(writer, *s.then_block_, level + 2);
+                        if (s.else_block_) {
                             writer.emit(indent_str(level + 1) + "Else:\n");
-                            print_statement(writer, *s.else_branch_, level + 2);
+                            print_statement(writer, *s.else_block_, level + 2);
                         }
                     },
                     [&](const ast::return_stmt& s) {
@@ -226,7 +226,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                         }
                         writer.emit(params + "\n");
                         writer.emit(indent_str(level + 1) + "Body:\n");
-                        for (const auto& inner : s.body_->statements_) print_statement(writer, *inner, level + 2);
+                        for (const auto& inner : s.block_->statements_) print_statement(writer, *inner, level + 2);
                     },
                 },
                 stmt.data_);

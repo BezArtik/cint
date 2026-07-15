@@ -93,7 +93,7 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
 
     core::scope_guard guard(symbols_);
-    check_body(*stmt.body_);
+    check_body(*stmt.block_);
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
@@ -105,14 +105,14 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
         if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
     }
     if (stmt.increment_) type_of(*stmt.increment_);
-    check_body(*stmt.body_);
+    check_body(*stmt.block_);
 }
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
-    check_body(*stmt.then_branch_);
-    if (stmt.else_branch_) check_body(*stmt.else_branch_);
+    check_body(*stmt.then_block_);
+    if (stmt.else_block_) check_body(*stmt.else_block_);
 }
 
 void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
@@ -145,7 +145,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     const auto& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
 
-    for (const auto& s : stmt.body_->statements_) check_statement(*s);
+    for (const auto& s : stmt.block_->statements_) check_statement(*s);
 
     curr_return_type_ = prev_return_type;
 }
