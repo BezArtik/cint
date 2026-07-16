@@ -26,7 +26,7 @@ std::pmr::vector<core::token> lexer::scan_tokens() {
     }
 
     tokens_.emplace_back(tt::END_OF_FILE, "", loc_);
-    return tokens_;
+    return std::move(tokens_);
 }
 
 void lexer::scan_token() {

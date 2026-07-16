@@ -40,13 +40,6 @@ public:
 
     const T* get(std::string_view name) const noexcept { return const_cast<scoped_map*>(this)->get(name); }
 
-    bool assign(std::string_view name, T value) {
-        auto* ptr = get(name);
-        if (!ptr) return false;
-        *ptr = std::move(value);
-        return true;
-    }
-
     bool contains_in_current_scope(std::string_view name) const noexcept {
         for (auto it = entries_.rbegin(); it != entries_.rend(); ++it) {
             if (it->scope_depth_ < current_depth_) break;

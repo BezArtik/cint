@@ -59,7 +59,7 @@ public:
 
 private:
     void allocate_block() {
-        auto block = std::make_unique<char[]>(BLOCK_SIZE);
+        auto block = std::make_unique_for_overwrite<char[]>(BLOCK_SIZE);
         current_ = block.get();
         end_ = current_ + BLOCK_SIZE;
         blocks_.push_back(std::move(block));
