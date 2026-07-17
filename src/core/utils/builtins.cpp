@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <span>
 
 namespace core::builtin_impl {
@@ -69,6 +70,23 @@ value itod(std::span<const value> args) {
 
 value stod(std::span<const value> args) {
     return args[0].to_double();
+}
+
+namespace {
+
+std::random_device rd;
+std::mt19937_64 gen(rd());
+
+}  // namespace
+
+value rand_int(std::span<const value> args) {
+    std::uniform_int_distribution dist(args[0].to_int(), args[1].to_int());
+    return dist(gen);
+}
+
+value rand_dbl(std::span<const value> args) {
+    std::uniform_real_distribution dist(args[0].to_double(), args[1].to_double());
+    return dist(gen);
 }
 
 }  // namespace core::builtin_impl
