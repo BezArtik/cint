@@ -2,10 +2,8 @@
 #pragma once
 
 #include "ast/statement.hpp"
-#include "core/token/token_types.hpp"
 #include "core/utils/builtins.hpp"
 
-#include <optional>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -27,9 +25,9 @@ public:
         builtin_fn_ptr builtin_ = nullptr;
     };
 
-    static function_registry build(const std::vector<ast::stmt_ptr>& ast, std::span<const builtin_def> builtins);
+    static function_registry build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins);
 
-    std::optional<entry> find(std::string_view name) const noexcept;
+    const entry* find(std::string_view name) const noexcept;
 
 private:
     function_registry() = default;

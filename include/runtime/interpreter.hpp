@@ -4,14 +4,13 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
-#include "core/token/token_types.hpp"
 #include "core/utils/builtins.hpp"
 #include "core/utils/function_registry.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
 
-#include <vector>
+#include <span>
 
 namespace runtime {
 
@@ -20,7 +19,7 @@ public:
     interpreter(core::error_reporter& reporter, const core::function_registry& registry,
                 const debug::debug_writer& writer = {});
 
-    void interpret(const std::vector<ast::stmt_ptr>& statements);
+    void interpret(std::span<const ast::stmt_ptr> statements);
 
 private:
     struct execution_result;

@@ -79,7 +79,7 @@ int run_program(const run_config& config) {
     core::arena_memory_resource mr(arena);
     core::error_reporter reporter(config.source_);
 
-    lexer::lexer lex(config.source_, reporter, mr);
+    lexer lex(config.source_, reporter, mr);
     auto tokens = lex.scan_tokens();
 
     debug::print_tokens(config.writer_, tokens);
@@ -88,7 +88,7 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    parser::parser p(tokens, reporter, arena, mr);
+    parser p(tokens, reporter, arena, mr);
     auto ast = p.parse();
 
     debug::print_ast(config.writer_, ast);

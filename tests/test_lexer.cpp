@@ -31,8 +31,8 @@ private:
     core::error_reporter reporter_;
     core::arena arena_;
     core::arena_memory_resource mr_;
-    lexer::lexer lex_;
-    std::pmr::vector<core::token> tokens_;
+    lexer lex_;
+    lexer::token_list tokens_;
 };
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {

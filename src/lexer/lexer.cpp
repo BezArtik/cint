@@ -12,15 +12,13 @@
 #include <cctype>
 #include <string_view>
 
-namespace lexer {
-
 using tt = core::token_type;
 using err = core::error_code;
 
 lexer::lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
     : source_(source), reporter_(reporter), mr_(mr), tokens_(&mr_) {}
 
-std::pmr::vector<core::token> lexer::scan_tokens() {
+lexer::token_list lexer::scan_tokens() {
     while (!is_at_end()) {
         start_ = current_;
         scan_token();
@@ -186,5 +184,3 @@ void lexer::add_token(tt type) {
     auto text = source_.substr(start_, current_ - start_);
     tokens_.emplace_back(type, text, loc_);
 }
-
-}  // namespace lexer

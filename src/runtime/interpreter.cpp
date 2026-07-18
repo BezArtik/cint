@@ -63,7 +63,7 @@ interpreter::interpreter(core::error_reporter& reporter, const core::function_re
                          const debug::debug_writer& writer)
     : reporter_(reporter), registry_(registry), writer_(writer) {}
 
-void interpreter::interpret(const std::vector<ast::stmt_ptr>& statements) {
+void interpreter::interpret(std::span<const ast::stmt_ptr> statements) {
     try {
         for (const auto& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);

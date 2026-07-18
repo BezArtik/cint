@@ -257,7 +257,7 @@ void print_value(const debug_writer& writer, const core::value& val, uint32_t in
     writer.emit(indent_str(indent) + val.to_string() + "\n");
 }
 
-void print_tokens(const debug_writer& writer, const std::pmr::vector<core::token>& tokens) {
+void print_tokens(const debug_writer& writer, std::span<const core::token> tokens) {
     if (!writer.enabled(trace_level::tokens)) return;
 
     writer.emit(
@@ -276,7 +276,7 @@ void print_tokens(const debug_writer& writer, const std::pmr::vector<core::token
     writer.emit("\n");
 }
 
-void print_ast(const debug_writer& writer, const std::vector<ast::stmt_ptr>& statements) {
+void print_ast(const debug_writer& writer, std::span<const ast::stmt_ptr> statements) {
     if (!writer.enabled(trace_level::ast)) return;
 
     writer.emit(

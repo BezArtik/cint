@@ -11,10 +11,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <span>
 #include <utility>
 #include <vector>
-
-namespace parser {
 
 using tt = core::token_type;
 using err = core::error_code;
@@ -73,17 +72,17 @@ bool is_assignment(tt type) noexcept {
 
 }  // namespace
 
-parser::parser(const std::pmr::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
+parser::parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
                core::arena_memory_resource& mr)
     : tokens_(tokens), reporter_(reporter), arena_(arena), mr_(mr) {}
 
-std::vector<ast::stmt_ptr> parser::parse() {
-    std::pmr::vector<ast::stmt_ptr> statements(&mr_);
+parser::ast_list parser::parse() {
+    ast_list statements(&mr_);
     while (!is_at_end()) {
         auto stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
     }
-    return {std::make_move_iterator(statements.begin()), std::make_move_iterator(statements.end())};
+    return statements;
 }
 
 bool parser::match(std::initializer_list<tt> types) noexcept {
@@ -425,5 +424,3 @@ void parser::synchronize() {
         advance();
     }
 }
-
-}  // namespace parser

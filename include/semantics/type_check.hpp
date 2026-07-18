@@ -8,7 +8,7 @@
 #include "core/utils/scoped_map.hpp"
 
 #include <optional>
-#include <vector>
+#include <span>
 
 namespace semantics {
 
@@ -16,7 +16,7 @@ class type_checker {
 public:
     type_checker(core::error_reporter& reporter, const core::function_registry& registry);
 
-    bool check(const std::vector<ast::stmt_ptr>& statements);
+    bool check(std::span<const ast::stmt_ptr> statements);
 
 private:
     void check_statement(const ast::statement& stmt);

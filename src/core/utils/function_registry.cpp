@@ -4,13 +4,10 @@
 #include "ast/statement.hpp"
 
 #include <algorithm>
-#include <iterator>
-#include <optional>
 
 namespace core {
 
-function_registry function_registry::build(const std::vector<ast::stmt_ptr>& ast,
-                                           std::span<const builtin_def> builtins) {
+function_registry function_registry::build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins) {
     function_registry registry;
 
     for (const auto& b : builtins) {
@@ -42,9 +39,9 @@ function_registry function_registry::build(const std::vector<ast::stmt_ptr>& ast
     return registry;
 }
 
-std::optional<function_registry::entry> function_registry::find(std::string_view name) const noexcept {
+const function_registry::entry* function_registry::find(std::string_view name) const noexcept {
     auto it = std::ranges::lower_bound(entries_, name, {}, &entry::name_);
-    return it != entries_.end() && it->name_ == name ? std::make_optional(*it) : std::nullopt;
+    return it != entries_.end() && it->name_ == name ? &*it : nullptr;
 }
 
 }  // namespace core

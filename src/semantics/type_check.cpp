@@ -22,7 +22,7 @@ using err = core::error_code;
 type_checker::type_checker(core::error_reporter& reporter, const core::function_registry& registry)
     : reporter_(reporter), registry_(registry) {}
 
-bool type_checker::check(const std::vector<ast::stmt_ptr>& statements) {
+bool type_checker::check(std::span<const ast::stmt_ptr> statements) {
     for (const auto& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
 }

@@ -11,16 +11,15 @@
 
 #include <gtest/gtest.h>
 #include <string>
-#include <vector>
 
 namespace tests {
 
 class interpreter_harness {
 public:
     interpreter_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_), mr_(arena_) {
-        lexer::lexer lex(source_code_, reporter_, mr_);
+        lexer lex(source_code_, reporter_, mr_);
         tokens_ = lex.scan_tokens();
-        parser::parser p(tokens_, reporter_, arena_, mr_);
+        parser p(tokens_, reporter_, arena_, mr_);
         ast_ = p.parse();
         auto registry = core::function_registry::build(ast_, core::builtins);
         semantics::type_checker checker(reporter_, registry);
@@ -37,8 +36,8 @@ private:
     core::error_reporter reporter_;
     core::arena arena_;
     core::arena_memory_resource mr_;
-    std::pmr::vector<core::token> tokens_;
-    std::vector<ast::stmt_ptr> ast_;
+    lexer::token_list tokens_;
+    parser::ast_list ast_;
     bool ok_ = false;
 };
 

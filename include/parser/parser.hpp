@@ -7,16 +7,17 @@
 #include "core/token/token.hpp"
 #include "core/utils/arena.hpp"
 
+#include <span>
 #include <vector>
-
-namespace parser {
 
 class parser {
 public:
-    parser(const std::pmr::vector<core::token>& tokens, core::error_reporter& reporter, core::arena& arena,
+    using ast_list = std::pmr::vector<ast::stmt_ptr>;
+
+    parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
            core::arena_memory_resource& mr);
 
-    std::vector<ast::stmt_ptr> parse();
+    ast_list parse();
 
 private:
     const core::token& advance() noexcept;
@@ -52,11 +53,9 @@ private:
 
     void synchronize();
 
-    const std::pmr::vector<core::token>& tokens_;
+    std::span<const core::token> tokens_;
     core::error_reporter& reporter_;
     size_t current_ = 0;
     core::arena& arena_;
     core::arena_memory_resource& mr_;
 };
-
-}  // namespace parser
