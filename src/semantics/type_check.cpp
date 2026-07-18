@@ -5,7 +5,6 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
-#include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/function_registry.hpp"
@@ -168,15 +167,19 @@ t type_checker::type_of(const ast::expression& expr) {
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
-    if (token.is_number_literal()) return token.is_double_literal() ? t::double_type() : t::int_type();
-    if (token.is_string_literal()) return t::string_type();
-    if (token.is_keyword()) {
-        auto kw = token.as_keyword();
-        if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false")) return t::bool_type();
+    switch (token.type_) {
+        case tt::NUMBER:
+            if (token.literal_value_ && token.literal_value_->is_double()) return t::double_type();
+            return t::int_type();
+        case tt::KW_TRUE:
+        case tt::KW_FALSE:
+            return t::bool_type();
+        case tt::STRING:
+            return t::string_type();
+        default:
+            reporter_.error(expr, err::unexpected_literal);
+            return t::unknown_type();
     }
-
-    reporter_.error(expr, err::unexpected_literal);
-    return t::unknown_type();
 }
 
 t type_checker::type_of_variable(const ast::variable_expr& expr_) {

@@ -99,8 +99,8 @@ TEST_P(keyword_test, recognized) {
     const auto& tc = GetParam();
     lexer_harness h(std::string{tc.source_});
     ASSERT_GE(h.size(), 2);
-    expect_token(h[0], tt::KEYWORD, tc.lexeme_);
-    EXPECT_TRUE(h[0].is_keyword());
+    EXPECT_NE(h[0].type_, tt::IDENTIFIER);
+    EXPECT_EQ(h[0].lexeme_, tc.lexeme_);
     expect_eof(h, 1);
 }
 
@@ -125,7 +125,15 @@ TEST_P(number_test, recognized) {
     lexer_harness h(std::string{tc.source_});
     ASSERT_GE(h.size(), 2);
     expect_token(h[0], tt::NUMBER, tc.lexeme_);
-    EXPECT_EQ(h[0].is_double_literal(), tc.is_double_);
+
+    ASSERT_TRUE(h[0].literal_value_);
+    if (tc.is_double_) {
+        EXPECT_TRUE(h[0].literal_value_->is_double());
+        EXPECT_DOUBLE_EQ(h[0].literal_value_->to_double(), std::stod(std::string(tc.lexeme_)));
+    } else {
+        EXPECT_TRUE(h[0].literal_value_->is_int());
+        EXPECT_EQ(h[0].literal_value_->to_int(), std::stoll(std::string(tc.lexeme_)));
+    }
     expect_eof(h, 1);
 }
 
@@ -136,6 +144,28 @@ INSTANTIATE_TEST_SUITE_P(integers, number_test,
 INSTANTIATE_TEST_SUITE_P(doubles, number_test,
                          ::testing::Values(number_case{"3.14", "3.14", true}, number_case{"0.0", "0.0", true},
                                            number_case{"1.5", "1.5", true}));
+
+struct bool_case {
+    std::string_view source_;
+    core::token_type expected_type_;
+    bool expected_value_;
+};
+
+class bool_test : public ::testing::TestWithParam<bool_case> {};
+
+TEST_P(bool_test, recognized) {
+    const auto& tc = GetParam();
+    lexer_harness h(std::string{tc.source_});
+    ASSERT_GE(h.size(), 2);
+    expect_token(h[0], tc.expected_type_, tc.source_);
+    ASSERT_TRUE(h[0].literal_value_.has_value());
+    EXPECT_EQ(h[0].literal_value_->to_bool(), tc.expected_value_);
+    expect_eof(h, 1);
+}
+
+INSTANTIATE_TEST_SUITE_P(bool_literals, bool_test,
+                         ::testing::Values(bool_case{"true", tt::KW_TRUE, true},
+                                           bool_case{"false", tt::KW_FALSE, false}));
 
 struct string_case {
     std::string_view source_;
@@ -149,7 +179,7 @@ TEST_P(string_test, recognized) {
     lexer_harness h(std::string{tc.source_});
     ASSERT_GE(h.size(), 2);
     expect_token(h[0], tt::STRING, tc.expected_lexeme_);
-    EXPECT_TRUE(h[0].is_string_literal());
+    EXPECT_FALSE(h[0].literal_value_);
     expect_eof(h, 1);
 }
 
@@ -164,7 +194,7 @@ TEST_P(identifier_test, recognized) {
     lexer_harness h(std::string{id});
     ASSERT_GE(h.size(), 2);
     expect_token(h[0], tt::IDENTIFIER, id);
-    EXPECT_TRUE(h[0].is_identifier());
+    EXPECT_FALSE(h[0].literal_value_);
     expect_eof(h, 1);
 }
 
@@ -191,20 +221,21 @@ TEST_P(sequence_test, Recognized) {
     }
     expect_eof(h, tc.expected_types_.size());
 }
-
+// clang-format off
 INSTANTIATE_TEST_SUITE_P(
     declarations, sequence_test,
-    ::testing::Values(token_sequence{"int x = 42;",
-                                     {tt::KEYWORD, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
-                                     {"int", "x", "=", "42", ";"}},
-                      token_sequence{"double pi = 3.14;",
-                                     {tt::KEYWORD, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
-                                     {"double", "pi", "=", "3.14", ";"}},
-                      token_sequence{"if (x < 10) { }",
-                                     {tt::KEYWORD, tt::LEFT_PAREN, tt::IDENTIFIER, tt::LESS, tt::NUMBER,
-                                      tt::RIGHT_PAREN, tt::LEFT_BRACE, tt::RIGHT_BRACE},
-                                     {"if", "(", "x", "<", "10", ")", "{", "}"}}));
-
+    ::testing::Values(
+        token_sequence{"int x = 42;",
+                       {tt::KW_INT, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
+                       {"int", "x", "=", "42", ";"}},
+        token_sequence{"double pi = 3.14;",
+                       {tt::KW_DOUBLE, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
+                       {"double", "pi", "=", "3.14", ";"}},
+        token_sequence{"if (x < 10) { }",
+                       {tt::KW_IF, tt::LEFT_PAREN, tt::IDENTIFIER, tt::LESS, tt::NUMBER,
+                        tt::RIGHT_PAREN, tt::LEFT_BRACE, tt::RIGHT_BRACE},
+                       {"if", "(", "x", "<", "10", ")", "{", "}"}}));
+// clang-format on
 TEST(lexer_test, line_comment) {
     lexer_harness h("42 // comment\n43");
     ASSERT_EQ(h.size(), 3);

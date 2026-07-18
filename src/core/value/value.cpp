@@ -3,7 +3,6 @@
 #include "core/value/value.hpp"
 
 #include "core/error/error_codes.hpp"
-#include "core/token/token_types.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <cassert>
@@ -45,6 +44,27 @@ core::value value::convert(core::value val, const core::type& target) {
     return val;
 }
 
+value::int_t value::parse_int(std::string_view text) {
+    int_t result;
+    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    if (ec != std::errc{} || ptr != text.data() + text.size())
+        throw core::interpret_error{error_code::invalid_conversion};
+    return result;
+}
+
+value::double_t value::parse_double(std::string_view text) {
+    double_t result;
+    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    if (ec != std::errc{} || ptr != text.data() + text.size())
+        throw core::interpret_error{error_code::invalid_conversion};
+    return result;
+}
+
+value value::from_string(std::string_view text, bool is_double) {
+    if (is_double) return parse_double(text);
+    return parse_int(text);
+}
+
 // clang-format off
 core::type value::type() const {
     return visit(
@@ -65,24 +85,14 @@ core::type value::type() const {
 value::int_t value::to_int() const {
     if (auto* i = as<int_t>()) return *i;
     if (auto* d = as<double_t>()) return static_cast<int_t>(*d);
-    if (auto* s = as<string_t>()) {
-        int_t result;
-        auto [_, ec] = std::from_chars(s->get().data(), s->get().data() + s->get().size(), result);
-        if (ec != std::errc{}) throw core::interpret_error{error_code::invalid_conversion};
-        return result;
-    }
+    if (auto* s = as<string_t>()) return parse_int(s->get()); 
     throw core::interpret_error{error_code::invalid_conversion};
 }
 
 value::double_t value::to_double() const {
     if (auto* i = as<int_t>()) return static_cast<double_t>(*i);
     if (auto* d = as<double_t>()) return *d;
-    if (auto* s = as<string_t>()) {
-        double_t result;
-        auto [_, ec] = std::from_chars(s->get().data(), s->get().data() + s->get().size(), result);
-        if (ec != std::errc{}) throw core::interpret_error{error_code::invalid_conversion};
-        return result;
-    }
+    if (auto* s = as<string_t>()) return parse_double(s->get()); 
     throw core::interpret_error{error_code::invalid_conversion};
 }
 

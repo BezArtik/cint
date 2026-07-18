@@ -28,7 +28,7 @@ private:
 
     void consume_string();
     void consume_number();
-    void consume_identifier();
+    void consume_identifier_or_keyword();
 
     std::string_view source_;
     core::error_reporter& reporter_;

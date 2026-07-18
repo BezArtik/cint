@@ -1,0 +1,75 @@
+// core/token/type.hpp
+
+#pragma once
+#include <memory>
+#include <variant>
+#include <vector>
+
+namespace core {
+
+class type {
+public:
+    enum class kind : uint8_t { INT, DOUBLE, BOOL, STRING, VOID, FUNCTION, ARRAY, UNKNOWN };
+
+    type() = default;
+    type(const type& other);
+    type& operator=(const type& other);
+    type(type&&) noexcept = default;
+    type& operator=(type&&) noexcept = default;
+
+    static constexpr type int_type() { return type(kind::INT); }
+    static constexpr type double_type() { return type(kind::DOUBLE); }
+    static constexpr type bool_type() { return type(kind::BOOL); }
+    static constexpr type string_type() { return type(kind::STRING); }
+    static constexpr type void_type() { return type(kind::VOID); }
+    static constexpr type unknown_type() { return type(kind::UNKNOWN); }
+
+    static type function_type(type return_type, std::vector<type> param_types);
+    static type array_type(type element_type, size_t size = 0);
+
+    bool is_primitive() const noexcept;
+    bool is_numeric() const noexcept;
+    bool is_int() const noexcept;
+    bool is_double() const noexcept;
+    bool is_bool() const noexcept;
+    bool is_string() const noexcept;
+    bool is_void() const noexcept;
+    bool is_unknown() const noexcept;
+    bool is_function() const noexcept;
+
+    const type& return_type() const;
+    const std::vector<type>& param_types() const;
+
+    bool is_assignable_from(const type& source) const noexcept;
+
+    bool is_array() const noexcept;
+    const type& element_type() const;
+    size_t array_size() const;
+
+    kind get_kind() const noexcept;
+
+    bool operator==(const type& other) const noexcept;
+    bool operator!=(const type& other) const noexcept;
+
+private:
+    struct function_info {
+        std::unique_ptr<type> return_type_;
+        std::vector<type> param_types_;
+    };
+
+    struct array_info {
+        std::unique_ptr<type> element_type_;
+        size_t size_;
+    };
+
+    constexpr type(kind k) : kind_(k), info_(std::monostate{}) {}
+
+    template <typename Info>
+    type(kind k, Info info) : kind_(k), info_(std::move(info)) {}
+    void swap(type& other) noexcept;
+
+    kind kind_ = kind::UNKNOWN;
+    std::variant<function_info, array_info, std::monostate> info_;
+};
+
+}  // namespace core

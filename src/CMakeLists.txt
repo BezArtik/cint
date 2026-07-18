@@ -8,8 +8,7 @@ target_sources(interpreter-lib PRIVATE
     core/error/error_report.cpp
     core/utils/builtins.cpp
     core/utils/function_registry.cpp
-    core/token/token_types.cpp
-    core/token/token.cpp
+    core/token/type.cpp
     core/value/value.cpp
     core/value/operations.cpp
     semantics/type_check.cpp

@@ -1,6 +1,6 @@
-// core/token/token_types.cpp
+// core/token/type.cpp
 
-#include "core/token/token_types.hpp"
+#include "core/token/type.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -10,8 +10,6 @@
 #include <vector>
 
 namespace core {
-
-type::type(kind k) : kind_(k), info_(std::monostate{}) {}
 
 type::type(const type& other) : kind_(other.kind_) {
     if (kind_ == kind::FUNCTION) {
@@ -32,25 +30,6 @@ type& type::operator=(const type& other) {
 void type::swap(type& other) noexcept {
     std::swap(kind_, other.kind_);
     info_.swap(other.info_);
-}
-
-type type::int_type() {
-    return type(kind::INT);
-}
-type type::double_type() {
-    return type(kind::DOUBLE);
-}
-type type::bool_type() {
-    return type(kind::BOOL);
-}
-type type::string_type() {
-    return type(kind::STRING);
-}
-type type::void_type() {
-    return type(kind::VOID);
-}
-type type::unknown_type() {
-    return type(kind::UNKNOWN);
 }
 
 type type::function_type(type return_type, std::vector<type> param_types) {

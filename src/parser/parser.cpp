@@ -124,15 +124,9 @@ const core::token& parser::prev() const noexcept {
 
 ast::stmt_ptr parser::declaration() {
     try {
-        if (match({tt::KEYWORD})) {
-            auto kw = prev().as_keyword();
-
-            if (!kw || !kw->is_type_) {
-                current_--;
-                return statement();
-            }
-
-            auto type = kw->semantic_type_;
+        if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
+            const auto& kw_token = prev();
+            auto type = get_keyword_info(kw_token.type_).semantic_type_;
             auto name = consume(tt::IDENTIFIER, err::expected_identifier);
             return match({tt::LEFT_PAREN}) ? func_declaration(type, name) : var_declaration(type, name);
         }
@@ -150,10 +144,11 @@ core::type parser::parse_array_dimensions(core::type base_type) {
         size_t dim_size = 0;
         if (match({tt::NUMBER})) {
             auto size_token = prev();
-            auto lex = size_token.lexeme_;
-            auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), dim_size);
-            if (ec != std::errc{} || ptr != lex.data() + lex.size() || dim_size == 0)
-                reporter_.parse_error(size_token, err::unexpected_token);
+            try {
+                auto val = core::value::from_string(size_token.lexeme_, false);
+                dim_size = static_cast<size_t>(val.to_int());
+            } catch (const core::interpret_error&) { reporter_.parse_error(size_token, err::unexpected_token); }
+            if (dim_size == 0) reporter_.parse_error(size_token, err::unexpected_token);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
         dimensions.push_back(dim_size);
@@ -193,34 +188,24 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 }
 
 ast::func_param parser::parse_param() {
-    if (!match({tt::KEYWORD})) reporter_.parse_error(peek(), err::expected_type);
+    if (!match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID}))
+        reporter_.parse_error(peek(), err::expected_type);
 
-    auto kw = prev().as_keyword();
-    if (!kw || !kw->is_type_ || kw->semantic_type_.is_void()) reporter_.parse_error(prev(), err::expected_type);
+    const auto& kw_token = prev();
+    auto& info = get_keyword_info(kw_token.type_);
+    if (!info.is_type_ || info.semantic_type_.is_void()) reporter_.parse_error(kw_token, err::expected_type);
 
-    auto type = kw->semantic_type_;
+    auto type = info.semantic_type_;
     auto name = consume(tt::IDENTIFIER, err::expected_identifier);
-
     type = parse_array_dimensions(type);
-
     return {type, name};
 }
 
 ast::stmt_ptr parser::statement() {
-    if (match({tt::KEYWORD})) {
-        auto kw = prev().as_keyword();
-        if (!kw) reporter_.parse_error(prev(), err::unexpected_token);
-
-        const auto& lex = kw->lexeme_;
-
-        if (lex == "while") return while_statement();
-        if (lex == "for") return for_statement();
-        if (lex == "if") return if_statement();
-        if (lex == "return") return return_statement();
-
-        current_--;
-    }
-
+    if (match({tt::KW_WHILE})) return while_statement();
+    if (match({tt::KW_FOR})) return for_statement();
+    if (match({tt::KW_IF})) return if_statement();
+    if (match({tt::KW_RETURN})) return return_statement();
     if (match({tt::LEFT_BRACE})) return block_statement();
 
     auto expr = expression();
@@ -243,14 +228,10 @@ ast::stmt_ptr parser::for_statement() {
 
     ast::stmt_ptr initializer;
     if (match({tt::SEMICOLON})) {
-    } else if (match({tt::KEYWORD})) {
-        const auto& kw = prev().as_keyword();
-        if (kw && kw->is_type_) {
-            initializer = var_declaration(kw->semantic_type_, consume(tt::IDENTIFIER, err::expected_identifier));
-        } else {
-            current_--;
-            initializer = statement();
-        }
+    } else if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
+        const auto& kw_token = prev();
+        auto type = get_keyword_info(kw_token.type_).semantic_type_;
+        initializer = var_declaration(type, consume(tt::IDENTIFIER, err::expected_identifier));
     } else {
         initializer = statement();
     }
@@ -276,14 +257,7 @@ ast::stmt_ptr parser::if_statement() {
     auto then_branch = statement();
     ast::stmt_ptr else_branch;
 
-    if (match({tt::KEYWORD})) {
-        auto kw = prev().as_keyword();
-        if (kw && kw->lexeme_ == "else") {
-            else_branch = statement();
-        } else {
-            current_--;
-        }
-    }
+    if (match({tt::KW_ELSE})) else_branch = statement();
 
     return ast::make_stmt<ast::if_stmt>(arena_, prev().loc_, std::move(condition), std::move(then_branch),
                                         std::move(else_branch));
@@ -382,12 +356,7 @@ ast::expression parser::array_literal() {
 ast::expression parser::primary() {
     if (match({tt::NUMBER, tt::STRING})) return ast::make_expr_val<ast::literal_expr>(prev());
 
-    if (match({tt::KEYWORD})) {
-        auto kw = prev().as_keyword();
-        if (kw && (kw->lexeme_ == "true" || kw->lexeme_ == "false"))
-            return ast::make_expr_val<ast::literal_expr>(prev());
-        reporter_.parse_error(prev(), err::expected_expression);
-    }
+    if (match({tt::KW_TRUE, tt::KW_FALSE})) return ast::make_expr_val<ast::literal_expr>(prev());
 
     if (match({tt::IDENTIFIER})) {
         const auto& name = prev();
@@ -426,10 +395,33 @@ ast::expression parser::finish_index(ast::expression object) {
 void parser::synchronize() {
     advance();
 
+    int brace_depth = 0;
+
     while (!is_at_end()) {
-        if (prev().type_ == tt::SEMICOLON) return;
-        auto kw = peek().as_keyword();
-        if (kw && kw->can_start_statement_) return;
+        auto type = peek().type_;
+
+        if (type == tt::LEFT_BRACE) {
+            ++brace_depth;
+            advance();
+            continue;
+        }
+
+        if (type == tt::RIGHT_BRACE) {
+            if (brace_depth > 0) {
+                --brace_depth;
+                advance();
+                continue;
+            }
+            advance();
+            return;
+        }
+
+        if (brace_depth == 0) {
+            if (prev().type_ == tt::SEMICOLON) return;
+            if (core::is_statement_start(type) && (prev().type_ == tt::SEMICOLON || prev().type_ == tt::RIGHT_BRACE))
+                return;
+        }
+
         advance();
     }
 }

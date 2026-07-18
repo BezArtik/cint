@@ -5,7 +5,6 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
-#include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
@@ -21,7 +20,6 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
-#include <charconv>
 #include <string>
 #include <utility>
 
@@ -195,29 +193,15 @@ core::value interpreter::evaluate(const ast::expression& expr) {
 core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
-    auto to_number = [&](auto&& lex, auto&& num) {
-        auto [ptr, ec] = std::from_chars(lex.data(), lex.data() + lex.size(), num);
-        if (ec != std::errc{} || ptr != lex.data() + lex.size())
-            reporter_.interpret_error(token, err::unexpected_literal);
-        return num;
-    };
+    if (token.literal_value_) return *token.literal_value_;
 
-    if (token.is_number_literal()) {
-        auto lex = token.lexeme_;
-        if (token.is_double_literal()) {
-            core::value::double_t d;
-            return to_number(lex, d);
-        }
-        core::value::int_t i;
-        return to_number(lex, i);
-    }
-
-    if (token.is_string_literal()) {
+    if (token.type_ == tt::STRING) {
         auto lex = token.lexeme_;
         return std::string(lex.substr(1, lex.size() - 2));
     }
 
-    return token.as_keyword()->lexeme_ == "true";
+    reporter_.interpret_error(token, err::unexpected_literal);
+    return {};
 }
 
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {

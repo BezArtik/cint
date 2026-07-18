@@ -1,11 +1,12 @@
 // core/value/value.hpp
 
 #pragma once
-#include "core/token/token_types.hpp"
+#include "core/token/type.hpp"
 #include "core/utils/shared_data.hpp"
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -27,8 +28,9 @@ public:
 
     core::type type() const;
 
-    static core::value default_value(const core::type& t);
-    static core::value convert(core::value val, const core::type& target);
+    static value default_value(const core::type& t);
+    static value convert(core::value val, const core::type& target);
+    static value from_string(std::string_view text, bool is_double);
 
     int_t to_int() const;
     double_t to_double() const;
@@ -53,6 +55,9 @@ public:
     }
 
 private:
+    static int_t parse_int(std::string_view text);
+    static double_t parse_double(std::string_view text);
+
     std::variant<int_t, double_t, bool_t, string_t, array_t, std::monostate> data_;
 };
 

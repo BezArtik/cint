@@ -1,7 +1,7 @@
 // core/utils/builtins.hpp
 
 #pragma once
-#include "core/token/token_types.hpp"
+#include "core/token/type.hpp"
 
 #include <span>
 #include <string_view>

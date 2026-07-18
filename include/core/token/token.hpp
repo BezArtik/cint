@@ -1,7 +1,8 @@
 // core/token/token.hpp
 
 #pragma once
-#include "core/token/token_types.hpp"
+
+#include "core/value/value.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -21,18 +22,20 @@ struct token {
     token_type type_;
     std::string_view lexeme_;
     location loc_;
-    bool is_double_ = false;
+    std::optional<core::value> literal_value_;
 
     token() = default;
-    token(token_type type, std::string_view lex, location loc, bool is_double = false);
+    token(token_type type, std::string_view lex, location loc, std::optional<value> val = std::nullopt)
+        : type_(type), lexeme_(lex), loc_(loc), literal_value_(val) {}
+#if 0
+    bool is_string_literal() const noexcept {
+        return type_ == token_type::STRING;
+    }
 
-    bool is_keyword() const noexcept;
-    bool is_number_literal() const noexcept;
-    bool is_double_literal() const noexcept;
-    bool is_string_literal() const noexcept;
-    bool is_identifier() const noexcept;
-
-    std::optional<keyword_info> as_keyword() const;
+    bool is_identifier() const noexcept {
+        return type_ == token_type::IDENTIFIER;
+    }
+#endif
 };
 
 }  // namespace core
