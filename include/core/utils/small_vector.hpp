@@ -72,6 +72,11 @@ public:
 
     small_vector() : vec_(stack_allocator<value_type>(buffer_, &used_)) { vec_.reserve(N); }
 
+    small_vector(const small_vector&) = delete;
+    small_vector& operator=(const small_vector&) = delete;
+    small_vector(small_vector&&) = delete;
+    small_vector& operator=(small_vector&&) = delete;
+
     void push_back(const_reference value) { vec_.push_back(value); }
     void push_back(value_type&& value) { vec_.push_back(std::move(value)); }
 
