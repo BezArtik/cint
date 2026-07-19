@@ -62,6 +62,16 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         auto init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
+        if (stmt.type_.is_array() && stmt.type_.array_size() == 0 && init_type.is_array()) {
+            if (stmt.type_.element_type().is_assignable_from(init_type.element_type())) {
+                auto inferred_type = t::array_type(stmt.type_.element_type(), init_type.array_size());
+                symbols_.define(name, inferred_type);
+                return;
+            }
+            reporter_.error(stmt, err::type_mismatch_initialization, name);
+            return;
+        }
+
         if (!stmt.type_.is_assignable_from(init_type)) {
             reporter_.error(stmt, err::type_mismatch_initialization, name);
             return;
@@ -241,9 +251,7 @@ t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
     auto value_type = type_of(expr.value_);
     if (target_type.is_unknown() || value_type.is_unknown()) return t::unknown_type();
 
-    auto op = expr.op_.type_;
-
-    if (op == tt::EQUAL) {
+    if (expr.op_.type_ == tt::EQUAL) {
         if (!target_type.is_assignable_from(value_type) || !is_lvalue(expr.target_)) {
             reporter_.error(expr, err::type_mismatch_assignment);
             return t::unknown_type();

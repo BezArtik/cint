@@ -86,10 +86,7 @@ bool type::operator==(const type& other) const noexcept {
         return lhs_info.param_types_.size() == rhs_info.param_types_.size() &&
                std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
     } else if (is_array()) {
-        const auto& lhs = std::get<array_info>(info_);
-        const auto& rhs = std::get<array_info>(other.info_);
-        if (*lhs.element_type_ != *rhs.element_type_) return false;
-        return lhs.size_ == rhs.size_ || lhs.size_ == 0 || rhs.size_ == 0;
+        return false;
     }
 
     return true;
@@ -101,12 +98,7 @@ bool type::operator!=(const type& other) const noexcept {
 
 bool type::is_assignable_from(const type& source) const noexcept {
     if (*this == source) return true;
-
     if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
-    if (is_array() && source.is_array()) {
-        return element_type().is_assignable_from(source.element_type()) &&
-               (array_size() == 0 || source.array_size() == 0 || array_size() == source.array_size());
-    }
     return false;
 }
 

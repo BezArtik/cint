@@ -8,10 +8,6 @@
 #include <string_view>
 #include <vector>
 
-namespace ast {
-struct func_declaration;
-}  // namespace ast
-
 namespace core {
 
 class function_registry {
