@@ -9,7 +9,7 @@ namespace core {
 
 function_registry function_registry::build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins) {
     function_registry registry;
-    registry.entries_.reserve(builtins.size());
+    registry.entries_.reserve(builtins.size() + ast.size());
 
     for (const auto& b : builtins) {
         auto type = core::type::function_type(b.return_type_, b.param_types_);
@@ -27,9 +27,11 @@ function_registry function_registry::build(std::span<const ast::stmt_ptr> ast, s
 
             auto it = std::ranges::find(registry.entries_, func->name_.lexeme_, &entry::name_);
             if (it != registry.entries_.end()) {
-                it->type_ = std::move(type);
-                it->body_ = func;
-                it->builtin_ = nullptr;
+                if (it->builtin_) {
+                    it->type_ = std::move(type);
+                    it->body_ = func;
+                    it->builtin_ = nullptr;
+                }
             } else {
                 registry.entries_.emplace_back(func->name_.lexeme_, std::move(type), func, nullptr);
             }
