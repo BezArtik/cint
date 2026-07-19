@@ -37,6 +37,8 @@ struct var_declaration {
 struct block_stmt {
     stmt_list statements_;
     core::location loc_;
+    mutable bool has_declarations_checked_ = false;
+    mutable bool has_declarations_ = false;
 
     block_stmt() = default;
     block_stmt(stmt_list statements, core::location loc) : statements_(std::move(statements)), loc_(loc) {}
@@ -131,10 +133,15 @@ stmt_ptr make_stmt(core::arena& arena, Stmt&& stmt) {
 }
 
 inline bool has_declarations(const block_stmt& block) noexcept {
-    return std::ranges::any_of(block.statements_, [](const auto& stmt) {
-        return std::holds_alternative<var_declaration>(stmt->data_) ||
-               (std::holds_alternative<block_stmt>(stmt->data_) && has_declarations(std::get<block_stmt>(stmt->data_)));
-    });
+    if (!block.has_declarations_checked_) {
+        block.has_declarations_ = std::ranges::any_of(block.statements_, [](const auto& stmt) {
+            return std::holds_alternative<var_declaration>(stmt->data_) ||
+                   (std::holds_alternative<block_stmt>(stmt->data_) &&
+                    has_declarations(std::get<block_stmt>(stmt->data_)));
+        });
+        block.has_declarations_checked_ = true;
+    }
+    return block.has_declarations_;
 }
 
 }  // namespace ast
