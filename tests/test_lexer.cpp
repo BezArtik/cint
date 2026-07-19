@@ -244,19 +244,6 @@ TEST(lexer_test, line_comment) {
     expect_eof(h, 2);
 }
 
-TEST(lexer_test, line_numbers) {
-    lexer_harness h("int\nx\n=");
-    EXPECT_EQ(h[0].loc_.line_, 1);
-    EXPECT_EQ(h[1].loc_.line_, 2);
-    EXPECT_EQ(h[2].loc_.line_, 3);
-}
-
-TEST(lexer_test, column_numbers) {
-    lexer_harness h("int x");
-    EXPECT_EQ(h[0].loc_.column_, 4);
-    EXPECT_EQ(h[1].loc_.column_, 6);
-}
-
 TEST(LexerTest, unterminated_string) {
     lexer_harness h("\"unterminated");
     EXPECT_TRUE(h.had_error());

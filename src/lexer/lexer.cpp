@@ -28,53 +28,66 @@ lexer::token_list lexer::scan_tokens() {
     return std::move(tokens_);
 }
 
+void lexer::add_token(tt type) {
+    add_token(type, loc_);
+}
+
+void lexer::add_token(tt type, core::location loc) {
+    auto text = source_.substr(start_, current_ - start_);
+    tokens_.emplace_back(type, text, loc);
+}
+
 // clang-format off
 void lexer::scan_token() {
+    auto start_loc = loc_; 
     auto c = advance();
     switch (c) {
-        case '(': add_token(tt::LEFT_PAREN); break;
-        case ')': add_token(tt::RIGHT_PAREN); break;
-        case '{': add_token(tt::LEFT_BRACE); break;
-        case '}': add_token(tt::RIGHT_BRACE); break;
-        case '[': add_token(tt::LEFT_BRACKET); break;
-        case ']': add_token(tt::RIGHT_BRACKET); break;
-        case ',': add_token(tt::COMMA); break;
-        case '.': add_token(tt::DOT); break;
-        case '+': add_token(match('=') ? tt::PLUS_EQUAL : match('+') ? tt::INCREMENT : tt::PLUS); break;
-        case '-': add_token(match('=') ? tt::MINUS_EQUAL : match('-') ? tt::DECREMENT : tt::MINUS); break;
-        case '*': add_token(match('=') ? tt::STAR_EQUAL : tt::STAR); break;
-        case '%': add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT); break;
-        case '^': add_token(match('=') ? tt::XOR_EQUAL : tt::XOR); break;
-        case '~': add_token(match('=') ? tt::BIT_NOT_EQUAL : tt::BIT_NOT); break;
-        case ';': add_token(tt::SEMICOLON); break;
+        case '(': add_token(tt::LEFT_PAREN, start_loc); break;
+        case ')': add_token(tt::RIGHT_PAREN, start_loc); break;
+        case '{': add_token(tt::LEFT_BRACE, start_loc); break;
+        case '}': add_token(tt::RIGHT_BRACE, start_loc); break;
+        case '[': add_token(tt::LEFT_BRACKET, start_loc); break;
+        case ']': add_token(tt::RIGHT_BRACKET, start_loc); break;
+        case ',': add_token(tt::COMMA, start_loc); break;
+        case '.': add_token(tt::DOT, start_loc); break;
+        case ';': add_token(tt::SEMICOLON, start_loc); break;
 
-        case '!': add_token(match('=') ? tt::BANG_EQUAL : tt::BANG); break;
-        case '=': add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL); break;
+        case '+': add_token(match('=') ? tt::PLUS_EQUAL : match('+') ? tt::INCREMENT : tt::PLUS, start_loc); break;
+        case '-': add_token(match('=') ? tt::MINUS_EQUAL : match('-') ? tt::DECREMENT : tt::MINUS, start_loc); break;
+        case '*': add_token(match('=') ? tt::STAR_EQUAL : tt::STAR, start_loc); break;
+        case '%': add_token(match('=') ? tt::PERCENT_EQUAL : tt::PERCENT, start_loc); break;
+        case '^': add_token(match('=') ? tt::XOR_EQUAL : tt::XOR, start_loc); break;
+        case '~': add_token(match('=') ? tt::BIT_NOT_EQUAL : tt::BIT_NOT, start_loc); break;
+
+        case '!': add_token(match('=') ? tt::BANG_EQUAL : tt::BANG, start_loc); break;
+        case '=': add_token(match('=') ? tt::EQUAL_EQUAL : tt::EQUAL, start_loc); break;
+
         case '<':
             if (match('='))
-                add_token(tt::LESS_EQUAL);
+                add_token(tt::LESS_EQUAL, start_loc);
             else if (match('<'))
-                add_token(match('=') ? tt::SHL_EQUAL : tt::SHL);
+                add_token(match('=') ? tt::SHL_EQUAL : tt::SHL, start_loc);
             else
-                add_token(tt::LESS);
-            break;
-        case '>':
-            if (match('='))
-                add_token(tt::GREATER_EQUAL);
-            else if (match('>'))
-                add_token(match('=') ? tt::SHR_EQUAL : tt::SHR);
-            else
-                add_token(tt::GREATER);
+                add_token(tt::LESS, start_loc);
             break;
 
-        case '&': add_token(match('&') ? tt::LOGICAL_AND : match('=') ? tt::BIT_AND_EQUAL : tt::BIT_AND); break;
-        case '|': add_token(match('|') ? tt::LOGICAL_OR : match('=') ? tt::BIT_OR_EQUAL : tt::BIT_OR); break;
+        case '>':
+            if (match('='))
+                add_token(tt::GREATER_EQUAL, start_loc);
+            else if (match('>'))
+                add_token(match('=') ? tt::SHR_EQUAL : tt::SHR, start_loc);
+            else
+                add_token(tt::GREATER, start_loc);
+            break;
+
+        case '&': add_token(match('&') ? tt::LOGICAL_AND : match('=') ? tt::BIT_AND_EQUAL : tt::BIT_AND, start_loc); break;
+        case '|': add_token(match('|') ? tt::LOGICAL_OR : match('=') ? tt::BIT_OR_EQUAL : tt::BIT_OR, start_loc); break;
 
         case '/':
             if (match('/')) {
                 while (peek() != '\n' && !is_at_end()) advance();
             } else {
-                add_token(match('=') ? tt::SLASH_EQUAL : tt::SLASH);
+                add_token(match('=') ? tt::SLASH_EQUAL : tt::SLASH, start_loc);
             }
             break;
 
@@ -92,18 +105,17 @@ void lexer::scan_token() {
 
         default:
             if (std::isdigit(c)) {
-                consume_number();
+                consume_number(start_loc);
             } else if (std::isalpha(c) || c == '_') {
-                consume_identifier_or_keyword();
+                consume_identifier_or_keyword(start_loc);
             } else {
-                reporter_.error(loc_, err::unexpected_character, c);
+                reporter_.error(start_loc, err::unexpected_character, c);
             }
             break;
     }
 }
-// clang-format on
 
-void lexer::consume_identifier_or_keyword() {
+void lexer::consume_identifier_or_keyword(core::location start_loc) {
     while (std::isalnum(peek()) || peek() == '_') advance();
 
     auto lexeme = source_.substr(start_, current_ - start_);
@@ -115,10 +127,11 @@ void lexer::consume_identifier_or_keyword() {
     else if (type == tt::KW_FALSE)
         literal_val = false;
 
-    tokens_.emplace_back(type, lexeme, loc_, literal_val);
+    auto text = source_.substr(start_, current_ - start_);
+    tokens_.emplace_back(type, text, start_loc, literal_val);
 }
 
-void lexer::consume_number() {
+void lexer::consume_number(core::location start_loc) {
     while (std::isdigit(peek())) advance();
 
     bool is_double = false;
@@ -132,11 +145,15 @@ void lexer::consume_number() {
 
     try {
         auto val = core::value::from_string(text, is_double);
-        tokens_.emplace_back(tt::NUMBER, text, loc_, val);
-    } catch (const core::interpret_error&) { reporter_.error(loc_, err::unexpected_character); }
+        tokens_.emplace_back(tt::NUMBER, text, start_loc, val);
+    } catch (const core::interpret_error&) {
+        reporter_.error(start_loc, err::unexpected_character);
+        tokens_.emplace_back(tt::NUMBER, text, start_loc, std::nullopt);
+    }
 }
 
 void lexer::consume_string() {
+    auto start_loc = loc_;
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             loc_.line_++;
@@ -146,12 +163,12 @@ void lexer::consume_string() {
     }
 
     if (is_at_end()) {
-        reporter_.error(loc_, err::unterminated_string);
+        reporter_.error(start_loc, err::unterminated_string);
         return;
     }
 
     advance();
-    add_token(tt::STRING);
+    add_token(tt::STRING, start_loc);
 }
 
 char lexer::advance() noexcept {
@@ -178,9 +195,4 @@ bool lexer::match(char expected) noexcept {
 
 bool lexer::is_at_end() const noexcept {
     return current_ >= source_.length();
-}
-
-void lexer::add_token(tt type) {
-    auto text = source_.substr(start_, current_ - start_);
-    tokens_.emplace_back(type, text, loc_);
 }
