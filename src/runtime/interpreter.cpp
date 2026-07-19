@@ -203,7 +203,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
     return evaluate_lvalue(expr);
 }
-
+// clang-format off
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
     auto type = expr.op_.type_;
@@ -220,45 +220,28 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     auto right = evaluate(expr.right_);
     try {
         switch (type) {
-            case tt::PLUS:
-                return op::add(left, right);
-            case tt::MINUS:
-                return op::sub(left, right);
-            case tt::STAR:
-                return op::mul(left, right);
-            case tt::SLASH:
-                return op::div(left, right);
-            case tt::PERCENT:
-                return op::mod(left, right);
-            case tt::EQUAL_EQUAL:
-                return op::eq(left, right);
-            case tt::BANG_EQUAL:
-                return op::neq(left, right);
-            case tt::LESS:
-                return op::lt(left, right);
-            case tt::LESS_EQUAL:
-                return op::le(left, right);
-            case tt::GREATER:
-                return op::gt(left, right);
-            case tt::GREATER_EQUAL:
-                return op::ge(left, right);
-            case tt::BIT_AND:
-                return op::bit_and(left, right);
-            case tt::BIT_OR:
-                return op::bit_or(left, right);
-            case tt::XOR:
-                return op::bit_xor(left, right);
-            case tt::SHL:
-                return op::shl(left, right);
-            case tt::SHR:
-                return op::shr(left, right);
-            default:
-                reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
+            case tt::PLUS:          return op::add(left, right);
+            case tt::MINUS:         return op::sub(left, right);
+            case tt::STAR:          return op::mul(left, right);
+            case tt::SLASH:         return op::div(left, right);
+            case tt::PERCENT:       return op::mod(left, right);
+            case tt::EQUAL_EQUAL:   return op::eq(left, right);
+            case tt::BANG_EQUAL:    return op::neq(left, right);
+            case tt::LESS:          return op::lt(left, right);
+            case tt::LESS_EQUAL:    return op::le(left, right);
+            case tt::GREATER:       return op::gt(left, right);
+            case tt::GREATER_EQUAL: return op::ge(left, right);
+            case tt::BIT_AND:       return op::bit_and(left, right);
+            case tt::BIT_OR:        return op::bit_or(left, right);
+            case tt::XOR:           return op::bit_xor(left, right);
+            case tt::SHL:           return op::shl(left, right);
+            case tt::SHR:           return op::shr(left, right);
+            default: reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
         }
     } catch (const core::interpret_error& e) { reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_); }
 }
 
-// clang-format off
+
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
     return core::visit(core::overloaded{
             [this](const ast::variable_expr& e) -> core::value& {                             
@@ -268,7 +251,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::index_expr>& e) -> core::value& {
                 auto& obj = evaluate_lvalue(e->object_);
                 auto index_val = evaluate(e->index_);
-                auto i = *index_val.as<core::value::int_t>();
+                auto i = index_val.to_int();
 
                 auto* arr = obj.as_mut<core::value::array_t>();
                 if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
@@ -281,7 +264,6 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
             }
     }, expr);
 }
-// clang-format on
 
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     auto op = expr.op_.type_;
@@ -295,52 +277,30 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     }
 
     switch (op) {
-        case tt::PLUS_EQUAL:
-            target = op::add(target, right);
-            break;
-        case tt::MINUS_EQUAL:
-            target = op::sub(target, right);
-            break;
-        case tt::STAR_EQUAL:
-            target = op::mul(target, right);
-            break;
-        case tt::SLASH_EQUAL:
-            target = op::div(target, right);
-            break;
-        case tt::PERCENT_EQUAL:
-            target = op::mod(target, right);
-            break;
-        case tt::BIT_AND_EQUAL:
-            target = op::bit_and(target, right);
-            break;
-        case tt::BIT_OR_EQUAL:
-            target = op::bit_or(target, right);
-            break;
-        case tt::XOR_EQUAL:
-            target = op::bit_xor(target, right);
-            break;
-        case tt::SHL_EQUAL:
-            target = op::shl(target, right);
-            break;
-        case tt::SHR_EQUAL:
-            target = op::shr(target, right);
-            break;
-        default:
-            break;
+        case tt::PLUS_EQUAL:    target = op::add(target, right);     break;
+        case tt::MINUS_EQUAL:   target = op::sub(target, right);     break;
+        case tt::STAR_EQUAL:    target = op::mul(target, right);     break;
+        case tt::SLASH_EQUAL:   target = op::div(target, right);     break;
+        case tt::PERCENT_EQUAL: target = op::mod(target, right);     break;
+        case tt::BIT_AND_EQUAL: target = op::bit_and(target, right); break;
+        case tt::BIT_OR_EQUAL:  target = op::bit_or(target, right);  break;
+        case tt::XOR_EQUAL:     target = op::bit_xor(target, right); break;
+        case tt::SHL_EQUAL:     target = op::shl(target, right);     break;
+        case tt::SHR_EQUAL:     target = op::shr(target, right);     break;
+        default: break;
     }
 
     return target;
 }
+// clang-format on
 
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
     auto operand = evaluate(expr.operand_);
     auto op = expr.op_.type_;
 
     switch (op) {
-        case tt::MINUS: {
-            if (auto* i = operand.as<core::value::int_t>()) return -*i;
-            return -operand.to_double();
-        }
+        case tt::MINUS:
+            return op::unary_minus(operand);
         case tt::BANG:
             return op::not_op(operand);
         case tt::BIT_NOT:
@@ -429,7 +389,7 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
     auto idx = evaluate(expr.index_);
 
     const auto* arr = obj.as<core::value::array_t>();
-    auto i = *idx.as<core::value::int_t>();
+    auto i = idx.to_int();
 
     if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
         reporter_.interpret_error(expr, err::index_out_of_bounds);

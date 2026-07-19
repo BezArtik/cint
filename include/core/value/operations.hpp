@@ -10,6 +10,7 @@ value sub(const value& a, const value& b);
 value mul(const value& a, const value& b);
 value div(const value& a, const value& b);
 value mod(const value& a, const value& b);
+value unary_minus(const value& a);
 value eq(const value& a, const value& b);
 value neq(const value& a, const value& b);
 value lt(const value& a, const value& b);

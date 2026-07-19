@@ -42,6 +42,11 @@ value mod(const value& a, const value& b) {
     return li % ri;
 }
 
+value unary_minus(const value& a) {
+    if (a.is_int()) return -a.to_int();
+    return -a.to_double();
+}
+
 value eq(const value& a, const value& b) {
     if (a.is_int() && b.is_int()) return a.to_int() == b.to_int();
     if (a.is_double() && b.is_double()) return a.to_double() == b.to_double();
