@@ -72,21 +72,23 @@ value stod(std::span<const value> args) {
     return args[0].to_double();
 }
 
-namespace {
+static auto& generator() {
+    static std::mt19937_64 gen(std::random_device{}());
+    return gen;
+}
 
-std::random_device rd;
-std::mt19937_64 gen(rd());
-
-}  // namespace
-
+value srand(std::span<const value> args) {
+    generator().seed(static_cast<uint64_t>(args[0].to_int()));
+    return {};
+}
 value rand_int(std::span<const value> args) {
     std::uniform_int_distribution dist(args[0].to_int(), args[1].to_int());
-    return dist(gen);
+    return dist(generator());
 }
 
 value rand_dbl(std::span<const value> args) {
     std::uniform_real_distribution dist(args[0].to_double(), args[1].to_double());
-    return dist(gen);
+    return dist(generator());
 }
 
 }  // namespace core::builtin_impl

@@ -36,6 +36,7 @@ value itod(std::span<const value> args);
 value stod(std::span<const value> args);
 value rand_int(std::span<const value> args);
 value rand_dbl(std::span<const value> args);
+value srand(std::span<const value> args);
 }  // namespace builtin_impl
 
 inline const std::array builtins = {
@@ -58,6 +59,7 @@ inline const std::array builtins = {
     builtin_def{"stod", type::double_type(), {type::string_type()}, builtin_impl::stod},
 
     builtin_def{"rand_int", type::int_type(), {type::int_type(), type::int_type()}, builtin_impl::rand_int},
-    builtin_def{"rand_dbl", type::double_type(), {type::double_type(), type::double_type()}, builtin_impl::rand_dbl}};
+    builtin_def{"rand_dbl", type::double_type(), {type::double_type(), type::double_type()}, builtin_impl::rand_dbl},
+    builtin_def{"srand", type::void_type(), {type::int_type()}, builtin_impl::srand}};
 
 }  // namespace core
