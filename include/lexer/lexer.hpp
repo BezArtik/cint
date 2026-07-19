@@ -28,6 +28,7 @@ private:
     void add_token(core::token_type type, core::location loc);
 
     void consume_string();
+    std::string process_escape_sequences(std::string_view raw, core::location start_loc);
     void consume_number(core::location start_loc);
     void consume_identifier_or_keyword(core::location start_loc);
 

@@ -179,7 +179,7 @@ TEST_P(string_test, recognized) {
     lexer_harness h(std::string{tc.source_});
     ASSERT_GE(h.size(), 2);
     expect_token(h[0], tt::STRING, tc.expected_lexeme_);
-    EXPECT_FALSE(h[0].literal_value_);
+    EXPECT_TRUE(h[0].literal_value_);
     expect_eof(h, 1);
 }
 

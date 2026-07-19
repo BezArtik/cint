@@ -167,8 +167,49 @@ void lexer::consume_string() {
         return;
     }
 
-    advance();
-    add_token(tt::STRING, start_loc);
+    advance();  
+
+    auto raw = source_.substr(start_ + 1, current_ - start_ - 2);
+    auto processed = process_escape_sequences(raw, start_loc);
+
+    auto text = source_.substr(start_, current_ - start_);
+    tokens_.emplace_back(tt::STRING, text, start_loc, processed);
+}
+
+std::string lexer::process_escape_sequences(std::string_view raw, core::location start_loc) {
+    std::string result;
+    result.reserve(raw.size());
+
+    auto it = raw.begin();
+    auto end = raw.end();
+
+    while (it != end) {
+        if (*it == '\\') {
+            auto next = std::next(it);
+            if (next == end) {
+                reporter_.error(start_loc, err::unterminated_string);
+                break;
+            }
+            switch (*next) {
+                case 'n':  result.push_back('\n'); break;
+                case 't':  result.push_back('\t'); break;
+                case 'r':  result.push_back('\r'); break;
+                case '\\': result.push_back('\\'); break;
+                case '"':  result.push_back('"');  break;
+                case '0':  result.push_back('\0'); break;
+                default:
+                    reporter_.error(start_loc, err::unexpected_character, *next);
+                    result.push_back(*next);
+                    break;
+            }
+            std::advance(it, 2);
+        } else {
+            result.push_back(*it);
+            ++it;
+        }
+    }
+
+    return result;
 }
 
 char lexer::advance() noexcept {
