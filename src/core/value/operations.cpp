@@ -36,17 +36,17 @@ value div(const value& a, const value& b) {
 }
 
 value mod(const value& a, const value& b) {
-    auto li = *a.as<value::int_t>();
-    auto ri = *b.as<value::int_t>();
+    auto li = a.to_int();
+    auto ri = b.to_int();
     if (ri == 0) throw core::interpret_error{error_code::modulo_by_zero};
     return li % ri;
 }
 
 value eq(const value& a, const value& b) {
-    if (a.is_int() && b.is_int()) return *a.as<value::int_t>() == *b.as<value::int_t>();
-    if (a.is_double() && b.is_double()) return *a.as<value::double_t>() == *b.as<value::double_t>();
-    if (a.is_bool() && b.is_bool()) return *a.as<value::bool_t>() == *b.as<value::bool_t>();
-    if (a.is_string() && b.is_string()) return a.as<value::string_t>()->get() == b.as<value::string_t>()->get();
+    if (a.is_int() && b.is_int()) return a.to_int() == b.to_int();
+    if (a.is_double() && b.is_double()) return a.to_double() == b.to_double();
+    if (a.is_bool() && b.is_bool()) return a.to_bool() == b.to_bool();
+    if (a.is_string() && b.is_string()) return a.to_string() == b.to_string();
 
     if ((a.is_int() || a.is_double()) && (b.is_int() || b.is_double())) return a.to_double() == b.to_double();
 
@@ -58,18 +58,17 @@ value neq(const value& a, const value& b) {
 }
 
 value lt(const value& a, const value& b) {
-    if (a.is_int() && b.is_int()) return *a.as<value::int_t>() < *b.as<value::int_t>();
-    return a.to_double() < b.to_double();
+    return arithmetic_op(a, b, std::less<>{});
 }
 
 value le(const value& a, const value& b) {
-    return or_op(lt(a, b), eq(a, b));
+    return arithmetic_op(a, b, std::less_equal<>{});
 }
 value gt(const value& a, const value& b) {
-    return not_op(le(a, b));
+    return arithmetic_op(a, b, std::greater<>{});
 }
 value ge(const value& a, const value& b) {
-    return not_op(lt(a, b));
+    return arithmetic_op(a, b, std::greater_equal<>{});
 }
 
 value and_op(const value& a, const value& b) {
@@ -83,22 +82,22 @@ value not_op(const value& a) {
 }
 
 value bit_and(const value& a, const value& b) {
-    return *a.as<value::int_t>() & *b.as<value::int_t>();
+    return a.to_int() & b.to_int();
 }
 value bit_or(const value& a, const value& b) {
-    return *a.as<value::int_t>() | *b.as<value::int_t>();
+    return a.to_int() | b.to_int();
 }
 value bit_xor(const value& a, const value& b) {
-    return *a.as<value::int_t>() ^ *b.as<value::int_t>();
+    return a.to_int() ^ b.to_int();
 }
 value bit_not(const value& a) {
-    return ~*a.as<value::int_t>();
+    return ~a.to_int();
 }
 value shl(const value& a, const value& b) {
-    return *a.as<value::int_t>() << *b.as<value::int_t>();
+    return a.to_int() << b.to_int();
 }
 value shr(const value& a, const value& b) {
-    return *a.as<value::int_t>() >> *b.as<value::int_t>();
+    return a.to_int() >> b.to_int();
 }
 
 }  // namespace core::ops
