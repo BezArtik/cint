@@ -27,15 +27,6 @@ struct token {
     token() = default;
     token(token_type type, std::string_view lex, location loc, std::optional<value> val = std::nullopt)
         : type_(type), lexeme_(lex), loc_(loc), literal_value_(val) {}
-#if 0
-    bool is_string_literal() const noexcept {
-        return type_ == token_type::STRING;
-    }
-
-    bool is_identifier() const noexcept {
-        return type_ == token_type::IDENTIFIER;
-    }
-#endif
 };
 
 }  // namespace core
