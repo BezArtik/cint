@@ -8,6 +8,7 @@
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
+#include "core/utils/small_vector.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -137,7 +138,7 @@ ast::stmt_ptr parser::declaration() {
 }
 
 core::type parser::parse_array_dimensions(core::type base_type) {
-    std::vector<size_t> dimensions;
+    core::small_vector<size_t, 3> dimensions;
 
     while (match({tt::LEFT_BRACKET})) {
         size_t dim_size = 0;

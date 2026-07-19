@@ -57,7 +57,6 @@ private:
     core::scoped_map<runtime_var> values_;
     uint32_t recursion_depth_ = 0;
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
-    static constexpr uint32_t MAX_ARGUMENTS = 16;
 };
 
 }  // namespace runtime

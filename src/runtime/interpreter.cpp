@@ -11,6 +11,7 @@
 #include "core/utils/function_registry.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/utils/small_vector.hpp"
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug.hpp"
@@ -18,8 +19,8 @@
 #include "debug/trace_level.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cassert>
+#include <iterator>
 #include <string>
 #include <utility>
 
@@ -372,9 +373,10 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    std::array<core::value, MAX_ARGUMENTS> args_buf;
+    core::small_vector<core::value, 8> args_buf;
     try {
-        std::ranges::transform(expr.args_, args_buf.begin(), [this](const auto& arg) { return evaluate(arg); });
+        std::ranges::transform(expr.args_, std::back_inserter(args_buf),
+                               [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
     auto func = registry_.find(name);

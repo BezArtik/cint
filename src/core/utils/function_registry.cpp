@@ -9,6 +9,7 @@ namespace core {
 
 function_registry function_registry::build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins) {
     function_registry registry;
+    registry.entries_.reserve(builtins.size());
 
     for (const auto& b : builtins) {
         auto type = core::type::function_type(b.return_type_, b.param_types_);
