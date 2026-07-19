@@ -99,7 +99,7 @@ void type_checker::check_body(const ast::statement& body) {
 
 void type_checker::check_while(const ast::while_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "while");
 
     core::scope_guard guard(symbols_);
     check_body(*stmt.block_);
@@ -111,7 +111,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
         auto cond_type = type_of(*stmt.condition_);
-        if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+        if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "for");
     }
     if (stmt.increment_) type_of(*stmt.increment_);
     check_body(*stmt.block_);
@@ -119,7 +119,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto cond_type = type_of(stmt.condition_);
-    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool);
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "if");
     check_body(*stmt.then_block_);
     if (stmt.else_block_) check_body(*stmt.else_block_);
 }
