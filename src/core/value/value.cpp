@@ -83,17 +83,25 @@ core::type value::type() const {
 }
 
 value::int_t value::to_int() const {
-    if (auto* i = as<int_t>()) return *i;
-    if (auto* d = as<double_t>()) return static_cast<int_t>(*d);
-    if (auto* s = as<string_t>()) return parse_int(*s->get()); 
-    throw core::interpret_error{error_code::invalid_conversion};
+    return visit(
+        overloaded{
+            [](int_t v) { return v; },
+            [](double_t v) { return static_cast<int_t>(v); },
+            [](const string_t& v) { return parse_int(*v); },
+            [](const auto&) -> int_t { throw core::interpret_error{error_code::invalid_conversion}; }
+        },
+        data_);
 }
 
 value::double_t value::to_double() const {
-    if (auto* i = as<int_t>()) return static_cast<double_t>(*i);
-    if (auto* d = as<double_t>()) return *d;
-    if (auto* s = as<string_t>()) return parse_double(*s->get()); 
-    throw core::interpret_error{error_code::invalid_conversion};
+    return visit(
+        overloaded{
+            [](int_t v) { return static_cast<double_t>(v); },
+            [](double_t v) { return v; },
+            [](const string_t& v) { return parse_double(*v); },
+            [](const auto&) -> double_t { throw core::interpret_error{error_code::invalid_conversion}; }
+        },
+        data_);
 }
 
 value::bool_t value::to_bool() const {
@@ -104,7 +112,7 @@ value::bool_t value::to_bool() const {
             [](bool_t v) { return v; },
             [](const string_t& s) { return !s->empty(); },
             [](const array_t& a) { return !a->empty(); },
-            [](std::monostate) -> bool_t { throw core::interpret_error{error_code::invalid_conversion}; }
+            [](const auto&) -> bool_t { throw core::interpret_error{error_code::invalid_conversion}; }
         },
         data_);
 }
