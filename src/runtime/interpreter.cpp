@@ -198,7 +198,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 
     if (token.type_ == tt::STRING) {
         auto lex = token.lexeme_;
-        return std::string(lex.substr(1, lex.size() - 2));
+        return std::string{lex.substr(1, lex.size() - 2)};
     }
 
     reporter_.interpret_error(token, err::unexpected_literal);

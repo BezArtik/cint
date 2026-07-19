@@ -2,9 +2,9 @@
 
 #pragma once
 #include "core/token/type.hpp"
-#include "core/utils/shared_data.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -17,14 +17,16 @@ public:
     using int_t = int64_t;
     using double_t = double;
     using bool_t = bool;
-    using string_t = shared_data<std::string>;
-    using array_t = shared_data<std::vector<value>>;
+    using string_t = std::shared_ptr<std::string>;
+    using array_t = std::shared_ptr<std::vector<value>>;
 
     value();
     value(std::monostate) : data_(std::monostate{}) {}
 
     template <typename T>
     value(T v) : data_(std::move(v)) {}
+    value(std::string s) : data_(std::make_shared<std::string>(std::move(s))) {}
+    value(std::vector<value> v) : data_(std::make_shared<std::vector<value>>(std::move(v))) {}
 
     core::type type() const;
 

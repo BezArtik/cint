@@ -29,7 +29,7 @@ core::value value::default_value(const core::type& t) {
             std::vector<core::value> elements;
             elements.reserve(t.array_size());
             for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
-            return core::value::array_t(std::move(elements));
+            return elements;
         }
         default:
             return {};
@@ -74,7 +74,7 @@ core::type value::type() const {
             [](bool_t) { return type::bool_type(); },
             [](const string_t&) { return type::string_type(); },
             [](const array_t& a) {
-                if (a.empty() || a->empty()) return type::array_type(type::unknown_type(), 0);
+                if (a->empty() || a->empty()) return type::array_type(type::unknown_type(), 0);
                 return type::array_type(a->front().type(), a->size());
             },
             [](std::monostate) { return type::void_type(); }
@@ -85,14 +85,14 @@ core::type value::type() const {
 value::int_t value::to_int() const {
     if (auto* i = as<int_t>()) return *i;
     if (auto* d = as<double_t>()) return static_cast<int_t>(*d);
-    if (auto* s = as<string_t>()) return parse_int(s->get()); 
+    if (auto* s = as<string_t>()) return parse_int(*s->get()); 
     throw core::interpret_error{error_code::invalid_conversion};
 }
 
 value::double_t value::to_double() const {
     if (auto* i = as<int_t>()) return static_cast<double_t>(*i);
     if (auto* d = as<double_t>()) return *d;
-    if (auto* s = as<string_t>()) return parse_double(s->get()); 
+    if (auto* s = as<string_t>()) return parse_double(*s->get()); 
     throw core::interpret_error{error_code::invalid_conversion};
 }
 
@@ -115,7 +115,7 @@ std::string value::to_string() const {
             [](int_t v) { return std::to_string(v); },
             [](double_t v) { return std::to_string(v); },
             [](bool_t v) { return std::string(v ? "true" : "false"); },
-            [](const string_t& s) { return s.get(); },
+            [](const string_t& s) { return *s; },
             [](const array_t& a) {
                 std::string result = "{";
                 result.reserve(a->size() * 16);
