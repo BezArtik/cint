@@ -139,8 +139,7 @@ int main(int argc, char* argv[]) {
         const auto source = buffer.str();
 
         debug::debug_writer writer{
-            opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : decltype(debug::debug_writer::write_){},
-            opts.trace_mask_};
+            opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : [](std::string_view) {}, opts.trace_mask_};
         run_config config{source, writer};
 
         const auto start = std::chrono::steady_clock::now();
