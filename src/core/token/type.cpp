@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cassert>
 #include <memory>
+#include <span>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -49,31 +50,16 @@ bool type::is_primitive() const noexcept {
 bool type::is_numeric() const noexcept {
     return kind_ == kind::INT || kind_ == kind::DOUBLE;
 }
-
-bool type::is_int() const noexcept {
-    return kind_ == kind::INT;
-}
-bool type::is_double() const noexcept {
-    return kind_ == kind::DOUBLE;
-}
-bool type::is_bool() const noexcept {
-    return kind_ == kind::BOOL;
-}
-bool type::is_string() const noexcept {
-    return kind_ == kind::STRING;
-}
-bool type::is_void() const noexcept {
-    return kind_ == kind::VOID;
-}
-bool type::is_function() const noexcept {
-    return kind_ == kind::FUNCTION;
-}
-bool type::is_unknown() const noexcept {
-    return kind_ == kind::UNKNOWN;
-}
-bool type::is_array() const noexcept {
-    return kind_ == kind::ARRAY;
-}
+// clang-format off
+bool type::is_int() const noexcept { return kind_ == kind::INT; }
+bool type::is_double() const noexcept { return kind_ == kind::DOUBLE; }
+bool type::is_bool() const noexcept { return kind_ == kind::BOOL; }
+bool type::is_string() const noexcept { return kind_ == kind::STRING; }
+bool type::is_void() const noexcept { return kind_ == kind::VOID; }
+bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
+bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
+bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
+// clang-format on
 
 bool type::operator==(const type& other) const noexcept {
     if (kind_ != other.kind_) return false;
@@ -107,7 +93,7 @@ const type& type::return_type() const {
     return *std::get<function_info>(info_).return_type_;
 }
 
-const std::vector<type>& type::param_types() const {
+std::span<const type> type::param_types() const {
     assert(is_function());
     return std::get<function_info>(info_).param_types_;
 }

@@ -2,6 +2,7 @@
 
 #pragma once
 #include <memory>
+#include <span>
 #include <variant>
 #include <vector>
 
@@ -36,15 +37,15 @@ public:
     bool is_void() const noexcept;
     bool is_unknown() const noexcept;
     bool is_function() const noexcept;
+    bool is_array() const noexcept;
 
     const type& return_type() const;
-    const std::vector<type>& param_types() const;
+    std::span<const type> param_types() const;
 
-    bool is_assignable_from(const type& source) const noexcept;
-
-    bool is_array() const noexcept;
     const type& element_type() const;
     size_t array_size() const;
+
+    bool is_assignable_from(const type& source) const noexcept;
 
     kind get_kind() const noexcept;
 
