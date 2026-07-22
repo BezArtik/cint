@@ -2,7 +2,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -20,7 +19,7 @@ public:
     arena(arena&&) = delete;
     arena& operator=(arena&&) = delete;
 
-    ~arena() { reset(); }
+    ~arena();
 
     template <typename T, typename... Args>
     T* allocate(Args&&... args) {
@@ -32,44 +31,12 @@ public:
         return obj;
     }
 
-    void* allocate_raw(size_t size, size_t alignment) {
-        auto* ptr = align_ptr(current_, alignment);
-        auto remaining = static_cast<size_t>(end_ - ptr);
-
-        if (size > remaining) {
-            allocate_block();
-            ptr = align_ptr(current_, alignment);
-        }
-
-        current_ = ptr + size;
-        total_allocated_ += size;
-        return ptr;
-    }
-
-    void reset() noexcept {
-        for (auto it = destructors_.rbegin(); it != destructors_.rend(); ++it) (*it)();
-
-        destructors_.clear();
-
-        blocks_.clear();
-        current_ = nullptr;
-        end_ = nullptr;
-        total_allocated_ = 0;
-    }
+    void* allocate_raw(size_t size, size_t alignment);
+    void reset() noexcept;
 
 private:
-    void allocate_block() {
-        auto block = std::make_unique_for_overwrite<char[]>(BLOCK_SIZE);
-        current_ = block.get();
-        end_ = current_ + BLOCK_SIZE;
-        blocks_.push_back(std::move(block));
-    }
-
-    static char* align_ptr(char* ptr, size_t alignment) noexcept {
-        auto intptr = reinterpret_cast<uintptr_t>(ptr);
-        auto aligned = (intptr + alignment - 1) & ~(alignment - 1);
-        return reinterpret_cast<char*>(aligned);
-    }
+    void allocate_block();
+    static char* align_ptr(char* ptr, size_t alignment) noexcept;
 
     std::vector<std::unique_ptr<char[]>> blocks_;
     std::vector<std::function<void()>> destructors_;
@@ -80,14 +47,13 @@ private:
 
 class arena_memory_resource : public std::pmr::memory_resource {
 public:
-    arena_memory_resource(arena& arena) noexcept : arena_(arena) {}
+    arena_memory_resource(arena& arena) noexcept;
 
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override { return arena_.allocate_raw(bytes, alignment); }
-
+    void* do_allocate(size_t bytes, size_t alignment) override;
     void do_deallocate(void*, size_t, size_t) noexcept override {}
 
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
 
     arena& arena_;
 };
