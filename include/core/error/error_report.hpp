@@ -22,17 +22,17 @@ public:
     }
 
     template <typename T, typename... Args>
-    void error(const T& t, core::error_code code, Args&&... args) {
+    void error(const T& t, error_code code, Args&&... args) {
         error(t.loc_, code, std::forward<Args>(args)...);
     }
 
     template <typename T, typename... Args>
-    [[noreturn]] void interpret_error(const T& t, core::error_code code, Args&&... args) {
+    [[noreturn]] void interpret_error(const T& t, error_code code, Args&&... args) {
         error(t.loc_, code, std::forward<Args>(args)...);
         throw core::interpret_error{code};
     }
 
-    [[noreturn]] void parse_error(const core::token& token, core::error_code code) {
+    [[noreturn]] void parse_error(const token& token, error_code code) {
         error(token.loc_, code);
         throw core::parse_error{};
     }
