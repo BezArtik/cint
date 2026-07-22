@@ -79,6 +79,16 @@ int result = add(3, 4);
 print_int(result); // 7
 greet("world");
 ```
+### Structers
+```cpp
+struct Point {
+    int x;
+    int y;
+};
+struct Point p;
+p.x = 10;
+p.y = 15;
+```
 
 ## Project Structure
 
