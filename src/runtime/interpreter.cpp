@@ -8,10 +8,10 @@
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
-#include "core/utils/function_registry.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/utils/small_vector.hpp"
+#include "core/utils/symbol_registry.hpp"
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug.hpp"
@@ -60,7 +60,7 @@ struct interpreter::execution_result {
     bool is_return() const noexcept { return kind_ == kind::return_; }
 };
 
-interpreter::interpreter(core::error_reporter& reporter, const core::function_registry& registry,
+interpreter::interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
                          const debug::debug_writer& writer)
     : reporter_(reporter), registry_(registry), writer_(writer) {}
 
@@ -71,40 +71,42 @@ void interpreter::interpret(std::span<const ast::stmt_ptr> statements) {
         }
     } catch (const core::interpret_error&) {}
 }
-
+// clang-format off
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
     return core::visit(core::overloaded{
-                           [this](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
-                           [this](const ast::var_declaration& s) { return execute_var_declaration(s); },
-                           [this](const ast::block_stmt& s) { return execute_block(s); },
-                           [this](const ast::while_stmt& s) { return execute_while(s); },
-                           [this](const ast::for_stmt& s) { return execute_for(s); },
-                           [this](const ast::if_stmt& s) { return execute_if(s); },
-                           [this](const ast::return_stmt& s) { return execute_return_stmt(s); },
-                           [](const ast::func_declaration&) { return execution_result::normal(); },
-                       },
-                       stmt.data_);
+            [this](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
+            [this](const ast::var_declaration& s) { return execute_var_declaration(s); },
+            [this](const ast::block_stmt& s) { return execute_block(s); },
+            [this](const ast::while_stmt& s) { return execute_while(s); },
+            [this](const ast::for_stmt& s) { return execute_for(s); },
+            [this](const ast::if_stmt& s) { return execute_if(s); },
+            [this](const ast::return_stmt& s) { return execute_return_stmt(s); },
+            [](const ast::func_declaration&) { return execution_result::normal(); },
+            [](const ast::struct_declaration&) { return execution_result::normal(); }},
+            stmt.data_);
 }
-
+// clang-format on
 interpreter::execution_result interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
     evaluate(stmt.expr_);
     return execution_result::normal();
 }
 
 interpreter::execution_result interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
-    auto init_val = core::value::default_value(stmt.type_);
+    auto type = registry_.resolve_type(stmt.type_);
+    auto name = stmt.name_.lexeme_;
+    auto init_val = core::value::default_value(type);
 
     if (stmt.initializer_) {
         auto init = evaluate(*stmt.initializer_);
-        init_val = core::value::convert(std::move(init), stmt.type_);
+        init_val = core::value::convert(std::move(init), type);
     }
 
-    values_.define(stmt.name_.lexeme_, {&stmt.type_, std::move(init_val)});
+    values_.define(name, {&stmt.type_, std::move(init_val)});
 
     if (writer_.enabled(debug::trace_level::execution)) {
-        auto* var = values_.get(stmt.name_.lexeme_);
-        writer_.emit("  " + std::string(stmt.name_.lexeme_) + " = " + var->value_.to_string() + "\n");
+        auto* var = values_.get(name);
+        writer_.emit("  " + std::string(name) + " = " + var->value_.to_string() + "\n");
     }
     return execution_result::normal();
 }
@@ -173,11 +175,12 @@ interpreter::execution_result interpreter::execute_return_stmt(const ast::return
     return execution_result::return_(ret_val);
 }
 
+// clang-format off
 core::value interpreter::evaluate(const ast::expression& expr) {
     auto result = core::visit(
         core::overloaded{
             [this](const ast::literal_expr& e) { return evaluate_literal(e); },
-            [this](const ast::variable_expr& e) { return evaluate_variable(e); },
+            [this](const ast::variable_expr& e) { return evaluate_lvalue(e); },
             [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
             [this](const core::arena_ptr<ast::assignment_expr>& e) { return evaluate_assignment(*e); },
             [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
@@ -185,11 +188,12 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
             [this](const core::arena_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
             [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
-        },
+            [this](const core::arena_ptr<ast::member_access_expr>& e) { return evaluate_member_access(*e); }},
         expr);
     if (writer_.enabled(debug::trace_level::execution)) debug::print_expression(writer_, expr, 0, &result);
     return result;
 }
+// clang-format on
 
 core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
@@ -200,9 +204,6 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
     return {};
 }
 
-core::value interpreter::evaluate_variable(const ast::variable_expr& expr) {
-    return evaluate_lvalue(expr);
-}
 // clang-format off
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     auto left = evaluate(expr.left_);
@@ -259,16 +260,28 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
 
                 return (*arr)->at(static_cast<size_t>(i));
             },
+            [this](const core::arena_ptr<ast::member_access_expr>& e) -> core::value& {
+                auto& obj = evaluate_lvalue(e->object_);
+                auto* st = obj.as_mut<core::value::struct_t>();
+                auto idx = st->type_.field_index(e->member_.lexeme_);
+                return st->fields_[*idx];
+            },
             [](const auto&) -> core::value& {
                 throw core::interpret_error{err::type_mismatch_assignment};
             }
     }, expr);
 }
 
+core::value interpreter::evaluate_member_access(const ast::member_access_expr& expr) {
+    auto& obj = evaluate_lvalue(expr.object_); 
+    auto* st = obj.as_mut<core::value::struct_t>();
+    auto idx = st->type_.field_index(expr.member_.lexeme_);
+    return st->fields_[*idx]; 
+}
+
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     auto op = expr.op_.type_;
     auto right = evaluate(expr.value_);
-
     auto& target = evaluate_lvalue(expr.target_);
 
     if (op == tt::EQUAL) {
@@ -316,7 +329,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
 core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
     return apply_increment(evaluate_lvalue(expr.operand_), expr.op_.type_, true);
 }
-
+// clang-format off
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto name = expr.callee_.lexeme_;
 
@@ -337,39 +350,44 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto func = registry_.find(name);
     std::span<const core::value> args(args_buf.data(), expr.args_.size());
 
-    if (func->builtin_) {
-        try {
-            auto r = func->builtin_(args);
+    return core::visit(
+        core::overloaded{
+        [&](core::builtin_fn_ptr builtin) -> core::value {
+            try {
+                auto r = builtin(args);
+                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
+                return r;
+            } catch (const core::interpret_error& e) {
+                reporter_.interpret_error(expr, e.code_, name);
+                return {};
+            }
+        },
+        [&](const ast::func_declaration* body) -> core::value {
+            core::scope_guard guard(values_);
+            for (size_t i = 0; i < body->params_.size(); ++i) {
+                const auto& param = body->params_[i];
+                auto converted = core::value::convert(std::move(args_buf[i]), registry_.resolve_type(param.type_));
+                values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
+            }
+            for (const auto& s : body->block_->statements_) {
+                auto result = execute(*s);
+                if (result.is_return()) {
+                    if (writer_.enabled(debug::trace_level::returns)) 
+                        debug::print_return(writer_, name, result.value_);
+                    return result.value_; 
+                }
+            }
+            auto r = core::value::default_value(body->return_type_);
             if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
             return r;
-        } catch (const core::interpret_error& e) {
-            reporter_.interpret_error(expr, e.code_, name);
+        },
+        [&](const ast::struct_declaration*) -> core::value {
+            reporter_.interpret_error(expr, err::not_a_function, name);
             return {};
-        }
-    }
-
-    if (func->body_) {
-        core::scope_guard guard(values_);
-        for (size_t i = 0; i < func->body_->params_.size(); ++i) {
-            const auto& param = func->body_->params_[i];
-            auto converted = core::value::convert(std::move(args_buf[i]), param.type_);
-            values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
-        }
-        for (const auto& s : func->body_->block_->statements_) {
-            auto result = execute(*s);
-            if (result.is_return()) {
-                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, result.value_);
-                return result.value_;
-            }
-        }
-        auto r = core::value::default_value(func->body_->return_type_);
-        if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
-        return r;
-    }
-
-    reporter_.interpret_error(expr, err::undefined_function, name);
+        }},
+        func->info_);
 }
-
+// clang-format on
 core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
     std::vector<core::value> elements;
     elements.reserve(expr.elements_.size());

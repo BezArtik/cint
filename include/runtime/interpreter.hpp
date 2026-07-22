@@ -5,8 +5,8 @@
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
 #include "core/utils/builtins.hpp"
-#include "core/utils/function_registry.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/utils/symbol_registry.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
 
@@ -16,7 +16,7 @@ namespace runtime {
 
 class interpreter {
 public:
-    interpreter(core::error_reporter& reporter, const core::function_registry& registry,
+    interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
                 const debug::debug_writer& writer = {});
 
     void interpret(std::span<const ast::stmt_ptr> statements);
@@ -36,7 +36,6 @@ private:
 
     core::value evaluate(const ast::expression& expr);
     core::value evaluate_literal(const ast::literal_expr& expr);
-    core::value evaluate_variable(const ast::variable_expr& expr);
     core::value evaluate_assignment(const ast::assignment_expr& expr);
     core::value evaluate_binary(const ast::binary_expr& expr);
     core::value evaluate_unary(const ast::unary_expr& expr);
@@ -44,6 +43,7 @@ private:
     core::value evaluate_call(const ast::call_expr& expr);
     core::value evaluate_array_literal(const ast::array_literal_expr& expr);
     core::value evaluate_index(const ast::index_expr& expr);
+    core::value evaluate_member_access(const ast::member_access_expr& expr);
     core::value& evaluate_lvalue(const ast::expression& expr);
 
     struct runtime_var {
@@ -52,7 +52,7 @@ private:
     };
 
     core::error_reporter& reporter_;
-    const core::function_registry& registry_;
+    const core::symbol_registry& registry_;
     const debug::debug_writer writer_;
     core::scoped_map<runtime_var> values_;
     uint32_t recursion_depth_ = 0;

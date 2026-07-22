@@ -4,8 +4,8 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
-#include "core/utils/function_registry.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/utils/symbol_registry.hpp"
 
 #include <optional>
 #include <span>
@@ -14,7 +14,7 @@ namespace semantics {
 
 class type_checker {
 public:
-    type_checker(core::error_reporter& reporter, const core::function_registry& registry);
+    type_checker(core::error_reporter& reporter, const core::symbol_registry& registry);
 
     bool check(std::span<const ast::stmt_ptr> statements);
 
@@ -28,6 +28,7 @@ private:
     void check_for(const ast::for_stmt& stmt);
     void check_if(const ast::if_stmt& stmt);
     void check_return_stmt(const ast::return_stmt& stmt);
+    void check_struct_declaration(const ast::struct_declaration& stmt);
     void check_func_declaration(const ast::func_declaration& stmt);
 
     core::type type_of(const ast::expression& expr);
@@ -40,11 +41,12 @@ private:
     core::type type_of_call(const ast::call_expr& expr);
     core::type type_of_array_literal(const ast::array_literal_expr& expr);
     core::type type_of_index(const ast::index_expr& expr);
+    core::type type_of_member_access(const ast::member_access_expr& expr);
 
     bool is_lvalue(const ast::expression& expr);
 
     core::error_reporter& reporter_;
-    const core::function_registry& registry_;
+    const core::symbol_registry& registry_;
     core::scoped_map<core::type> symbols_;
     std::optional<core::type> curr_return_type_;
 };

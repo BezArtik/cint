@@ -3,7 +3,7 @@
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
-#include "core/utils/function_registry.hpp"
+#include "core/utils/symbol_registry.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "semantics/type_check.hpp"
@@ -20,7 +20,7 @@ public:
         tokens_ = lex.scan_tokens();
         parser p(tokens_, reporter_, arena_, mr_);
         ast_ = p.parse();
-        auto registry = core::function_registry::build(ast_, core::builtins);
+        auto registry = core::symbol_registry::build(ast_, core::builtins);
         semantics::type_checker checker(reporter_, registry);
         check_ok_ = checker.check(ast_);
         had_error_ = reporter_.has_error();
@@ -55,23 +55,57 @@ TEST_P(valid_program_test, type_checks) {
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
     basics, valid_program_test,
-    ::testing::Values(valid_program_case{"void foo() { }", "empty void func"},
-                      valid_program_case{"int foo(int a) { return a; }", "param return"},
-                      valid_program_case{"int foo() { int x = 42; return x; }", "var init"},
-                      valid_program_case{"double foo() { int x = 1; return x; }", "int to double"},
-                      valid_program_case{"int foo() { int x; x = 5; return x; }", "assign"},
-                      valid_program_case{"int foo() { int x = 1; x += 2; return x; }", "compound assign"},
-                      valid_program_case{"int foo() { if (true) { return 1; } return 0; }", "if true"},
-                      valid_program_case{"int foo() { if (true) { return 1; } else { return 2; } }", "if else"},
-                      valid_program_case{"int foo() { while (true) { } return 0; }", "while"},
-                      valid_program_case{"int foo() { for (int i=0; i<10; i=i+1) { } return 0; }", "for"},
-                      valid_program_case{"int foo(int a, int b) { return a + b; } foo(1,2);", "call"},
-                      valid_program_case{"bool foo() { return true && false; }", "logical and"},
-                      valid_program_case{"bool foo() { return true || false; }", "logical or"},
-                      valid_program_case{"bool foo() { return !true; }", "not"},
-                      valid_program_case{"int x = 0; ++x;", "prefix inc"},
-                      valid_program_case{"int x = 0; x++;", "postfix inc"},
-                      valid_program_case{"int arr[] = {1, 2, 3}; int x = arr[0] + arr[1] + arr[2];", "array access"}));
+    ::testing::Values(
+        valid_program_case{"void foo() { }", "empty void func"},
+        valid_program_case{"int foo(int a) { return a; }", "param return"},
+        valid_program_case{"int foo() { int x = 42; return x; }", "var init"},
+        valid_program_case{"double foo() { int x = 1; return x; }", "int to double"},
+        valid_program_case{"int foo() { int x; x = 5; return x; }", "assign"},
+        valid_program_case{"int foo() { int x = 1; x += 2; return x; }", "compound assign"},
+        valid_program_case{"int foo() { if (true) { return 1; } return 0; }", "if true"},
+        valid_program_case{"int foo() { if (true) { return 1; } else { return 2; } }", "if else"},
+        valid_program_case{"int foo() { while (true) { } return 0; }", "while"},
+        valid_program_case{"int foo() { for (int i=0; i<10; i=i+1) { } return 0; }", "for"},
+        valid_program_case{"int foo(int a, int b) { return a + b; } foo(1,2);", "call"},
+        valid_program_case{"bool foo() { return true && false; }", "logical and"},
+        valid_program_case{"bool foo() { return true || false; }", "logical or"},
+        valid_program_case{"bool foo() { return !true; }", "not"},
+        valid_program_case{"int x = 0; ++x;", "prefix inc"},
+        valid_program_case{"int x = 0; x++;", "postfix inc"},
+        valid_program_case{"int arr[] = {1, 2, 3}; int x = arr[0] + arr[1] + arr[2];", "array access"},
+        valid_program_case{"struct Point { int x; int y; };", "struct decl"},
+        valid_program_case{
+            "struct Point { int x; int y; }; " 
+            "void foo() { struct Point p; p.x = 10; p.y = 20; } ",
+            "struct var access"
+        },
+        valid_program_case{
+            "struct Point { int x; int y; }; " 
+            "void foo(struct Point p) { p.x = 10; } ", 
+            "struct param access"
+        },
+        valid_program_case{
+            "struct Point { int x; int y; }; "
+            "struct Rect { struct Point tl; struct Point br; }; "
+            "void foo() { struct Rect r; r.tl.x = 1; } ",
+            "nested struct access"
+        },
+        valid_program_case{
+            "struct Point { int x; int y; }; "
+            "struct Point make_point(int x, int y) { "
+            "struct Point p; p.x = x; p.y = y; return p; "
+            "}",
+            "return struct"
+        },
+        valid_program_case{
+            "struct Point { int x; int y; }; "
+            "void print_point(struct Point p) { } "
+            "void foo() { struct Point p; p.x = 0; p.y = 0; print_point(p); }",
+            "pass struct to func"
+        }
+
+));
+
 // clang-format on
 struct type_error_case {
     std::string_view source_;
@@ -88,20 +122,25 @@ TEST_P(type_error_test, reports_error) {
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
     all, type_error_test,
-    ::testing::Values(type_error_case{"int x = true;", "bool to int assign"},
-                      type_error_case{"int foo() { return x; }", "undefined var"},
-                      type_error_case{"if (42) { }", "non-bool condition"},
-                      type_error_case{"int x; int x;", "redeclaration"},
-                      type_error_case{"return 0;", "return outside func"},
-                      type_error_case{"int foo() { return true; }", "return type mismatch"},
-                      type_error_case{"int foo() { return; }", "missing return value"},
-                      type_error_case{"void foo() { return 42; }", "return value in void"},
-                      type_error_case{"int foo() { 42 = 0; return 0; }", "assign to literal"},
-                      type_error_case{"int bar() { return foo(); }", "undeclared func"},
-                      type_error_case{"int foo(int a) { return a; } int bar() { return foo(1,2); }", "arg count"},
-                      type_error_case{"int foo(bool b) { return 0; } int bar() { return foo(42); }", "arg type"},
-                      type_error_case{"bool b = !42;", "not on int"}, 
-                      type_error_case{"int x; ++true;", "inc on bool"},
-                      type_error_case{"bool x = true + false;", "arithmetic on bool"}));
+    ::testing::Values(
+        type_error_case{"int x = true;", "bool to int assign"},
+        type_error_case{"int foo() { return x; }", "undefined var"},
+        type_error_case{"if (42) { }", "non-bool condition"},
+        type_error_case{"int x; int x;", "redeclaration"},
+        type_error_case{"return 0;", "return outside func"},
+        type_error_case{"int foo() { return true; }", "return type mismatch"},
+        type_error_case{"int foo() { return; }", "missing return value"},
+        type_error_case{"void foo() { return 42; }", "return value in void"},
+        type_error_case{"int foo() { 42 = 0; return 0; }", "assign to literal"},
+        type_error_case{"int bar() { return foo(); }", "undeclared func"},
+        type_error_case{"int foo(int a) { return a; } int bar() { return foo(1,2); }", "arg count"},
+        type_error_case{"int foo(bool b) { return 0; } int bar() { return foo(42); }", "arg type"},
+        type_error_case{"bool b = !42;", "not on int"}, 
+        type_error_case{"int x; ++true;", "inc on bool"},
+        type_error_case{"bool x = true + false;", "arithmetic on bool"},
+        type_error_case{"struct Point { int x; int x; };", "duplicate field"},
+        type_error_case{"struct Point { int x; int y; }; void foo() { struct Point p; p.z = 10; }", "access unknown field"},
+        type_error_case{"void foo() { int x; x.y = 10; }","dot on non-struct"}
+));
 // clang-format on
 }  // namespace tests

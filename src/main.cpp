@@ -3,7 +3,7 @@
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
-#include "core/utils/function_registry.hpp"
+#include "core/utils/symbol_registry.hpp"
 #include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
@@ -97,7 +97,7 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    auto registry = core::function_registry::build(ast, core::builtins);
+    auto registry = core::symbol_registry::build(ast, core::builtins);
 
     semantics::type_checker checker(reporter, registry);
     if (!checker.check(ast)) {

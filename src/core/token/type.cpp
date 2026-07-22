@@ -4,7 +4,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iterator>
 #include <memory>
+#include <optional>
 #include <span>
 #include <utility>
 #include <variant>
@@ -13,12 +15,14 @@
 namespace core {
 
 type::type(const type& other) : kind_(other.kind_) {
-    if (kind_ == kind::FUNCTION) {
+    if (is_function()) {
         const auto& src = std::get<function_info>(other.info_);
         info_ = function_info{std::make_unique<type>(*src.return_type_), src.param_types_};
-    } else if (kind_ == kind::ARRAY) {
+    } else if (is_array()) {
         const auto& src = std::get<array_info>(other.info_);
         info_ = array_info{std::make_unique<type>(*src.element_type_), src.size_};
+    } else if (is_struct()) {
+        info_ = std::get<struct_info>(other.info_);
     }
 }
 
@@ -35,12 +39,17 @@ void type::swap(type& other) noexcept {
 
 type type::function_type(type return_type, std::vector<type> param_types) {
     function_info info{std::make_unique<type>(std::move(return_type)), std::move(param_types)};
-    return type(kind::FUNCTION, std::move(info));
+    return type{kind::FUNCTION, std::move(info)};
 }
 
 type type::array_type(type element_type, size_t size) {
     array_info info{std::make_unique<type>(std::move(element_type)), size};
-    return type(kind::ARRAY, std::move(info));
+    return type{kind::ARRAY, std::move(info)};
+}
+
+type type::struct_type(std::string_view name, std::vector<field_t> fields) {
+    struct_info info{name, std::move(fields)};
+    return type{kind::STRUCT, std::move(info)};
 }
 
 bool type::is_primitive() const noexcept {
@@ -59,6 +68,7 @@ bool type::is_void() const noexcept { return kind_ == kind::VOID; }
 bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
 bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
 bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
+bool type::is_struct() const noexcept { return kind_ == kind::STRUCT; }
 // clang-format on
 
 bool type::operator==(const type& other) const noexcept {
@@ -73,6 +83,10 @@ bool type::operator==(const type& other) const noexcept {
                std::ranges::equal(lhs_info.param_types_, rhs_info.param_types_);
     } else if (is_array()) {
         return false;
+    } else if (is_struct()) {
+        const auto& lhs_info = std::get<struct_info>(info_);
+        const auto& rhs_info = std::get<struct_info>(other.info_);
+        return lhs_info.name_ == rhs_info.name_;
     }
 
     return true;
@@ -106,6 +120,24 @@ const type& type::element_type() const {
 size_t type::array_size() const {
     assert(is_array());
     return std::get<array_info>(info_).size_;
+}
+
+std::string_view type::struct_name() const {
+    assert(is_struct());
+    return std::get<struct_info>(info_).name_;
+}
+
+std::span<const type::field_t> type::struct_fields() const {
+    assert(is_struct());
+    return std::get<struct_info>(info_).fields_;
+}
+
+std::optional<size_t> type::field_index(std::string_view name) const noexcept {
+    assert(is_struct());
+    const auto& fields = std::get<struct_info>(info_).fields_;
+    auto it = std::ranges::find(fields, name, &field_t::first);
+    if (it == fields.end()) return std::nullopt;
+    return std::distance(fields.begin(), it);
 }
 
 type::kind type::get_kind() const noexcept {

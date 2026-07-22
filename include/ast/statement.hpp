@@ -109,9 +109,18 @@ struct func_declaration {
         : return_type_(std::move(ret_type)), name_(n), loc_(n.loc_) {}
 };
 
+struct struct_declaration {
+    core::type type_;
+    core::token name_;
+    core::location loc_;
+
+    struct_declaration(core::type type, const core::token& name, core::location loc)
+        : type_(std::move(type)), name_(name), loc_(loc) {}
+};
+
 struct statement {
     std::variant<expression_stmt, var_declaration, block_stmt, for_stmt, while_stmt, if_stmt, return_stmt,
-                 func_declaration>
+                 func_declaration, struct_declaration>
         data_;
 
     statement() = delete;

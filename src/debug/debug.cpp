@@ -29,6 +29,7 @@ std::string type_name(const core::type& t) {
     if (t.is_string()) return "string";
     if (t.is_void()) return "void";
     if (t.is_function()) return "function";
+    if (t.is_struct()) return "struct " + std::string{t.struct_name()};
     if (t.is_array()) return type_name(t.element_type()) + "[" + std::to_string(t.array_size()) + "]";
     return "???";
 }
@@ -111,6 +112,13 @@ void print_index_ast(const debug_writer& writer, const core::arena_ptr<ast::inde
     print_expression(writer, e->index_, level + 2);
 }
 
+void print_member_access(const debug_writer& writer, const core::arena_ptr<ast::member_access_expr>& e, uint32_t level) {
+    if (!writer.enabled(trace_level::ast)) return;
+    writer.emit(indent_str(level) + "MemberAccess: ." + std::string(e->member_.lexeme_) + location_str(e->loc_) + "\n");
+    writer.emit(indent_str(level + 1) + "Object:\n");
+    print_expression(writer, e->object_, level + 2);
+}
+
 }  // namespace
 
 void print_expression(const debug_writer& writer, const ast::expression& expr, uint32_t level,
@@ -128,6 +136,7 @@ void print_expression(const debug_writer& writer, const ast::expression& expr, u
             [&](const core::arena_ptr<ast::call_expr>& e) { print_call_ast(writer, e, level); },
             [&](const core::arena_ptr<ast::array_literal_expr>& e) { print_array_literal_ast(writer, e, level); },
             [&](const core::arena_ptr<ast::index_expr>& e) { print_index_ast(writer, e, level); },
+            [&](const core::arena_ptr<ast::member_access_expr>& e) { print_member_access(writer, e, level); }
         },
         expr);
 
@@ -227,6 +236,14 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                         writer.emit(params + "\n");
                         writer.emit(indent_str(level + 1) + "Body:\n");
                         for (const auto& inner : s.block_->statements_) print_statement(writer, *inner, level + 2);
+                    },
+                    [&](const ast::struct_declaration& s) {
+                        header << "StructDeclaration: " << s.name_.lexeme_ << "\n";
+                        writer.emit(header.str());
+                        writer.emit(indent_str(level + 1) + "Fields:\n");
+                        for (const auto& [field_name, field_type] : s.type_.struct_fields()) {
+                            writer.emit(indent_str(level + 2) + std::string{field_name} + " : " + type_name(field_type) + "\n");
+                        }
                     },
                 },
                 stmt.data_);

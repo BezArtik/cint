@@ -7,7 +7,8 @@ target_sources(interpreter-lib PRIVATE
     parser/parser.cpp
     core/error/error_report.cpp
     core/utils/builtins.cpp
-    core/utils/function_registry.cpp
+    core/utils/symbol_registry.cpp
+    core/utils/arena.cpp
     core/token/type.cpp
     core/value/value.cpp
     core/value/operations.cpp

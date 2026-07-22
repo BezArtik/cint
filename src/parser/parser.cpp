@@ -71,6 +71,11 @@ bool is_assignment(tt type) noexcept {
            type == tt::BIT_OR_EQUAL || type == tt::XOR_EQUAL || type == tt::SHL_EQUAL || type == tt::SHR_EQUAL;
 }
 
+bool is_type_start(tt type) noexcept {
+    return type == tt::KW_INT || type == tt::KW_DOUBLE || type == tt::KW_BOOL || type == tt::KW_STRING ||
+           type == tt::KW_VOID || type == tt::KW_STRUCT;
+}
+
 }  // namespace
 
 parser::parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
@@ -123,13 +128,18 @@ const core::token& parser::prev() const noexcept {
 }
 
 ast::stmt_ptr parser::declaration() {
+    auto parse_decl = [&](auto type) {
+        auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+        return match({tt::LEFT_PAREN}) ? func_declaration(std::move(type), name)
+                                       : var_declaration(std::move(type), name);
+    };
     try {
-        if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
-            const auto& kw_token = prev();
-            auto type = get_keyword_info(kw_token.type_).semantic_type_;
+        if (match({tt::KW_STRUCT})) {
             auto name = consume(tt::IDENTIFIER, err::expected_identifier);
-            return match({tt::LEFT_PAREN}) ? func_declaration(type, name) : var_declaration(type, name);
+            return check(tt::LEFT_BRACE) ? struct_declaration(name)
+                                         : parse_decl(core::type::struct_type(name.lexeme_, {}));
         }
+        if (is_type_start(peek().type_)) return parse_decl(parse_type());
         return statement();
     } catch (const core::parse_error&) {
         synchronize();
@@ -187,15 +197,44 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
     return ast::make_stmt(arena_, std::move(func));
 }
 
+ast::stmt_ptr parser::struct_declaration(const core::token& name) {
+    consume(tt::LEFT_BRACE, err::expected_left_brace);
+
+    std::vector<core::type::field_t> fields;
+
+    while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
+        auto field_type = parse_type();
+        auto field_name = consume(tt::IDENTIFIER, err::expected_identifier);
+        consume(tt::SEMICOLON, err::expected_semicolon);
+        fields.emplace_back(field_name.lexeme_, std::move(field_type));
+    }
+
+    consume(tt::RIGHT_BRACE, err::expected_right_brace);
+    consume(tt::SEMICOLON, err::expected_semicolon);
+
+    auto struct_type = core::type::struct_type(name.lexeme_, std::move(fields));
+
+    return ast::make_stmt<ast::struct_declaration>(arena_, name.loc_, std::move(struct_type), name);
+}
+
+core::type parser::parse_type() {
+    if (match({tt::KW_STRUCT})) {
+        auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+        return core::type::struct_type(name.lexeme_, {});
+    }
+
+    if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
+        const auto& kw = prev();
+        auto& info = get_keyword_info(kw.type_);
+        if (!info.is_type_) reporter_.parse_error(kw, err::expected_type);
+        return info.semantic_type_;
+    }
+
+    reporter_.parse_error(peek(), err::expected_type);
+}
+
 ast::func_param parser::parse_param() {
-    if (!match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID}))
-        reporter_.parse_error(peek(), err::expected_type);
-
-    const auto& kw_token = prev();
-    auto& info = get_keyword_info(kw_token.type_);
-    if (!info.is_type_ || info.semantic_type_.is_void()) reporter_.parse_error(kw_token, err::expected_type);
-
-    auto type = info.semantic_type_;
+    auto type = parse_type();
     auto name = consume(tt::IDENTIFIER, err::expected_identifier);
     type = parse_array_dimensions(type);
     return {type, name};
@@ -228,9 +267,8 @@ ast::stmt_ptr parser::for_statement() {
 
     ast::stmt_ptr initializer;
     if (match({tt::SEMICOLON})) {
-    } else if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
-        const auto& kw_token = prev();
-        auto type = get_keyword_info(kw_token.type_).semantic_type_;
+    } else if (is_type_start(peek().type_)) {
+        auto type = parse_type();
         initializer = var_declaration(type, consume(tt::IDENTIFIER, err::expected_identifier));
     } else {
         initializer = statement();
@@ -331,6 +369,9 @@ ast::expression parser::postfix() {
     while (true) {
         if (match({tt::LEFT_BRACKET})) {
             expr = finish_index(std::move(expr));
+        } else if (match({tt::DOT})) {
+            auto member = consume(tt::IDENTIFIER, err::expected_identifier);
+            expr = ast::make_expr<ast::member_access_expr>(arena_, member.loc_, std::move(expr), member);
         } else if (match({tt::INCREMENT, tt::DECREMENT})) {
             expr = ast::make_expr<ast::postfix_expr>(arena_, prev().loc_, std::move(expr), prev());
         } else {

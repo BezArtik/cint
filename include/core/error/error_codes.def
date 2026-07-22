@@ -50,6 +50,9 @@ ERROR(array_literal_inconsistent_types, "Array literal has inconsistent element 
 ERROR(indexing_non_array,				"Indexing operator applied to non-array type")
 ERROR(indexing_non_numeric,				"Array index must be of numeric type")
 ERROR(index_must_be_integer,            "Array index must be of integer type")
+ERROR(not_a_struct,                     "Left side of '.' is not a structure")
+ERROR(no_such_field,                    "Structure '{}' has no field '{}'")
+ERROR(undefined_type,                   "Undefined type '{}'")
 
 // Runtime
 ERROR(division_by_zero,					"Division by zero")

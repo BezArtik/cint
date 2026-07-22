@@ -32,6 +32,7 @@ private:
     ast::stmt_ptr statement();
     ast::stmt_ptr var_declaration(core::type type, const core::token& name);
     ast::stmt_ptr func_declaration(core::type return_type, const core::token& name);
+    ast::stmt_ptr struct_declaration(const core::token& name);
     ast::stmt_ptr while_statement();
     ast::stmt_ptr for_statement();
     ast::stmt_ptr if_statement();
@@ -47,8 +48,9 @@ private:
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
     ast::expression finish_index(ast::expression object);
-    ast::func_param parse_param();
 
+    ast::func_param parse_param();
+    core::type parse_type();
     core::type parse_array_dimensions(core::type base_type);
 
     void synchronize();

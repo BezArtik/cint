@@ -161,4 +161,59 @@ TEST(value_test, invalid_add) {
     EXPECT_THROW(op::add(a, b), core::interpret_error);
 }
 
+TEST(value_test, struct_type_int_fields) {
+    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    EXPECT_TRUE(st.is_struct());
+    EXPECT_EQ(st.struct_name(), "Point");
+    EXPECT_EQ(st.struct_fields().size(), 2);
+    EXPECT_EQ(st.struct_fields()[0].first, "x");
+    EXPECT_TRUE(st.struct_fields()[0].second.is_int());
+    EXPECT_EQ(st.struct_fields()[1].first, "y");
+    EXPECT_TRUE(st.struct_fields()[1].second.is_int());
+}
+
+TEST(value_test, struct_field_index) {
+    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    EXPECT_EQ(st.field_index("x").value(), 0);
+    EXPECT_EQ(st.field_index("y").value(), 1);
+    EXPECT_FALSE(st.field_index("z").has_value());
+}
+
+TEST(value_test, struct_default_value) {
+    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto val = v::default_value(st);
+    EXPECT_TRUE(val.is_struct());
+    const auto* s = val.as<v::struct_t>();
+    ASSERT_NE(s, nullptr);
+    EXPECT_EQ(s->fields_.size(), 2);
+    EXPECT_EQ(s->fields_[0].to_int(), 0);
+    EXPECT_EQ(s->fields_[1].to_int(), 0);
+    EXPECT_EQ(s->type_.struct_name(), "Point");
+}
+
+TEST(value_test, struct_to_string) {
+    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto val = v::default_value(st);
+    EXPECT_EQ(val.to_string(), "{0, 0}");
+}
+
+TEST(value_test, struct_equality) {
+    auto st1 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto st2 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto st3 = t::struct_type("Point3D", {{"x", t::int_type()}, {"y", t::int_type()}, {"z", t::int_type()}});
+    EXPECT_EQ(st1, st2);
+    EXPECT_NE(st1, st3);
+}
+
+TEST(value_test, struct_nested_default_value) {
+    auto point_t = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto rect_t = t::struct_type("Rect", {{"tl", point_t}, {"br", point_t}});
+    auto val = v::default_value(rect_t);
+    EXPECT_TRUE(val.is_struct());
+    const auto* r = val.as<v::struct_t>();
+    EXPECT_EQ(r->fields_.size(), 2);
+    EXPECT_TRUE(r->fields_[0].is_struct());
+    EXPECT_TRUE(r->fields_[1].is_struct());
+}
+
 }  // namespace tests

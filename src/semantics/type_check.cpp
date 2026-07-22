@@ -7,11 +7,11 @@
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
-#include "core/utils/function_registry.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
+#include "core/utils/symbol_registry.hpp"
 
-#include <vector>
+#include <unordered_set>
 
 namespace semantics {
 
@@ -19,36 +19,43 @@ using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
 
-type_checker::type_checker(core::error_reporter& reporter, const core::function_registry& registry)
+type_checker::type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
     : reporter_(reporter), registry_(registry) {}
 
 bool type_checker::check(std::span<const ast::stmt_ptr> statements) {
     for (const auto& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
 }
-
+// clang-format off
 void type_checker::check_statement(const ast::statement& stmt) {
     core::visit(core::overloaded{
-                    [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
-                    [this](const ast::var_declaration& s) { check_var_declaration(s); },
-                    [this](const ast::block_stmt& s) { check_block(s); },
-                    [this](const ast::while_stmt& s) { check_while(s); },
-                    [this](const ast::for_stmt& s) { check_for(s); },
-                    [this](const ast::if_stmt& s) { check_if(s); },
-                    [this](const ast::return_stmt& s) { check_return_stmt(s); },
-                    [this](const ast::func_declaration& s) { check_func_declaration(s); },
-                },
-                stmt.data_);
+            [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
+            [this](const ast::var_declaration& s) { check_var_declaration(s); },
+            [this](const ast::block_stmt& s) { check_block(s); },
+            [this](const ast::while_stmt& s) { check_while(s); },
+            [this](const ast::for_stmt& s) { check_for(s); },
+            [this](const ast::if_stmt& s) { check_if(s); },
+            [this](const ast::return_stmt& s) { check_return_stmt(s); },
+            [this](const ast::func_declaration& s) { check_func_declaration(s); },
+            [this](const ast::struct_declaration& s) { check_struct_declaration(s); }},
+        stmt.data_);
 }
-
+// clang-format on
 void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
     type_of(stmt.expr_);
 }
 
 void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     auto name = stmt.name_.lexeme_;
+    auto type = stmt.type_;
+    auto resolved_type = registry_.resolve_type(type);
 
-    if (stmt.type_.is_void()) {
+    if (resolved_type.is_unknown()) {
+        if (type.is_struct()) reporter_.error(stmt, err::undefined_type, type.struct_name());
+        return;
+    }
+
+    if (resolved_type.is_void()) {
         reporter_.error(stmt, err::void_variable);
         return;
     }
@@ -62,9 +69,9 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         auto init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
-        if (stmt.type_.is_array() && stmt.type_.array_size() == 0 && init_type.is_array()) {
-            if (stmt.type_.element_type().is_assignable_from(init_type.element_type())) {
-                auto inferred_type = t::array_type(stmt.type_.element_type(), init_type.array_size());
+        if (resolved_type.is_array() && resolved_type.array_size() == 0 && init_type.is_array()) {
+            if (resolved_type.element_type().is_assignable_from(init_type.element_type())) {
+                auto inferred_type = t::array_type(type.element_type(), init_type.array_size());
                 symbols_.define(name, inferred_type);
                 return;
             }
@@ -72,13 +79,13 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
             return;
         }
 
-        if (!stmt.type_.is_assignable_from(init_type)) {
+        if (!resolved_type.is_assignable_from(init_type)) {
             reporter_.error(stmt, err::type_mismatch_initialization, name);
             return;
         }
     }
 
-    symbols_.define(name, stmt.type_);
+    symbols_.define(name, resolved_type);
 }
 
 void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
@@ -159,6 +166,38 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     curr_return_type_ = prev_return_type;
 }
 
+void type_checker::check_struct_declaration(const ast::struct_declaration& stmt) {
+    auto name = stmt.name_.lexeme_;
+
+    auto existing = registry_.find(name);
+    if (existing) {
+        bool is_duplicate = core::visit(core::overloaded{
+                                            [&](core::symbol_registry::struct_ptr other) { return other != &stmt; },
+                                            [](auto&&) { return true; },
+                                        },
+                                        existing->info_);
+
+        if (is_duplicate) {
+            reporter_.error(stmt, err::redeclaration_function, name);
+            return;
+        }
+    }
+
+    const auto& fields = stmt.type_.struct_fields();
+    std::unordered_set<std::string_view> seen;
+    for (const auto& [field_name, field_type] : fields) {
+        if (!seen.insert(field_name).second) {
+            reporter_.error(stmt, err::redeclaration_variable, field_name);
+            return;
+        }
+        auto resolved = registry_.resolve_type(field_type);
+        if (resolved.is_unknown() && field_type.is_struct()) {
+            reporter_.error(stmt, err::undefined_type, field_type.struct_name());
+        }
+    }
+}
+
+// clang-format off
 t type_checker::type_of(const ast::expression& expr) {
     return core::visit(
         core::overloaded{
@@ -170,10 +209,11 @@ t type_checker::type_of(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
             [this](const core::arena_ptr<ast::call_expr>& e) { return type_of_call(*e); },
             [this](const core::arena_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
-            [this](const core::arena_ptr<ast::index_expr>& e) { return type_of_index(*e); }},
+            [this](const core::arena_ptr<ast::index_expr>& e) { return type_of_index(*e); },
+            [this](const core::arena_ptr<ast::member_access_expr>& e) { return type_of_member_access(*e); }},
         expr);
 }
-
+// clang-format on
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
     const auto& token = expr.value_;
 
@@ -274,6 +314,7 @@ bool type_checker::is_lvalue(const ast::expression& expr) {
     return core::visit(
         core::overloaded{[](const ast::variable_expr&) { return true; },
                          [this](const core::arena_ptr<ast::index_expr>& idx) { return is_lvalue(idx->object_); },
+                         [this](const core::arena_ptr<ast::member_access_expr>& e) { return is_lvalue(e->object_); },
                          [](const auto&) { return false; }},
         expr);
 }
@@ -400,6 +441,28 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
         return t::unknown_type();
     }
     return object_type.element_type();
+}
+
+t type_checker::type_of_member_access(const ast::member_access_expr& expr) {
+    auto obj_type = type_of(expr.object_);
+    if (obj_type.is_unknown()) return t::unknown_type();
+
+    obj_type = registry_.resolve_type(obj_type);
+
+    if (obj_type.is_unknown()) return t::unknown_type();
+
+    if (!obj_type.is_struct()) {
+        reporter_.error(expr, err::not_a_struct);
+        return t::unknown_type();
+    }
+
+    auto idx = obj_type.field_index(expr.member_.lexeme_);
+    if (!idx) {
+        reporter_.error(expr, err::no_such_field, obj_type.struct_name(), expr.member_.lexeme_);
+        return t::unknown_type();
+    }
+
+    return obj_type.struct_fields()[*idx].second;
 }
 
 }  // namespace semantics

@@ -62,31 +62,46 @@ TEST_P(single_token_test, recognized) {
     expect_token(h[0], tc.expected_type_, tc.expected_lexeme_);
     expect_eof(h, 1);
 }
-
+// clang-format off
 INSTANTIATE_TEST_SUITE_P(
     ops_and_punct, single_token_test,
-    ::testing::Values(single_token_case{"(", tt::LEFT_PAREN}, single_token_case{")", tt::RIGHT_PAREN},
-                      single_token_case{"{", tt::LEFT_BRACE}, single_token_case{"}", tt::RIGHT_BRACE},
-                      single_token_case{",", tt::COMMA}, single_token_case{".", tt::DOT},
-                      single_token_case{";", tt::SEMICOLON},
+    ::testing::Values(
+        single_token_case{"(", tt::LEFT_PAREN}, 
+        single_token_case{")", tt::RIGHT_PAREN},
+        single_token_case{"{", tt::LEFT_BRACE}, 
+        single_token_case{"}", tt::RIGHT_BRACE},
+        single_token_case{",", tt::COMMA}, 
+        single_token_case{".", tt::DOT},
+        single_token_case{";", tt::SEMICOLON},
 
-                      single_token_case{"+", tt::PLUS}, single_token_case{"-", tt::MINUS},
-                      single_token_case{"*", tt::STAR}, single_token_case{"/", tt::SLASH},
-                      single_token_case{"%", tt::PERCENT},
+        single_token_case{"+", tt::PLUS}, 
+        single_token_case{"-", tt::MINUS},
+        single_token_case{"*", tt::STAR}, 
+        single_token_case{"/", tt::SLASH},
+        single_token_case{"%", tt::PERCENT},
 
-                      single_token_case{"!", tt::BANG}, single_token_case{"=", tt::EQUAL},
+        single_token_case{"!", tt::BANG}, 
+        single_token_case{"=", tt::EQUAL},
 
-                      single_token_case{"==", tt::EQUAL_EQUAL}, single_token_case{"!=", tt::BANG_EQUAL},
-                      single_token_case{"<", tt::LESS}, single_token_case{"<=", tt::LESS_EQUAL},
-                      single_token_case{">", tt::GREATER}, single_token_case{">=", tt::GREATER_EQUAL},
+        single_token_case{"==", tt::EQUAL_EQUAL}, 
+        single_token_case{"!=", tt::BANG_EQUAL},
+        single_token_case{"<", tt::LESS}, 
+        single_token_case{"<=", tt::LESS_EQUAL},
+        single_token_case{">", tt::GREATER}, 
+        single_token_case{">=", tt::GREATER_EQUAL},
 
-                      single_token_case{"++", tt::INCREMENT}, single_token_case{"--", tt::DECREMENT},
+        single_token_case{"++", tt::INCREMENT}, 
+        single_token_case{"--", tt::DECREMENT},
 
-                      single_token_case{"+=", tt::PLUS_EQUAL}, single_token_case{"-=", tt::MINUS_EQUAL},
-                      single_token_case{"*=", tt::STAR_EQUAL}, single_token_case{"/=", tt::SLASH_EQUAL},
-                      single_token_case{"%=", tt::PERCENT_EQUAL},
+        single_token_case{"+=", tt::PLUS_EQUAL}, 
+        single_token_case{"-=", tt::MINUS_EQUAL},
+        single_token_case{"*=", tt::STAR_EQUAL}, 
+        single_token_case{"/=", tt::SLASH_EQUAL},
+        single_token_case{"%=", tt::PERCENT_EQUAL},
 
-                      single_token_case{"&&", tt::LOGICAL_AND}, single_token_case{"||", tt::LOGICAL_OR}));
+        single_token_case{"&&", tt::LOGICAL_AND}, 
+        single_token_case{"||", tt::LOGICAL_OR}
+));
 
 struct keyword_case {
     std::string_view source_;
@@ -104,13 +119,23 @@ TEST_P(keyword_test, recognized) {
     expect_eof(h, 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(all_keywords, keyword_test,
-                         ::testing::Values(keyword_case{"int", "int"}, keyword_case{"double", "double"},
-                                           keyword_case{"bool", "bool"}, keyword_case{"string", "string"},
-                                           keyword_case{"void", "void"}, keyword_case{"if", "if"},
-                                           keyword_case{"else", "else"}, keyword_case{"while", "while"},
-                                           keyword_case{"for", "for"}, keyword_case{"return", "return"},
-                                           keyword_case{"true", "true"}, keyword_case{"false", "false"}));
+INSTANTIATE_TEST_SUITE_P(
+        all_keywords, keyword_test,
+        ::testing::Values(
+            keyword_case{"int", "int"}, 
+            keyword_case{"double", "double"},
+            keyword_case{"bool", "bool"}, 
+            keyword_case{"string", "string"},
+            keyword_case{"struct", "struct"}, 
+            keyword_case{"void", "void"},
+            keyword_case{"if", "if"}, 
+            keyword_case{"else", "else"},
+            keyword_case{"while", "while"}, 
+            keyword_case{"for", "for"},
+            keyword_case{"return", "return"}, 
+            keyword_case{"true", "true"},
+            keyword_case{"false", "false"}
+));
 
 struct number_case {
     std::string_view source_;
@@ -137,13 +162,21 @@ TEST_P(number_test, recognized) {
     expect_eof(h, 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(integers, number_test,
-                         ::testing::Values(number_case{"0", "0", false}, number_case{"42", "42", false},
-                                           number_case{"999", "999", false}));
+INSTANTIATE_TEST_SUITE_P(
+        integers, number_test,
+        ::testing::Values(
+            number_case{"0", "0", false}, 
+            number_case{"42", "42", false},
+            number_case{"999", "999", false}
+));
 
-INSTANTIATE_TEST_SUITE_P(doubles, number_test,
-                         ::testing::Values(number_case{"3.14", "3.14", true}, number_case{"0.0", "0.0", true},
-                                           number_case{"1.5", "1.5", true}));
+INSTANTIATE_TEST_SUITE_P(
+        doubles, number_test,
+        ::testing::Values(
+            number_case{"3.14", "3.14", true}, 
+            number_case{"0.0", "0.0", true},
+            number_case{"1.5", "1.5", true}
+));
 
 struct bool_case {
     std::string_view source_;
@@ -163,9 +196,11 @@ TEST_P(bool_test, recognized) {
     expect_eof(h, 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(bool_literals, bool_test,
-                         ::testing::Values(bool_case{"true", tt::KW_TRUE, true},
-                                           bool_case{"false", tt::KW_FALSE, false}));
+INSTANTIATE_TEST_SUITE_P(
+        bool_literals, bool_test,
+        ::testing::Values(
+            bool_case{"true", tt::KW_TRUE, true},
+            bool_case{"false", tt::KW_FALSE, false}));
 
 struct string_case {
     std::string_view source_;
@@ -183,9 +218,13 @@ TEST_P(string_test, recognized) {
     expect_eof(h, 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(valid_strings, string_test,
-                         ::testing::Values(string_case{"\"hello\"", "\"hello\""}, string_case{"\"\"", "\"\""},
-                                           string_case{"\"a b c\"", "\"a b c\""}, string_case{"\"123\"", "\"123\""}));
+INSTANTIATE_TEST_SUITE_P(
+        valid_strings, string_test,
+        ::testing::Values(
+            string_case{"\"hello\"", "\"hello\""}, 
+            string_case{"\"\"", "\"\""},
+            string_case{"\"a b c\"", "\"a b c\""}, 
+            string_case{"\"123\"", "\"123\""}));
 
 class identifier_test : public ::testing::TestWithParam<std::string_view> {};
 
@@ -198,8 +237,9 @@ TEST_P(identifier_test, recognized) {
     expect_eof(h, 1);
 }
 
-INSTANTIATE_TEST_SUITE_P(various, identifier_test,
-                         ::testing::Values("foo", "bar", "_test", "x1", "_", "a123", "my_var"));
+INSTANTIATE_TEST_SUITE_P(
+        various, identifier_test,
+        ::testing::Values("foo", "bar", "_test", "x1", "_", "a123", "my_var"));
 
 struct token_sequence {
     std::string_view source_;
@@ -221,7 +261,7 @@ TEST_P(sequence_test, Recognized) {
     }
     expect_eof(h, tc.expected_types_.size());
 }
-// clang-format off
+
 INSTANTIATE_TEST_SUITE_P(
     declarations, sequence_test,
     ::testing::Values(

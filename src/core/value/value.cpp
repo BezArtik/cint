@@ -16,20 +16,26 @@ core::value value::default_value(const core::type& t) {
     using k = core::type::kind;
     switch (t.get_kind()) {
         case k::INT:
-            return core::value::int_t{};
+            return int_t{};
         case k::DOUBLE:
-            return core::value::double_t{};
+            return double_t{};
         case k::BOOL:
-            return core::value::bool_t{};
+            return bool_t{};
         case k::STRING:
             return std::string{};
         case k::VOID:
             return {};
         case k::ARRAY: {
-            std::vector<core::value> elements;
+            std::vector<value> elements;
             elements.reserve(t.array_size());
             for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
             return elements;
+        }
+        case k::STRUCT: {
+            std::vector<value> fields;
+            fields.reserve(t.struct_fields().size());
+            for (const auto& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
+            return struct_t{t, fields};
         }
         default:
             return {};
@@ -77,6 +83,7 @@ core::type value::type() const {
                 if (a->empty() || a->empty()) return type::array_type(type::unknown_type(), 0);
                 return type::array_type(a->front().type(), a->size());
             },
+            [](const struct_t& s) { return s.type_; },
             [](std::monostate) { return type::void_type(); }
         },
         data_);
@@ -118,22 +125,24 @@ value::bool_t value::to_bool() const {
 }
 
 std::string value::to_string() const {
+    auto to_string_range = [&](const auto& cnt) {
+        std::string res = "{";
+        res.reserve(cnt.size() * 16);
+        for(size_t i = 0; i < cnt.size(); ++i) {
+            if (i > 0) res += ", ";
+            res += cnt[i].to_string();
+        }
+        res += "}";
+        return res;
+    };
     return visit(
         overloaded{
             [](int_t v) { return std::to_string(v); },
             [](double_t v) { return std::to_string(v); },
             [](bool_t v) { return std::string(v ? "true" : "false"); },
             [](const string_t& s) { return *s; },
-            [](const array_t& a) {
-                std::string result = "{";
-                result.reserve(a->size() * 16);
-                for (size_t i = 0; i < a->size(); ++i) {
-                    if (i > 0) result += ", ";
-                    result += (*a)[i].to_string();
-                }
-                result += "}";
-                return result;
-            },
+            [&](const array_t& a) { return to_string_range(*a); },
+            [&](const struct_t& s) { return to_string_range(s.fields_); },
             [](std::monostate) { return std::string("void"); }
         },
         data_);
@@ -144,6 +153,7 @@ bool value::is_double() const noexcept { return std::holds_alternative<double_t>
 bool value::is_bool() const noexcept { return std::holds_alternative<bool_t>(data_); }
 bool value::is_string() const noexcept { return std::holds_alternative<string_t>(data_); }
 bool value::is_array() const noexcept { return std::holds_alternative<array_t>(data_); }
+bool value::is_struct() const noexcept { return std::holds_alternative<struct_t>(data_); }
 bool value::is_void() const noexcept { return std::holds_alternative<std::monostate>(data_); }
 // clang-format on
 

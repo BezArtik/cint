@@ -154,11 +154,13 @@ void lexer::consume_number(core::location start_loc) {
 
 void lexer::consume_string() {
     auto start_loc = loc_;
+
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             loc_.line_++;
             loc_.column_ = 1;
         }
+        if (peek() == '\\' && peek_next() != '\0') advance(); 
         advance();
     }
 
@@ -167,13 +169,13 @@ void lexer::consume_string() {
         return;
     }
 
-    advance();  
+    advance(); 
 
     auto raw = source_.substr(start_ + 1, current_ - start_ - 2);
     auto processed = process_escape_sequences(raw, start_loc);
 
     auto text = source_.substr(start_, current_ - start_);
-    tokens_.emplace_back(tt::STRING, text, start_loc, processed);
+    tokens_.emplace_back(tt::STRING, text, start_loc, std::move(processed));
 }
 
 std::string lexer::process_escape_sequences(std::string_view raw, core::location start_loc) {

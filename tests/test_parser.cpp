@@ -96,17 +96,22 @@ TEST_P(var_decl_test, parsed) {
     }
     EXPECT_FALSE(h.had_error());
 }
+// clang-format off
+INSTANTIATE_TEST_SUITE_P(
+        without_init, var_decl_test,
+        ::testing::Values(
+            var_decl_case{"int x;", "x", t::int_type(), false},
+            var_decl_case{"double pi;", "pi", t::double_type(), false},
+            var_decl_case{"bool flag;", "flag", t::bool_type(), false},
+            var_decl_case{"string s;", "s", t::string_type(), false}));
 
-INSTANTIATE_TEST_SUITE_P(without_init, var_decl_test,
-                         ::testing::Values(var_decl_case{"int x;", "x", t::int_type(), false},
-                                           var_decl_case{"double pi;", "pi", t::double_type(), false},
-                                           var_decl_case{"bool flag;", "flag", t::bool_type(), false},
-                                           var_decl_case{"string s;", "s", t::string_type(), false}));
-
-INSTANTIATE_TEST_SUITE_P(with_init, var_decl_test,
-                         ::testing::Values(var_decl_case{"int x = 42;", "x", t::int_type(), true, "42"},
-                                           var_decl_case{"double pi = 3.14;", "pi", t::double_type(), true, "3.14"},
-                                           var_decl_case{"bool f = true;", "f", t::bool_type(), true, "true"}));
+INSTANTIATE_TEST_SUITE_P(
+        with_init, var_decl_test,
+        ::testing::Values(
+            var_decl_case{"int x = 42;", "x", t::int_type(), true, "42"},
+            var_decl_case{"double pi = 3.14;", "pi", t::double_type(), true, "3.14"},
+            var_decl_case{"bool f = true;", "f", t::bool_type(), true, "true"}
+));
 
 struct expr_case {
     std::string_view source_;
@@ -148,18 +153,26 @@ TEST(parser_test, assignment_expression) {
     EXPECT_TRUE(is_literal(assign->value_, "42"));
 }
 
-INSTANTIATE_TEST_SUITE_P(arithmetic, binary_expr_test,
-                         ::testing::Values(expr_case{"int r = x + 1;", "+", "x", "1"},
-                                           expr_case{"int r = x - 1;", "-", "x", "1"},
-                                           expr_case{"int r = x * 2;", "*", "x", "2"},
-                                           expr_case{"int r = x / 2;", "/", "x", "2"},
-                                           expr_case{"int r = x % 3;", "%", "x", "3"}));
+INSTANTIATE_TEST_SUITE_P(
+        arithmetic, binary_expr_test,
+        ::testing::Values(
+            expr_case{"int r = x + 1;", "+", "x", "1"},
+            expr_case{"int r = x - 1;", "-", "x", "1"},
+            expr_case{"int r = x * 2;", "*", "x", "2"},
+            expr_case{"int r = x / 2;", "/", "x", "2"},
+            expr_case{"int r = x % 3;", "%", "x", "3"}
+));
 
 INSTANTIATE_TEST_SUITE_P(
-    comparison, binary_expr_test,
-    ::testing::Values(expr_case{"bool r = x == 0;", "==", "x", "0"}, expr_case{"bool r = x != 0;", "!=", "x", "0"},
-                      expr_case{"bool r = x < 0;", "<", "x", "0"}, expr_case{"bool r = x <= 0;", "<=", "x", "0"},
-                      expr_case{"bool r = x > 0;", ">", "x", "0"}, expr_case{"bool r = x >= 0;", ">=", "x", "0"}));
+        comparison, binary_expr_test,
+        ::testing::Values(
+            expr_case{"bool r = x == 0;", "==", "x", "0"}, 
+            expr_case{"bool r = x != 0;", "!=", "x", "0"},
+            expr_case{"bool r = x < 0;", "<", "x", "0"}, 
+            expr_case{"bool r = x <= 0;", "<=", "x", "0"},
+            expr_case{"bool r = x > 0;", ">", "x", "0"}, 
+            expr_case{"bool r = x >= 0;", ">=", "x", "0"}
+));
 
 TEST(parser_test, multiplication_before_addition) {
     parser_harness h("int r = 1 + 2 * 3;");
@@ -212,10 +225,14 @@ TEST_P(unary_test, parsed) {
     EXPECT_TRUE(is_variable(un->operand_, tc.operand_name_));
 }
 
-INSTANTIATE_TEST_SUITE_P(prefix, unary_test,
-                         ::testing::Values(unary_case{"int r = -x;", "-", "x"}, unary_case{"int r = !x;", "!", "x"},
-                                           unary_case{"int r = ++x;", "++", "x"},
-                                           unary_case{"int r = --x;", "--", "x"}));
+INSTANTIATE_TEST_SUITE_P(
+        prefix, unary_test,
+        ::testing::Values(
+            unary_case{"int r = -x;", "-", "x"}, 
+            unary_case{"int r = !x;", "!", "x"},
+            unary_case{"int r = ++x;", "++", "x"},
+            unary_case{"int r = --x;", "--", "x"}
+));
 
 struct func_case {
     std::string_view source_;
@@ -238,11 +255,14 @@ TEST_P(func_decl_test, parsed) {
     EXPECT_EQ(func->params_.size(), tc.param_count_);
 }
 
-INSTANTIATE_TEST_SUITE_P(various, func_decl_test,
-                         ::testing::Values(func_case{"int main() { return 0; }", "main", t::int_type(), 0},
-                                           func_case{"void foo() { }", "foo", t::void_type(), 0},
-                                           func_case{"int add(int a, int b) { }", "add", t::int_type(), 2},
-                                           func_case{"double f(int x, double y) { }", "f", t::double_type(), 2}));
+INSTANTIATE_TEST_SUITE_P(
+        various, func_decl_test,
+        ::testing::Values(
+            func_case{"int main() { return 0; }", "main", t::int_type(), 0},
+            func_case{"void foo() { }", "foo", t::void_type(), 0},
+            func_case{"int add(int a, int b) { }", "add", t::int_type(), 2},
+            func_case{"double f(int x, double y) { }", "f", t::double_type(), 2}
+));
 
 struct call_case {
     std::string_view source_;
@@ -269,11 +289,14 @@ TEST_P(call_test, parsed) {
     EXPECT_EQ(call->args_.size(), tc.arg_count_);
 }
 
-INSTANTIATE_TEST_SUITE_P(various, call_test,
-                         ::testing::Values(call_case{"void f() { print(); }", "print", 0},
-                                           call_case{"void f() { print_int(42); }", "print_int", 1},
-                                           call_case{"void f() { add(1, 2); }", "add", 2},
-                                           call_case{"void f() { foo(a, b, c); }", "foo", 3}));
+INSTANTIATE_TEST_SUITE_P(
+        various, call_test,
+        ::testing::Values(
+            call_case{"void f() { print(); }", "print", 0},
+            call_case{"void f() { print_int(42); }", "print_int", 1},
+            call_case{"void f() { add(1, 2); }", "add", 2},
+            call_case{"void f() { foo(a, b, c); }", "foo", 3}
+));
 
 TEST(parser_test, if_statement) {
     parser_harness h("void f() { if (true) { return; } }");
@@ -348,10 +371,94 @@ TEST_P(syntax_error_test, reports_error) {
     EXPECT_TRUE(h.had_error()) << "Expected error for: " << tc.description_;
 }
 
-INSTANTIATE_TEST_SUITE_P(all, syntax_error_test,
-                         ::testing::Values(syntax_error_case{"int x = ;", "missing init expression"},
-                                           syntax_error_case{"int x", "missing semicolon"},
-                                           syntax_error_case{"(1 + 2", "unclosed paren"},
-                                           syntax_error_case{"int f( { }", "missing right paren in func"}));
+INSTANTIATE_TEST_SUITE_P(
+        all, syntax_error_test,
+        ::testing::Values(
+            syntax_error_case{"int x = ;", "missing init expression"},
+            syntax_error_case{"int x", "missing semicolon"},
+            syntax_error_case{"(1 + 2", "unclosed paren"},
+            syntax_error_case{"int f( { }", "missing right paren in func"}
+));
+// clang-format on
+TEST(parser_test, struct_declaration_empty) {
+    parser_harness h("struct Point { int x; int y; };");
+    ASSERT_EQ(h.ast().size(), 1);
+    auto* decl = as<ast::struct_declaration>(*h.ast()[0]);
+    ASSERT_NE(decl, nullptr);
+    EXPECT_EQ(decl->name_.lexeme_, "Point");
+    EXPECT_EQ(decl->type_.struct_fields().size(), 2);
+    EXPECT_EQ(decl->type_.struct_fields()[0].first, "x");
+    EXPECT_EQ(decl->type_.struct_fields()[1].first, "y");
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(parser_test, struct_declaration_nested) {
+    parser_harness h(
+        "struct Point { int x; int y; };"
+        "struct Rect { struct Point tl; struct Point br; };");
+    ASSERT_EQ(h.ast().size(), 2);
+    auto* rect = as<ast::struct_declaration>(*h.ast()[1]);
+    ASSERT_NE(rect, nullptr);
+    EXPECT_EQ(rect->name_.lexeme_, "Rect");
+    EXPECT_EQ(rect->type_.struct_fields().size(), 2);
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(parser_test, struct_variable_declaration) {
+    parser_harness h("struct Point { int x; int y; }; struct Point p;");
+    ASSERT_EQ(h.ast().size(), 2);
+    auto* decl = as<ast::var_declaration>(*h.ast()[1]);
+    ASSERT_NE(decl, nullptr);
+    EXPECT_EQ(decl->name_.lexeme_, "p");
+    EXPECT_TRUE(decl->type_.is_struct());
+    EXPECT_EQ(decl->type_.struct_name(), "Point");
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(parser_test, member_access) {
+    parser_harness h(
+        "void foo(struct Point p) {"
+        "  p.x = 10;"
+        "}");
+    ASSERT_EQ(h.ast().size(), 1);
+    auto* func = as<ast::func_declaration>(*h.ast()[0]);
+    ASSERT_NE(func, nullptr);
+    ASSERT_EQ(func->block_->statements_.size(), 1);
+    auto* es = as<ast::expression_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(es, nullptr);
+    auto* assign = as<ast::assignment_expr>(es->expr_);
+    ASSERT_NE(assign, nullptr);
+    auto* member = as<ast::member_access_expr>(assign->target_);
+    ASSERT_NE(member, nullptr);
+    EXPECT_EQ(member->member_.lexeme_, "x");
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(parser_test, nested_member_access) {
+    parser_harness h(
+        "void foo(struct Rect r) {"
+        "  r.tl.x = 10;"
+        "}");
+    auto* func = as<ast::func_declaration>(*h.ast()[0]);
+    auto* es = as<ast::expression_stmt>(*func->block_->statements_[0]);
+    auto* assign = as<ast::assignment_expr>(es->expr_);
+    auto* outer = as<ast::member_access_expr>(assign->target_);
+    ASSERT_NE(outer, nullptr);
+    EXPECT_EQ(outer->member_.lexeme_, "x");
+    auto* inner = as<ast::member_access_expr>(outer->object_);
+    ASSERT_NE(inner, nullptr);
+    EXPECT_EQ(inner->member_.lexeme_, "tl");
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(parser_test, struct_with_string_field) {
+    parser_harness h("struct Person { string name; int age; };");
+    ASSERT_EQ(h.ast().size(), 1);
+    auto* decl = as<ast::struct_declaration>(*h.ast()[0]);
+    ASSERT_NE(decl, nullptr);
+    EXPECT_EQ(decl->type_.struct_fields().size(), 2);
+    EXPECT_TRUE(decl->type_.struct_fields()[0].second.is_string());
+    EXPECT_FALSE(h.had_error());
+}
 
 }  // namespace tests

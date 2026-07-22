@@ -65,6 +65,7 @@ namespace core {
     X(KW_DOUBLE)       \
     X(KW_BOOL)         \
     X(KW_STRING)       \
+    X(KW_STRUCT)       \
     X(KW_VOID)         \
     X(END_OF_FILE)     \
     X(UNKNOWN)

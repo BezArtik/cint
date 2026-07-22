@@ -30,6 +30,7 @@ inline const std::array keyword_table{
     keyword_info{"bool", token_type::KW_BOOL, type::bool_type(), true, true},
     keyword_info{"string", token_type::KW_STRING, type::string_type(), true, true},
     keyword_info{"void", token_type::KW_VOID, type::void_type(), true, true},
+    keyword_info{"struct", token_type::KW_STRUCT, type::void_type(), false, true},
     keyword_info{"true", token_type::KW_TRUE, type::bool_type(), false, false},
     keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false, false},
 };

@@ -19,11 +19,12 @@ struct postfix_expr;
 struct call_expr;
 struct array_literal_expr;
 struct index_expr;
+struct member_access_expr;
 
 using expression =
     std::variant<literal_expr, variable_expr, core::arena_ptr<binary_expr>, core::arena_ptr<assignment_expr>,
                  core::arena_ptr<unary_expr>, core::arena_ptr<postfix_expr>, core::arena_ptr<call_expr>,
-                 core::arena_ptr<array_literal_expr>, core::arena_ptr<index_expr> >;
+                 core::arena_ptr<array_literal_expr>, core::arena_ptr<index_expr>, core::arena_ptr<member_access_expr>>;
 
 using expr_list = std::pmr::vector<expression>;
 
@@ -102,6 +103,15 @@ struct index_expr {
 
     index_expr(expression object, expression index, core::location loc)
         : object_(std::move(object)), index_(std::move(index)), loc_(loc) {}
+};
+
+struct member_access_expr {
+    expression object_;
+    core::token member_;
+    core::location loc_;
+
+    member_access_expr(expression object, const core::token& member, core::location loc)
+        : object_(std::move(object)), member_(member), loc_(loc) {}
 };
 
 template <typename T, typename... Args>

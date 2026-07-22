@@ -13,12 +13,15 @@
 namespace core {
 
 class value {
+    struct struct_data;
+
 public:
     using int_t = int64_t;
     using double_t = double;
     using bool_t = bool;
     using string_t = std::shared_ptr<std::string>;
     using array_t = std::shared_ptr<std::vector<value>>;
+    using struct_t = struct_data;
 
     value();
     value(std::monostate) : data_(std::monostate{}) {}
@@ -44,6 +47,7 @@ public:
     bool is_bool() const noexcept;
     bool is_string() const noexcept;
     bool is_array() const noexcept;
+    bool is_struct() const noexcept;
     bool is_void() const noexcept;
 
     template <typename T>
@@ -60,7 +64,12 @@ private:
     static int_t parse_int(std::string_view text);
     static double_t parse_double(std::string_view text);
 
-    std::variant<int_t, double_t, bool_t, string_t, array_t, std::monostate> data_;
+    struct struct_data {
+        core::type type_;
+        std::vector<value> fields_;
+    };
+
+    std::variant<int_t, double_t, bool_t, string_t, array_t, struct_t, std::monostate> data_;
 };
 
 }  // namespace core

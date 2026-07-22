@@ -2,7 +2,9 @@
 
 #pragma once
 #include <memory>
+#include <optional>
 #include <span>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -10,7 +12,7 @@ namespace core {
 
 class type {
 public:
-    enum class kind : uint8_t { INT, DOUBLE, BOOL, STRING, VOID, FUNCTION, ARRAY, UNKNOWN };
+    enum class kind : uint8_t { INT, DOUBLE, BOOL, STRING, VOID, FUNCTION, ARRAY, STRUCT, UNKNOWN };
 
     type() = default;
     type(const type& other);
@@ -27,6 +29,8 @@ public:
 
     static type function_type(type return_type, std::vector<type> param_types);
     static type array_type(type element_type, size_t size = 0);
+    using field_t = std::pair<std::string_view, type>;
+    static type struct_type(std::string_view name, std::vector<field_t> fields);
 
     bool is_primitive() const noexcept;
     bool is_numeric() const noexcept;
@@ -38,12 +42,17 @@ public:
     bool is_unknown() const noexcept;
     bool is_function() const noexcept;
     bool is_array() const noexcept;
+    bool is_struct() const noexcept;
 
     const type& return_type() const;
     std::span<const type> param_types() const;
 
     const type& element_type() const;
     size_t array_size() const;
+
+    std::string_view struct_name() const;
+    std::span<const field_t> struct_fields() const;
+    std::optional<size_t> field_index(std::string_view name) const noexcept;
 
     bool is_assignable_from(const type& source) const noexcept;
 
@@ -63,6 +72,11 @@ private:
         size_t size_;
     };
 
+    struct struct_info {
+        std::string_view name_;
+        std::vector<field_t> fields_;
+    };
+
     constexpr type(kind k) : kind_(k), info_(std::monostate{}) {}
 
     template <typename Info>
@@ -70,7 +84,7 @@ private:
     void swap(type& other) noexcept;
 
     kind kind_ = kind::UNKNOWN;
-    std::variant<function_info, array_info, std::monostate> info_;
+    std::variant<function_info, array_info, struct_info, std::monostate> info_;
 };
 
 }  // namespace core
