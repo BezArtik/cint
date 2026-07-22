@@ -27,11 +27,8 @@ double adaptive(double a, double b, double eps, int depth) {
 
 double eps = 0.000001;
 
-print_str("Integral of sin(x)*e^(-x/2) from 0 to PI");
-print();
-print_str("============================================");
-print();
-print();
+print_str("Integral of sin(x)*e^(-x/2) from 0 to PI\n");
+print_str("============================================\n\n");
 
 int powers = 6;
 int i = 0;
@@ -41,18 +38,18 @@ while (i < powers) {
 
     print_str("eps = ");
     print_dbl(eps);
-    print();
+    print_str("\n");
     print_str("result = ");
     print_dbl(result);
-    print();
+    print_str("\n");
 
     eps = eps / 10.0;
     double exact = 4.0 / 5.0 * (1.0 + exp(-PI / 2.0));
     print_str("Exact value: ");
     print_dbl(exact);
-    print();
+    print_str("\n");
     print_str("Error: ");
     print_dbl(result - exact);
-    print();
+    print_str("\n");
     i++;
 }

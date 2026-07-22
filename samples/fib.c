@@ -14,11 +14,10 @@ int fib(int n) {
     return b;
 }
 
-print_str("Fibonacci numbers: ");
-print();
+print_str("Fibonacci numbers: \n");
 int i = 0;
 while (i < 20) {
     print_int(fib(i));
-    print();
+    print_str("\n");
     i = i + 1;
 }

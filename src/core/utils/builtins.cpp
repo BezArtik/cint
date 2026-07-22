@@ -33,11 +33,6 @@ value print_str(std::span<const value> args) {
     return {};
 }
 
-value print_newline(std::span<const value>) {
-    out << std::endl;
-    return {};
-}
-
 value input(std::span<const value>) {
     std::string line;
     std::getline(std::cin, line);

@@ -1,7 +1,6 @@
 // samples/sieve.c
 
-print_str("Enter the upper limit for prime numbers: ");
-print();
+print_str("Enter the upper limit for prime numbers: \n");
 int MAX = stoi(input());
 int BITS_PER_INT = 32;
 
@@ -42,9 +41,8 @@ int count_primes() {
 
 print_str("Sieve of Eratosthenes up to ");
 print_int(MAX);
-print();
-print_str("====================================");
-print();
+print_str("\n");
+print_str("====================================\n");
 
 for (int i = 2; i * i < MAX; ++i) {
     if (!get_bit(i)) {
@@ -56,4 +54,4 @@ print_str("First 20 primes: ");
 int total = count_primes();
 print_str("Total primes: ");
 print_int(total);
-print();
+print_str("\n");
