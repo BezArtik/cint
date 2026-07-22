@@ -98,8 +98,22 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
     auto init_val = core::value::default_value(type);
 
     if (stmt.initializer_) {
-        auto init = evaluate(*stmt.initializer_);
-        init_val = core::value::convert(std::move(init), type);
+        if (auto* list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+            if (type.is_struct()) {
+                auto* st = init_val.as_mut<core::value::struct_t>();
+                auto&& fields = st->type_.struct_fields();
+                auto&& elems = list->get()->elements_;
+                for (size_t i = 0; i < elems.size(); ++i) {
+                    auto val = evaluate(elems[i]);
+                    st->fields_[i] = core::value::convert(std::move(val), fields[i].second);
+                }
+            } else {
+                init_val = evaluate_initializer_list(*list->get());
+            }
+        } else {
+            auto init = evaluate(*stmt.initializer_);
+            init_val = core::value::convert(std::move(init), type);
+        }
     }
 
     values_.define(name, {&stmt.type_, std::move(init_val)});
@@ -186,7 +200,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
             [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
             [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
-            [this](const core::arena_ptr<ast::array_literal_expr>& e) { return evaluate_array_literal(*e); },
+            [this](const core::arena_ptr<ast::initializer_list_expr>& e) { return evaluate_initializer_list(*e); },
             [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
             [this](const core::arena_ptr<ast::member_access_expr>& e) { return evaluate_member_access(*e); }},
         expr);
@@ -388,7 +402,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         func->info_);
 }
 // clang-format on
-core::value interpreter::evaluate_array_literal(const ast::array_literal_expr& expr) {
+core::value interpreter::evaluate_initializer_list(const ast::initializer_list_expr& expr) {
     std::vector<core::value> elements;
     elements.reserve(expr.elements_.size());
     std::ranges::transform(expr.elements_, std::back_inserter(elements),

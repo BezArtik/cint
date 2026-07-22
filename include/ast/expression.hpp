@@ -17,14 +17,15 @@ struct assignment_expr;
 struct unary_expr;
 struct postfix_expr;
 struct call_expr;
-struct array_literal_expr;
+struct initializer_list_expr;
 struct index_expr;
 struct member_access_expr;
 
 using expression =
     std::variant<literal_expr, variable_expr, core::arena_ptr<binary_expr>, core::arena_ptr<assignment_expr>,
                  core::arena_ptr<unary_expr>, core::arena_ptr<postfix_expr>, core::arena_ptr<call_expr>,
-                 core::arena_ptr<array_literal_expr>, core::arena_ptr<index_expr>, core::arena_ptr<member_access_expr>>;
+                 core::arena_ptr<initializer_list_expr>, core::arena_ptr<index_expr>,
+                 core::arena_ptr<member_access_expr>>;
 
 using expr_list = std::pmr::vector<expression>;
 
@@ -89,11 +90,11 @@ struct call_expr {
         : callee_(callee), args_(std::move(args)), loc_(loc) {}
 };
 
-struct array_literal_expr {
+struct initializer_list_expr {
     expr_list elements_;
     core::location loc_;
 
-    array_literal_expr(expr_list elements, core::location loc) : elements_(std::move(elements)), loc_(loc) {}
+    initializer_list_expr(expr_list elements, core::location loc) : elements_(std::move(elements)), loc_(loc) {}
 };
 
 struct index_expr {

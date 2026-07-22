@@ -92,10 +92,10 @@ void print_call_ast(const debug_writer& writer, const core::arena_ptr<ast::call_
     }
 }
 
-void print_array_literal_ast(const debug_writer& writer, const core::arena_ptr<ast::array_literal_expr>& e,
+void print_initializer_list_ast(const debug_writer& writer, const core::arena_ptr<ast::initializer_list_expr>& e,
                              uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "ArrayLiteral: [" + std::to_string(e->elements_.size()) + " elements]" +
+    writer.emit(indent_str(level) + "InitializerList: [" + std::to_string(e->elements_.size()) + " elements]" +
                 location_str(e->loc_) + "\n");
     for (size_t i = 0; i < e->elements_.size(); ++i) {
         writer.emit(indent_str(level + 1) + "Element " + std::to_string(i) + ":\n");
@@ -134,7 +134,7 @@ void print_expression(const debug_writer& writer, const ast::expression& expr, u
             [&](const core::arena_ptr<ast::unary_expr>& e) { print_unary(writer, e, level); },
             [&](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(writer, e, level); },
             [&](const core::arena_ptr<ast::call_expr>& e) { print_call_ast(writer, e, level); },
-            [&](const core::arena_ptr<ast::array_literal_expr>& e) { print_array_literal_ast(writer, e, level); },
+            [&](const core::arena_ptr<ast::initializer_list_expr>& e) { print_initializer_list_ast(writer, e, level); },
             [&](const core::arena_ptr<ast::index_expr>& e) { print_index_ast(writer, e, level); },
             [&](const core::arena_ptr<ast::member_access_expr>& e) { print_member_access(writer, e, level); }
         },

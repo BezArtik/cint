@@ -44,7 +44,7 @@ private:
     ast::expression assignment();
     ast::expression unary();
     ast::expression postfix();
-    ast::expression array_literal();
+    ast::expression initializer_list();
     ast::expression primary();
     ast::expression finish_call(const core::token& callee);
     ast::expression finish_index(ast::expression object);

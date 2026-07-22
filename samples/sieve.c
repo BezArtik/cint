@@ -35,7 +35,7 @@ int count_primes() {
         }
     }
 
-    print();
+    print_str("\n");
     return count;
 }
 

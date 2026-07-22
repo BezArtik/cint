@@ -41,7 +41,7 @@ private:
     core::value evaluate_unary(const ast::unary_expr& expr);
     core::value evaluate_postfix(const ast::postfix_expr& expr);
     core::value evaluate_call(const ast::call_expr& expr);
-    core::value evaluate_array_literal(const ast::array_literal_expr& expr);
+    core::value evaluate_initializer_list(const ast::initializer_list_expr& expr);
     core::value evaluate_index(const ast::index_expr& expr);
     core::value evaluate_member_access(const ast::member_access_expr& expr);
     core::value& evaluate_lvalue(const ast::expression& expr);

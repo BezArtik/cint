@@ -174,7 +174,7 @@ ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) 
     type = parse_array_dimensions(type);
 
     std::optional<ast::expression> initializer;
-    if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? array_literal() : expression();
+    if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? initializer_list() : expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
     return ast::make_stmt<ast::var_declaration>(arena_, name.loc_, std::move(type), name, std::move(initializer));
 }
@@ -382,16 +382,16 @@ ast::expression parser::postfix() {
     return expr;
 }
 
-ast::expression parser::array_literal() {
+ast::expression parser::initializer_list() {
     ast::expr_list elements(&mr_);
 
     if (!check(tt::RIGHT_BRACE)) {
         do {
-            match({tt::LEFT_BRACE}) ? elements.push_back(array_literal()) : elements.push_back(expression());
+            match({tt::LEFT_BRACE}) ? elements.push_back(initializer_list()) : elements.push_back(expression());
         } while (match({tt::COMMA}));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    return ast::make_expr<ast::array_literal_expr>(arena_, prev().loc_, std::move(elements));
+    return ast::make_expr<ast::initializer_list_expr>(arena_, prev().loc_, std::move(elements));
 }
 
 ast::expression parser::primary() {
@@ -410,7 +410,7 @@ ast::expression parser::primary() {
         return expr;
     }
 
-    if (match({tt::LEFT_BRACE})) return array_literal();
+    if (match({tt::LEFT_BRACE})) return initializer_list();
 
     reporter_.parse_error(peek(), err::expected_expression);
 }

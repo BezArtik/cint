@@ -69,6 +69,28 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         auto init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
+        if (resolved_type.is_struct()) {
+            if (auto* list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+                auto&& fields = resolved_type.struct_fields();
+                auto&& lst = list->get();
+                if (lst->elements_.size() > fields.size()) {
+                    reporter_.error(stmt, err::argument_count_mismatch, "initializer", fields.size(),
+                                    lst->elements_.size());
+                    return;
+                }
+                for (size_t i = 0; i < lst->elements_.size(); ++i) {
+                    auto elem_type = type_of(lst->elements_[i]);
+                    if (elem_type.is_unknown()) continue;
+                    if (!fields[i].second.is_assignable_from(elem_type)) {
+                        reporter_.error(stmt, err::type_mismatch_initialization, name);
+                        return;
+                    }
+                }
+                symbols_.define(name, resolved_type);
+                return;
+            }
+        }
+
         if (resolved_type.is_array() && resolved_type.array_size() == 0 && init_type.is_array()) {
             if (resolved_type.element_type().is_assignable_from(init_type.element_type())) {
                 auto inferred_type = t::array_type(type.element_type(), init_type.array_size());
@@ -208,7 +230,7 @@ t type_checker::type_of(const ast::expression& expr) {
             [this](const core::arena_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
             [this](const core::arena_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
             [this](const core::arena_ptr<ast::call_expr>& e) { return type_of_call(*e); },
-            [this](const core::arena_ptr<ast::array_literal_expr>& e) { return type_of_array_literal(*e); },
+            [this](const core::arena_ptr<ast::initializer_list_expr>& e) { return type_of_initializer_list(*e); },
             [this](const core::arena_ptr<ast::index_expr>& e) { return type_of_index(*e); },
             [this](const core::arena_ptr<ast::member_access_expr>& e) { return type_of_member_access(*e); }},
         expr);
@@ -407,24 +429,25 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     return func->type_.return_type();
 }
 
-t type_checker::type_of_array_literal(const ast::array_literal_expr& expr) {
+t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr) {
     if (expr.elements_.empty()) {
-        reporter_.error(expr, err::empty_array_literal);
+        reporter_.error(expr, err::empty_initializer_list);
         return t::unknown_type();
     }
 
-    auto elem_type = type_of(expr.elements_[0]);
-    if (elem_type.is_unknown()) return t::unknown_type();
+    auto first_type = type_of(expr.elements_[0]);
+    if (first_type.is_unknown()) return t::unknown_type();
 
-    for (size_t i = 1; i < expr.elements_.size(); i++) {
+    for (size_t i = 1; i < expr.elements_.size(); ++i) {
         auto el_type = type_of(expr.elements_[i]);
         if (el_type.is_unknown()) return t::unknown_type();
-        if (!elem_type.is_assignable_from(el_type)) {
-            reporter_.error(expr, err::array_literal_inconsistent_types);
+        if (!first_type.is_assignable_from(el_type)) {
+            reporter_.error(expr, err::initializer_list_inconsistent_types);
             return t::unknown_type();
         }
     }
-    return t::array_type(elem_type, expr.elements_.size());
+
+    return t::array_type(first_type, expr.elements_.size());
 }
 
 t type_checker::type_of_index(const ast::index_expr& expr) {
