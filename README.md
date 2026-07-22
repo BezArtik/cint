@@ -79,7 +79,7 @@ int result = add(3, 4);
 print_int(result); // 7
 greet("world");
 ```
-### Structers
+### Structures
 ```cpp
 struct Point {
     int x;
