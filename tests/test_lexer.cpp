@@ -1,50 +1,22 @@
-// test_lexer.cpp
+// tests/test_lexer.cpp
 
-#include "core/error/error_report.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
-#include "lexer/lexer.hpp"
+#include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace tests {
 
 using tt = core::token_type;
 
-class lexer_harness {
-public:
-    lexer_harness(std::string source)
-        : source_code_(std::move(source)),
-          reporter_(source_code_),
-          mr_(arena_),
-          lex_(source_code_, reporter_, mr_),
-          tokens_(lex_.scan_tokens()) {}
-
-    size_t size() const noexcept { return tokens_.size(); }
-    const core::token& operator[](size_t i) const noexcept { return tokens_[i]; }
-    bool had_error() const noexcept { return reporter_.has_error(); }
-
-private:
-    std::string source_code_;
-    core::error_reporter reporter_;
-    core::arena arena_;
-    core::arena_memory_resource mr_;
-    lexer lex_;
-    lexer::token_list tokens_;
-};
-
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
     if (!lexeme.empty()) {
-        EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<int>(type);
+        EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<uint8_t>(type);
     }
-}
-
-void expect_eof(const lexer_harness& h, size_t index) {
-    ASSERT_LT(index, h.size());
-    EXPECT_EQ(h[index].type_, tt::END_OF_FILE);
 }
 
 struct single_token_case {
@@ -57,10 +29,11 @@ class single_token_test : public ::testing::TestWithParam<single_token_case> {};
 
 TEST_P(single_token_test, recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
-    ASSERT_GE(h.size(), 2) << "Expected at least token + EOF for source: " << tc.source_;
-    expect_token(h[0], tc.expected_type_, tc.expected_lexeme_);
-    expect_eof(h, 1);
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2) << "Expected at least token + EOF for source: " << tc.source_;
+    expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
@@ -112,11 +85,12 @@ class keyword_test : public ::testing::TestWithParam<keyword_case> {};
 
 TEST_P(keyword_test, recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
-    ASSERT_GE(h.size(), 2);
-    EXPECT_NE(h[0].type_, tt::IDENTIFIER);
-    EXPECT_EQ(h[0].lexeme_, tc.lexeme_);
-    expect_eof(h, 1);
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2);
+    EXPECT_NE(h.tokens()[0].type_, tt::IDENTIFIER);
+    EXPECT_EQ(h.tokens()[0].lexeme_, tc.lexeme_);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -147,19 +121,20 @@ class number_test : public ::testing::TestWithParam<number_case> {};
 
 TEST_P(number_test, recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
-    ASSERT_GE(h.size(), 2);
-    expect_token(h[0], tt::NUMBER, tc.lexeme_);
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2);
+    expect_token(h.tokens()[0], tt::NUMBER, tc.lexeme_);
 
-    ASSERT_TRUE(h[0].literal_value_);
+    ASSERT_TRUE(h.tokens()[0].literal_value_);
     if (tc.is_double_) {
-        EXPECT_TRUE(h[0].literal_value_->is_double());
-        EXPECT_DOUBLE_EQ(h[0].literal_value_->to_double(), std::stod(std::string(tc.lexeme_)));
+        EXPECT_TRUE(h.tokens()[0].literal_value_->is_double());
+        EXPECT_DOUBLE_EQ(h.tokens()[0].literal_value_->to_double(), std::stod(std::string(tc.lexeme_)));
     } else {
-        EXPECT_TRUE(h[0].literal_value_->is_int());
-        EXPECT_EQ(h[0].literal_value_->to_int(), std::stoll(std::string(tc.lexeme_)));
+        EXPECT_TRUE(h.tokens()[0].literal_value_->is_int());
+        EXPECT_EQ(h.tokens()[0].literal_value_->to_int(), std::stoll(std::string(tc.lexeme_)));
     }
-    expect_eof(h, 1);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -188,12 +163,13 @@ class bool_test : public ::testing::TestWithParam<bool_case> {};
 
 TEST_P(bool_test, recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
-    ASSERT_GE(h.size(), 2);
-    expect_token(h[0], tc.expected_type_, tc.source_);
-    ASSERT_TRUE(h[0].literal_value_.has_value());
-    EXPECT_EQ(h[0].literal_value_->to_bool(), tc.expected_value_);
-    expect_eof(h, 1);
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2);
+    expect_token(h.tokens()[0], tc.expected_type_, tc.source_);
+    ASSERT_TRUE(h.tokens()[0].literal_value_.has_value());
+    EXPECT_EQ(h.tokens()[0].literal_value_->to_bool(), tc.expected_value_);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -211,11 +187,12 @@ class string_test : public ::testing::TestWithParam<string_case> {};
 
 TEST_P(string_test, recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
-    ASSERT_GE(h.size(), 2);
-    expect_token(h[0], tt::STRING, tc.expected_lexeme_);
-    EXPECT_TRUE(h[0].literal_value_);
-    expect_eof(h, 1);
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2);
+    expect_token(h.tokens()[0], tt::STRING, tc.expected_lexeme_);
+    EXPECT_TRUE(h.tokens()[0].literal_value_);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -230,11 +207,12 @@ class identifier_test : public ::testing::TestWithParam<std::string_view> {};
 
 TEST_P(identifier_test, recognized) {
     auto id = GetParam();
-    lexer_harness h(std::string{id});
-    ASSERT_GE(h.size(), 2);
-    expect_token(h[0], tt::IDENTIFIER, id);
-    EXPECT_FALSE(h[0].literal_value_);
-    expect_eof(h, 1);
+    pipeline_harness h(id);
+    ASSERT_TRUE(h.lex());
+    ASSERT_GE(h.tokens().size(), 2);
+    expect_token(h.tokens()[0], tt::IDENTIFIER, id);
+    EXPECT_FALSE(h.tokens()[0].literal_value_);
+    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -251,15 +229,16 @@ class sequence_test : public ::testing::TestWithParam<token_sequence> {};
 
 TEST_P(sequence_test, Recognized) {
     const auto& tc = GetParam();
-    lexer_harness h(std::string{tc.source_});
+    pipeline_harness h(tc.source_);
+    ASSERT_TRUE(h.lex());
 
-    ASSERT_EQ(h.size(), tc.expected_types_.size() + 1) << "Unexpected token count for source: " << tc.source_;
+    ASSERT_EQ(h.tokens().size(), tc.expected_types_.size() + 1) << "Unexpected token count for source: " << tc.source_;
 
     for (size_t i = 0; i < tc.expected_types_.size(); ++i) {
-        expect_token(h[i], tc.expected_types_[i],
+        expect_token(h.tokens()[i], tc.expected_types_[i],
                      i < tc.expected_lexemes_.size() ? tc.expected_lexemes_[i] : std::string_view{});
     }
-    expect_eof(h, tc.expected_types_.size());
+    EXPECT_EQ(h.tokens()[tc.expected_types_.size()].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -276,21 +255,25 @@ INSTANTIATE_TEST_SUITE_P(
                         tt::RIGHT_PAREN, tt::LEFT_BRACE, tt::RIGHT_BRACE},
                        {"if", "(", "x", "<", "10", ")", "{", "}"}}));
 // clang-format on
+
 TEST(lexer_test, line_comment) {
-    lexer_harness h("42 // comment\n43");
-    ASSERT_EQ(h.size(), 3);
-    expect_token(h[0], tt::NUMBER, "42");
-    expect_token(h[1], tt::NUMBER, "43");
-    expect_eof(h, 2);
+    pipeline_harness h("42 // comment\n43");
+    ASSERT_TRUE(h.lex());
+    ASSERT_EQ(h.tokens().size(), 3);
+    expect_token(h.tokens()[0], tt::NUMBER, "42");
+    expect_token(h.tokens()[1], tt::NUMBER, "43");
+    EXPECT_EQ(h.tokens()[2].type_, tt::END_OF_FILE);
 }
 
 TEST(LexerTest, unterminated_string) {
-    lexer_harness h("\"unterminated");
+    pipeline_harness h("\"unterminated");
+    h.lex();
     EXPECT_TRUE(h.had_error());
 }
 
 TEST(lexer_test, unexpected_character) {
-    lexer_harness h("@");
+    pipeline_harness h("@");
+    h.lex();
     EXPECT_TRUE(h.had_error());
 }
 

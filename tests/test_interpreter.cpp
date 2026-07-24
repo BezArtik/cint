@@ -1,45 +1,11 @@
-// test_interpreter.cpp
+// tests/test_interpreter.cpp
 
-#include "core/error/error_report.hpp"
-#include "core/utils/arena.hpp"
-#include "core/utils/builtins.hpp"
-#include "core/utils/symbol_registry.hpp"
-#include "lexer/lexer.hpp"
-#include "parser/parser.hpp"
-#include "runtime/interpreter.hpp"
-#include "semantics/type_check.hpp"
+#include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
-#include <string>
+#include <string_view>
 
 namespace tests {
-
-class interpreter_harness {
-public:
-    interpreter_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_), mr_(arena_) {
-        lexer lex(source_code_, reporter_, mr_);
-        tokens_ = lex.scan_tokens();
-        parser p(tokens_, reporter_, arena_, mr_);
-        ast_ = p.parse();
-        auto registry = core::symbol_registry::build(ast_, core::builtins);
-        semantics::type_checker checker(reporter_, registry);
-        checker.check(ast_);
-        runtime::interpreter interp(reporter_, registry);
-        interp.interpret(ast_);
-        ok_ = !reporter_.has_error();
-    }
-
-    bool ok() const noexcept { return ok_; }
-
-private:
-    std::string source_code_;
-    core::error_reporter reporter_;
-    core::arena arena_;
-    core::arena_memory_resource mr_;
-    lexer::token_list tokens_;
-    parser::ast_list ast_;
-    bool ok_ = false;
-};
 
 struct valid_execution_case {
     std::string_view source_;
@@ -50,8 +16,8 @@ class valid_execution_test : public ::testing::TestWithParam<valid_execution_cas
 
 TEST_P(valid_execution_test, runs_without_error) {
     const auto& tc = GetParam();
-    interpreter_harness h(std::string{tc.source_});
-    EXPECT_TRUE(h.ok()) << "Unexpected runtime error for: " << tc.description_;
+    pipeline_harness h(tc.source_);
+    EXPECT_TRUE(h.run_all()) << "Unexpected runtime error for: " << tc.description_;
 }
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
@@ -128,8 +94,12 @@ class runtime_error_test : public ::testing::TestWithParam<runtime_error_case> {
 
 TEST_P(runtime_error_test, reports_error) {
     const auto& tc = GetParam();
-    interpreter_harness h(std::string{tc.source_});
-    EXPECT_FALSE(h.ok()) << "Expected runtime error for: " << tc.description_;
+    pipeline_harness h(tc.source_);
+    h.lex();
+    h.parse();
+    h.check_semantics();
+    h.interpret();
+    EXPECT_TRUE(h.had_error()) << "Expected runtime error for: " << tc.description_;
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -1,44 +1,11 @@
-// test_semantics.cpp
+// tests/test_semantics.cpp
 
-#include "core/error/error_report.hpp"
-#include "core/utils/arena.hpp"
-#include "core/utils/builtins.hpp"
-#include "core/utils/symbol_registry.hpp"
-#include "lexer/lexer.hpp"
-#include "parser/parser.hpp"
-#include "semantics/type_check.hpp"
+#include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
-#include <string>
+#include <string_view>
 
 namespace tests {
-
-class semantics_harness {
-public:
-    semantics_harness(std::string source) : source_code_(std::move(source)), reporter_(source_code_), mr_(arena_) {
-        lexer lex(source_code_, reporter_, mr_);
-        tokens_ = lex.scan_tokens();
-        parser p(tokens_, reporter_, arena_, mr_);
-        ast_ = p.parse();
-        auto registry = core::symbol_registry::build(ast_, core::builtins);
-        semantics::type_checker checker(reporter_, registry);
-        check_ok_ = checker.check(ast_);
-        had_error_ = reporter_.has_error();
-    }
-
-    bool ok() const { return check_ok_ && !had_error_; }
-    bool had_error() const { return had_error_; }
-
-private:
-    std::string source_code_;
-    core::error_reporter reporter_;
-    core::arena arena_;
-    core::arena_memory_resource mr_;
-    lexer::token_list tokens_;
-    parser::ast_list ast_;
-    bool check_ok_ = false;
-    bool had_error_ = false;
-};
 
 struct valid_program_case {
     std::string_view source_;
@@ -49,8 +16,8 @@ class valid_program_test : public ::testing::TestWithParam<valid_program_case> {
 
 TEST_P(valid_program_test, type_checks) {
     const auto& tc = GetParam();
-    semantics_harness h(std::string{tc.source_});
-    EXPECT_TRUE(h.ok()) << "Unexpected error for: " << tc.description_;
+    pipeline_harness h(tc.source_);
+    EXPECT_TRUE(h.run_all()) << "Unexpected error for: " << tc.description_;
 }
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
@@ -103,10 +70,9 @@ INSTANTIATE_TEST_SUITE_P(
             "void foo() { struct Point p; p.x = 0; p.y = 0; print_point(p); }",
             "pass struct to func"
         }
-
 ));
-
 // clang-format on
+
 struct type_error_case {
     std::string_view source_;
     std::string_view description_;
@@ -116,7 +82,10 @@ class type_error_test : public ::testing::TestWithParam<type_error_case> {};
 
 TEST_P(type_error_test, reports_error) {
     const auto& tc = GetParam();
-    semantics_harness h(std::string{tc.source_});
+    pipeline_harness h(tc.source_);
+    h.lex();
+    h.parse();
+    h.check_semantics();
     EXPECT_TRUE(h.had_error()) << "Expected error for: " << tc.description_;
 }
 // clang-format off
@@ -143,4 +112,5 @@ INSTANTIATE_TEST_SUITE_P(
         type_error_case{"void foo() { int x; x.y = 10; }","dot on non-struct"}
 ));
 // clang-format on
+
 }  // namespace tests
