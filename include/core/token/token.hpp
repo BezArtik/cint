@@ -10,7 +10,6 @@
 
 namespace core {
 
-struct keyword_info;
 enum class token_type : uint8_t;
 
 struct location {
@@ -22,7 +21,7 @@ struct token {
     token_type type_;
     std::string_view lexeme_;
     location loc_;
-    std::optional<core::value> literal_value_;
+    std::optional<value> literal_value_;
 
     token() = default;
     token(token_type type, std::string_view lex, location loc, std::optional<value> val = std::nullopt)
