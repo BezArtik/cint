@@ -114,17 +114,17 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
         }
     }
 
-    values_.define(name, {&stmt.type_, std::move(init_val)});
+    values_.define(name, std::move(init_val));
 
     if (writer_.enabled(debug::trace_level::execution)) {
         auto* var = values_.get(name);
-        writer_.emit("  " + std::string(name) + " = " + var->value_.to_string() + "\n");
+        writer_.emit("  " + std::string(name) + " = " + var->to_string() + "\n");
     }
     return execution_result::normal();
 }
 
 interpreter::execution_result interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
-    std::optional<core::scope_guard<runtime_var>> guard;
+    std::optional<core::scope_guard<core::value>> guard;
     if (create_scope) guard.emplace(values_);
     for (const auto& s : stmt.statements_) {
         auto res = execute(*s);
@@ -259,7 +259,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
     return core::visit(core::overloaded{
             [this](const ast::variable_expr& e) -> core::value& {                             
                 auto* var = values_.get(e.name_.lexeme_);                            
-                return var->value_;
+                return *var;
             },
             [this](const core::arena_ptr<ast::index_expr>& e) -> core::value& {
                 auto& obj = evaluate_lvalue(e->object_);
@@ -379,7 +379,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             for (size_t i = 0; i < body->params_.size(); ++i) {
                 const auto& param = body->params_[i];
                 auto converted = core::value::convert(std::move(args_buf[i]), registry_.resolve_type(param.type_));
-                values_.define(param.name_.lexeme_, {&param.type_, std::move(converted)});
+                values_.define(param.name_.lexeme_, std::move(converted));
             }
             for (const auto& s : body->block_->statements_) {
                 auto result = execute(*s);

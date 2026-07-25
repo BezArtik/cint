@@ -154,20 +154,10 @@ private:
      */
     core::value& evaluate_lvalue(const ast::expression& expr);
 
-    /**
-     * @brief Переменная времени выполнения.
-     *
-     * Хранит статический тип (для проверок) и текущее значение.
-     */
-    struct runtime_var {
-        const core::type* static_type_;  ///< Тип, известный на этапе компиляции
-        core::value value_;              ///< Текущее значение
-    };
-
     core::error_reporter& reporter_;         ///< Обработчик ошибок
     const core::symbol_registry& registry_;  ///< Реестр функций
     const debug::debug_writer writer_;       ///< Отладочный вывод
-    core::scoped_map<runtime_var> values_;  ///< Таблица переменных (стек областей видимости)
+    core::scoped_map<core::value> values_;  ///< Таблица переменных (стек областей видимости)
     uint32_t recursion_depth_ = 0;  ///< Текущая глубина рекурсии
 
     /// Максимально допустимая глубина рекурсивных вызовов.
