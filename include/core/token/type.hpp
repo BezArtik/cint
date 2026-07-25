@@ -62,26 +62,17 @@ public:
     /// @brief Поле структуры: имя + тип.
     using field_t = std::pair<std::string_view, type>;
 
-    /// @name Конструкторы и присваивание
-    /// @{
-
     type() = default;
-    type(const type& other);
-    type& operator=(const type& other);
-    type(type&&) noexcept = default;
-    type& operator=(type&&) noexcept = default;
-
-    /// @}
 
     /// @name Фабрики примитивных типов
     /// @{
 
-    static constexpr type int_type() { return type(kind::INT); }
-    static constexpr type double_type() { return type(kind::DOUBLE); }
-    static constexpr type bool_type() { return type(kind::BOOL); }
-    static constexpr type string_type() { return type(kind::STRING); }
-    static constexpr type void_type() { return type(kind::VOID); }
-    static constexpr type unknown_type() { return type(kind::UNKNOWN); }
+    static type int_type();
+    static type double_type();
+    static type bool_type();
+    static type string_type();
+    static type void_type();
+    static type unknown_type();
 
     /// @}
 
@@ -223,15 +214,16 @@ private:
         std::vector<field_t> fields_;
     };
 
-    constexpr type(kind k) : kind_(k), info_(std::monostate{}) {}
+    type(kind k);
 
     template <typename Info>
     type(kind k, Info info) : kind_(k), info_(std::move(info)) {}
 
-    void swap(type& other) noexcept;
-
     kind kind_ = kind::UNKNOWN;
-    std::variant<function_info, array_info, struct_info, std::monostate> info_;
+    using info_variant = std::variant<std::shared_ptr<function_info>, std::shared_ptr<array_info>,
+                                      std::shared_ptr<struct_info>, std::monostate>;
+
+    info_variant info_;
 
     /// @endcond
 };
