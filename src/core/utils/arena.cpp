@@ -32,7 +32,6 @@ void* arena::allocate_raw(size_t size, size_t alignment) {
     }
 
     current_ = ptr + size;
-    total_allocated_ += size;
     return ptr;
 }
 
@@ -44,7 +43,6 @@ void arena::reset() noexcept {
     blocks_.clear();
     current_ = nullptr;
     end_ = nullptr;
-    total_allocated_ = 0;
 }
 
 void arena::allocate_block() {

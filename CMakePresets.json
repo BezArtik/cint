@@ -29,7 +29,8 @@
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
         "ENABLE_SANITIZERS": "ON",
-        "ENABLE_WARNINGS_AS_ERRORS": "ON"
+        "ENABLE_WARNINGS_AS_ERRORS": "ON",
+        "BUILD_DOCS": "ON" 
       }
     },
     {
@@ -39,7 +40,19 @@
       "inherits": "gcc-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "BUILD_TESTS": "OFF"
+        "BUILD_TESTS": "OFF",
+        "BUILD_DOCS": "OFF" 
+      }
+    },
+    {
+      "name": "gcc-docs",
+      "displayName": "GCC Documentation Only",
+      "description": "Generate documentation without building the project",
+      "inherits": "gcc-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BUILD_TESTS": "OFF",
+        "BUILD_DOCS": "ON" 
       }
     }
   ],
@@ -54,6 +67,18 @@
       "name": "gcc-release",
       "configurePreset": "gcc-release",
       "displayName": "Build GCC Release"
+    },
+    {
+      "name": "gcc-docs",
+      "configurePreset": "gcc-docs",
+      "displayName": "Build Documentation",
+      "targets": ["doc"]
+    },
+    {
+      "name": "gcc-debug-with-docs",
+      "configurePreset": "gcc-debug",
+      "displayName": "Build GCC Debug + Documentation",
+      "targets": ["all", "doc"]
     }
   ],
 

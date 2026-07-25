@@ -1,5 +1,4 @@
 
-
 .vscode/
 /scripts
 merged_project.txt
@@ -7,3 +6,7 @@ merged_project.txt
 /out
 .cache/
 compile_commands.json
+/html/
+/latex/
+*.tmp
+Doxyfile

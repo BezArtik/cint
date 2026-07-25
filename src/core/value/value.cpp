@@ -10,8 +10,6 @@
 
 namespace core {
 
-value::value() : data_(std::monostate{}) {}
-
 core::value value::default_value(const core::type& t) {
     using k = core::type::kind;
     switch (t.get_kind()) {

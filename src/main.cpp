@@ -99,13 +99,13 @@ int run_program(const run_config& config) {
 
     auto registry = core::symbol_registry::build(ast, core::builtins);
 
-    semantics::type_checker checker(reporter, registry);
+    type_checker checker(reporter, registry);
     if (!checker.check(ast)) {
         std::cerr << "Semantic errors found.\n";
         return 1;
     }
 
-    runtime::interpreter interpreter(reporter, registry, config.writer_);
+    interpreter interpreter(reporter, registry, config.writer_);
     interpreter.interpret(ast);
 
     if (reporter.has_error()) {

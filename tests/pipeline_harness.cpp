@@ -25,12 +25,12 @@ bool pipeline_harness::parse() {
 }
 
 bool pipeline_harness::check_semantics() {
-    semantics::type_checker checker(reporter_, *registry_);
+    type_checker checker(reporter_, *registry_);
     return checker.check(ast_) && !reporter_.has_error();
 }
 
 bool pipeline_harness::interpret() {
-    runtime::interpreter interp(reporter_, *registry_);
+    interpreter interp(reporter_, *registry_);
     interp.interpret(ast_);
     return !reporter_.has_error();
 }

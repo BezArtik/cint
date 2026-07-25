@@ -13,8 +13,6 @@
 
 #include <unordered_set>
 
-namespace semantics {
-
 using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
@@ -487,5 +485,3 @@ t type_checker::type_of_member_access(const ast::member_access_expr& expr) {
 
     return obj_type.struct_fields()[*idx].second;
 }
-
-}  // namespace semantics

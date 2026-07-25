@@ -24,8 +24,6 @@
 #include <string>
 #include <utility>
 
-namespace runtime {
-
 using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
@@ -428,5 +426,3 @@ core::value interpreter::evaluate_index(const ast::index_expr& expr) {
 
     return (*arr)->at(static_cast<size_t>(i));
 }
-
-}  // namespace runtime
