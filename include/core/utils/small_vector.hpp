@@ -18,11 +18,6 @@ class small_vector {
         template <typename V>
         stack_allocator(const stack_allocator<V>& other) noexcept : buffer_(other.buffer_), used_(other.used_) {}
 
-        template <typename V>
-        struct rebind {
-            using other = stack_allocator<V>;
-        };
-
         U* allocate(size_t n) {
             if constexpr (std::is_same_v<U, T>) {
                 if (!*used_ && n <= N) {
@@ -90,18 +85,8 @@ public:
     reference operator[](size_type i) noexcept { return vec_[i]; }
     const_reference operator[](size_type i) const noexcept { return vec_[i]; }
 
-    reference back() noexcept { return vec_.back(); }
-    const_reference back() const noexcept { return vec_.back(); }
-
     pointer data() noexcept { return vec_.data(); }
     const_pointer data() const noexcept { return vec_.data(); }
-
-    size_type size() const noexcept { return vec_.size(); }
-    size_type capacity() const noexcept { return vec_.capacity(); }
-    bool empty() const noexcept { return vec_.empty(); }
-
-    void pop_back() noexcept { vec_.pop_back(); }
-    void clear() noexcept { vec_.clear(); }
 
     iterator begin() noexcept { return vec_.begin(); }
     iterator end() noexcept { return vec_.end(); }
