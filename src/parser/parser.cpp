@@ -8,10 +8,11 @@
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
-#include "core/utils/small_vector.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <memory_resource>
 #include <span>
 #include <utility>
 #include <vector>
@@ -83,6 +84,10 @@ parser::parser(std::span<const core::token> tokens, core::error_reporter& report
     : tokens_(tokens), reporter_(reporter), arena_(arena), mr_(mr) {}
 
 parser::ast_list parser::parse() {
+    std::array<std::byte, 4096> temp_buf;
+    std::pmr::monotonic_buffer_resource local_mr(temp_buf.data(), temp_buf.size());
+    temp_mr_ = &local_mr;
+
     ast_list statements(&mr_);
     while (!is_at_end()) {
         auto stmt = declaration();
@@ -148,7 +153,7 @@ ast::stmt_ptr parser::declaration() {
 }
 
 core::type parser::parse_array_dimensions(core::type base_type) {
-    core::small_vector<size_t, 3> dimensions;
+    std::pmr::vector<size_t> dimensions(temp_mr_);
 
     while (match({tt::LEFT_BRACKET})) {
         size_t dim_size = 0;
@@ -200,7 +205,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 ast::stmt_ptr parser::struct_declaration(const core::token& name) {
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
-    std::vector<core::type::field_t> fields;
+    std::pmr::vector<core::type::field_t> fields(temp_mr_);
 
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto field_type = parse_type();
@@ -212,7 +217,7 @@ ast::stmt_ptr parser::struct_declaration(const core::token& name) {
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    auto struct_type = core::type::struct_type(name.lexeme_, std::move(fields));
+    auto struct_type = core::type::struct_type(name.lexeme_, {fields.begin(), fields.end()});
 
     return ast::make_stmt<ast::struct_declaration>(arena_, name.loc_, std::move(struct_type), name);
 }

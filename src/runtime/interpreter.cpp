@@ -10,7 +10,6 @@
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
-#include "core/utils/small_vector.hpp"
 #include "core/utils/symbol_registry.hpp"
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
@@ -19,10 +18,13 @@
 #include "debug/trace_level.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <iterator>
+#include <memory_resource>
 #include <string>
 #include <utility>
+#include <vector>
 
 using tt = core::token_type;
 using t = core::type;
@@ -353,14 +355,16 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    core::small_vector<core::value, 8> args_buf;
+    std::array<std::byte, 4096> args_buf;
+    std::pmr::monotonic_buffer_resource args_mr(args_buf.data(), args_buf.size());
+    std::pmr::vector<core::value> args_vec(&args_mr);
     try {
-        std::ranges::transform(expr.args_, std::back_inserter(args_buf),
+        std::ranges::transform(expr.args_, std::back_inserter(args_vec),
                                [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
     auto func = registry_.find(name);
-    std::span<const core::value> args(args_buf.data(), expr.args_.size());
+    std::span<const core::value> args(args_vec.data(), expr.args_.size());
 
     return core::visit(
         core::overloaded{
@@ -378,7 +382,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             core::scope_guard guard(values_);
             for (size_t i = 0; i < body->params_.size(); ++i) {
                 const auto& param = body->params_[i];
-                auto converted = core::value::convert(std::move(args_buf[i]), registry_.resolve_type(param.type_));
+                auto converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
                 values_.define(param.name_.lexeme_, std::move(converted));
             }
             for (const auto& s : body->block_->statements_) {

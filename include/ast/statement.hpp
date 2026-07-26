@@ -7,7 +7,6 @@
 #pragma once
 
 #include "ast/expression.hpp"
-#include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 
 #include <algorithm>
