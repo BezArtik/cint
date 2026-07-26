@@ -18,10 +18,13 @@ for (int i = 0; i < size - 1; i++) {
 }
 
 print_str("Checking...\n");
-bool res = true;
-for (int i = 0; i < size - 1; ++i) {
-    if (arr[i] > arr[i + 1]) res = false;
+bool check() {
+    for (int i = 0; i < size - 1; ++i) {
+        if (arr[i] > arr[i + 1]) { return false; }
+    }
+    return true;
 }
+bool res = check();
 
 if (res) {
     print_str("The array is sorted\n");

@@ -16,23 +16,6 @@ struct Pair {
 };
 
 int MAX = 500;
-int BITS_PER_INT = 32;
-int bits[10000];
-
-void set_bit(int n) {
-    int idx = n / BITS_PER_INT;
-    int bit = n % BITS_PER_INT;
-    int mask = 1 << bit;
-    bits[idx] = bits[idx] | mask;
-}
-
-bool get_bit(int n) {
-    int idx = n / BITS_PER_INT;
-    int bit = n % BITS_PER_INT;
-    int mask = 1 << bit;
-    return (bits[idx] & mask) != 0;
-}
-
 struct Circle circles[500];
 
 double distance(struct Point a, struct Point b) {
@@ -66,14 +49,12 @@ print_str(" random circles...\n");
 srand(42);
 
 for (int i = 0; i < MAX; ++i) {
-    circles[i].center.x = itod(rand_int(0, 1000));
-    circles[i].center.y = itod(rand_int(0, 1000));
+    circles[i].center.x = rand_dbl(0.0, 1000.0);
+    circles[i].center.y = rand_dbl(0.0, 1000.0);
     circles[i].radius = rand_dbl(10.0, 100.0);
 }
 
 print_str("Counting intersections...\n");
-
-double start_time = itod(0);
 
 int result = count_intersections();
 

@@ -18,7 +18,7 @@ double adaptive(double a, double b, double eps, int depth) {
     double right = simpson(mid, b);
     double diff = left + right - whole;
 
-    if (diff < 0.0) { diff = 0.0 - diff; }
+    if (diff < 0.0) { diff = -diff; }
 
     if (diff < 15.0 * eps || depth > 20) { return left + right + (left + right - whole) / 15.0; }
 
@@ -31,9 +31,8 @@ print_str("Integral of sin(x)*e^(-x/2) from 0 to PI\n");
 print_str("============================================\n\n");
 
 int powers = 6;
-int i = 0;
 
-while (i < powers) {
+for (int i = 0; i < powers; ++i) {
     double result = adaptive(0.0, PI, eps, 0);
 
     print_str("eps = ");
@@ -43,7 +42,7 @@ while (i < powers) {
     print_dbl(result);
     print_str("\n");
 
-    eps = eps / 10.0;
+    eps /= 10.0;
     double exact = 4.0 / 5.0 * (1.0 + exp(-PI / 2.0));
     print_str("Exact value: ");
     print_dbl(exact);
@@ -51,5 +50,4 @@ while (i < powers) {
     print_str("Error: ");
     print_dbl(result - exact);
     print_str("\n");
-    i++;
 }

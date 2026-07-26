@@ -1,13 +1,12 @@
 // samples/monte_carlo.c
 
-int monte_carlo_pi(int iterations) {
+double monte_carlo_pi(int iterations) {
     int inside = 0;
-    int i = 0;
     int seed = 1;
     double x = 0.0;
     double y = 0.0;
 
-    while (i < iterations) {
+    for (int i = 0; i < iterations; ++i) {
         seed = (seed * 1103515245 + 12345) % 2147483648;
         x = seed;
         x = x / 1073741824.0 - 1.0;
@@ -16,14 +15,11 @@ int monte_carlo_pi(int iterations) {
         y = seed;
         y = y / 1073741824.0 - 1.0;
 
-        if (x * x + y * y <= 1.0) { inside = inside + 1; }
-
-        i = i + 1;
+        if (x * x + y * y <= 1.0) { ++inside; }
     }
 
-    double pi = 4.0 * inside / iterations;
-    print_dbl(pi);
-    return inside;
+    return 4.0 * inside / iterations;
 }
 
-int result = monte_carlo_pi(100000);
+double result = monte_carlo_pi(100000);
+print_dbl(result);
