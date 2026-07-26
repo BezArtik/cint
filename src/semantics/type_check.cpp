@@ -79,7 +79,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
                 for (size_t i = 0; i < lst->elements_.size(); ++i) {
                     auto elem_type = type_of(lst->elements_[i]);
                     if (elem_type.is_unknown()) continue;
-                    if (!fields[i].second.is_assignable_from(elem_type)) {
+                    if (fields[i].second != elem_type) {
                         reporter_.error(stmt, err::type_mismatch_initialization, name);
                         return;
                     }
@@ -90,7 +90,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         }
 
         if (resolved_type.is_array() && resolved_type.array_size() == 0 && init_type.is_array()) {
-            if (resolved_type.element_type().is_assignable_from(init_type.element_type())) {
+            if (resolved_type.element_type() == init_type.element_type()) {
                 auto inferred_type = t::array_type(type.element_type(), init_type.array_size());
                 symbols_.define(name, inferred_type);
                 return;
@@ -99,7 +99,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
             return;
         }
 
-        if (!resolved_type.is_assignable_from(init_type)) {
+        if (resolved_type != init_type) {
             reporter_.error(stmt, err::type_mismatch_initialization, name);
             return;
         }
@@ -164,7 +164,7 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
 
     auto return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
-    if (!curr_return_type_->is_assignable_from(return_type)) reporter_.error(stmt, err::return_type_mismatch);
+    if (*curr_return_type_ != return_type) reporter_.error(stmt, err::return_type_mismatch);
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
@@ -312,7 +312,7 @@ t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
     if (target_type.is_unknown() || value_type.is_unknown()) return t::unknown_type();
 
     if (expr.op_.type_ == tt::EQUAL) {
-        if (!target_type.is_assignable_from(value_type) || !is_lvalue(expr.target_)) {
+        if (target_type != value_type || !is_lvalue(expr.target_)) {
             reporter_.error(expr, err::type_mismatch_assignment);
             return t::unknown_type();
         }
@@ -418,7 +418,7 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     for (size_t i = 0; i < expr.args_.size(); ++i) {
         auto arg_type = type_of(expr.args_[i]);
         if (arg_type.is_unknown()) return t::unknown_type();
-        if (!param_types[i].is_assignable_from(arg_type)) {
+        if (param_types[i] != arg_type) {
             reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
             return t::unknown_type();
         }
@@ -439,7 +439,7 @@ t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr)
     for (size_t i = 1; i < expr.elements_.size(); ++i) {
         auto el_type = type_of(expr.elements_[i]);
         if (el_type.is_unknown()) return t::unknown_type();
-        if (!first_type.is_assignable_from(el_type)) {
+        if (first_type != el_type) {
             reporter_.error(expr, err::initializer_list_inconsistent_types);
             return t::unknown_type();
         }

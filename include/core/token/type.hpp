@@ -161,22 +161,6 @@ public:
 
     /// @}
 
-    /**
-     * @brief Проверяет совместимость присваивания.
-     *
-     * `target.is_assignable_from(source)` означает, что значение типа source
-     * может быть присвоено переменной типа target.
-     *
-     * Правила:
-     * - Тождественные типы — совместимы
-     * - target=double, source=int — совместимо (повышение)
-     * - Все остальные комбинации — несовместимы
-     *
-     * @param source Тип источника
-     * @return true, если присваивание допустимо.
-     */
-    bool is_assignable_from(const type& source) const noexcept;
-
     /// Категория типа.
     kind get_kind() const noexcept;
 

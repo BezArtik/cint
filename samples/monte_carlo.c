@@ -8,11 +8,11 @@ double monte_carlo_pi(int iterations) {
 
     for (int i = 0; i < iterations; ++i) {
         seed = (seed * 1103515245 + 12345) % 2147483648;
-        x = seed;
+        x = itod(seed);
         x = x / 1073741824.0 - 1.0;
 
         seed = (seed * 1103515245 + 12345) % 2147483648;
-        y = seed;
+        y = itod(seed);
         y = y / 1073741824.0 - 1.0;
 
         if (x * x + y * y <= 1.0) { ++inside; }

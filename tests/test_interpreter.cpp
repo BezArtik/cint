@@ -48,7 +48,6 @@ INSTANTIATE_TEST_SUITE_P(
         valid_execution_case{"void foo() { }", "empty void func"},
         valid_execution_case{"int foo(int a) { return a; }", "param return"},
         valid_execution_case{"int foo() { int x = 42; return x; }", "var init + return"},
-        valid_execution_case{"double foo() { int x = 1; return x; }", "int to double"},
         valid_execution_case{"int arr[] = {1, 2, 3}; int x = arr[0] + arr[1] + arr[2];", "array access"},
         valid_execution_case{"int m[2][2] = {{1,2}, {3,4}}; int x = m[0][0] + m[1][1];", "multidim array access"},
         valid_execution_case{"struct Point { int x; int y; };", "struct decl"},

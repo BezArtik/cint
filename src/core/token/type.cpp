@@ -83,12 +83,6 @@ bool type::operator!=(const type& other) const noexcept {
     return !(*this == other);
 }
 
-bool type::is_assignable_from(const type& source) const noexcept {
-    if (*this == source) return true;
-    if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
-    return false;
-}
-
 const type& type::return_type() const {
     assert(is_function());
     return *std::get<std::shared_ptr<function_info>>(info_)->return_type_;
