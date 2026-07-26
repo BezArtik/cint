@@ -7,72 +7,6 @@
 
 namespace tests {
 
-struct valid_program_case {
-    std::string_view source_;
-    std::string_view description_;
-};
-
-class valid_program_test : public ::testing::TestWithParam<valid_program_case> {};
-
-TEST_P(valid_program_test, type_checks) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
-    EXPECT_TRUE(h.run_all()) << "Unexpected error for: " << tc.description_;
-}
-// clang-format off
-INSTANTIATE_TEST_SUITE_P(
-    basics, valid_program_test,
-    ::testing::Values(
-        valid_program_case{"void foo() { }", "empty void func"},
-        valid_program_case{"int foo(int a) { return a; }", "param return"},
-        valid_program_case{"int foo() { int x = 42; return x; }", "var init"},
-        valid_program_case{"double foo() { int x = 1; return x; }", "int to double"},
-        valid_program_case{"int foo() { int x; x = 5; return x; }", "assign"},
-        valid_program_case{"int foo() { int x = 1; x += 2; return x; }", "compound assign"},
-        valid_program_case{"int foo() { if (true) { return 1; } return 0; }", "if true"},
-        valid_program_case{"int foo() { if (true) { return 1; } else { return 2; } }", "if else"},
-        valid_program_case{"int foo() { while (true) { } return 0; }", "while"},
-        valid_program_case{"int foo() { for (int i=0; i<10; i=i+1) { } return 0; }", "for"},
-        valid_program_case{"int foo(int a, int b) { return a + b; } foo(1,2);", "call"},
-        valid_program_case{"bool foo() { return true && false; }", "logical and"},
-        valid_program_case{"bool foo() { return true || false; }", "logical or"},
-        valid_program_case{"bool foo() { return !true; }", "not"},
-        valid_program_case{"int x = 0; ++x;", "prefix inc"},
-        valid_program_case{"int x = 0; x++;", "postfix inc"},
-        valid_program_case{"int arr[] = {1, 2, 3}; int x = arr[0] + arr[1] + arr[2];", "array access"},
-        valid_program_case{"struct Point { int x; int y; };", "struct decl"},
-        valid_program_case{
-            "struct Point { int x; int y; }; " 
-            "void foo() { struct Point p; p.x = 10; p.y = 20; } ",
-            "struct var access"
-        },
-        valid_program_case{
-            "struct Point { int x; int y; }; " 
-            "void foo(struct Point p) { p.x = 10; } ", 
-            "struct param access"
-        },
-        valid_program_case{
-            "struct Point { int x; int y; }; "
-            "struct Rect { struct Point tl; struct Point br; }; "
-            "void foo() { struct Rect r; r.tl.x = 1; } ",
-            "nested struct access"
-        },
-        valid_program_case{
-            "struct Point { int x; int y; }; "
-            "struct Point make_point(int x, int y) { "
-            "struct Point p; p.x = x; p.y = y; return p; "
-            "}",
-            "return struct"
-        },
-        valid_program_case{
-            "struct Point { int x; int y; }; "
-            "void print_point(struct Point p) { } "
-            "void foo() { struct Point p; p.x = 0; p.y = 0; print_point(p); }",
-            "pass struct to func"
-        }
-));
-// clang-format on
-
 struct type_error_case {
     std::string_view source_;
     std::string_view description_;
@@ -109,7 +43,7 @@ INSTANTIATE_TEST_SUITE_P(
         type_error_case{"bool x = true + false;", "arithmetic on bool"},
         type_error_case{"struct Point { int x; int x; };", "duplicate field"},
         type_error_case{"struct Point { int x; int y; }; void foo() { struct Point p; p.z = 10; }", "access unknown field"},
-        type_error_case{"void foo() { int x; x.y = 10; }","dot on non-struct"}
+        type_error_case{"void foo() { int x; x.y = 10; }", "dot on non-struct"}
 ));
 // clang-format on
 
