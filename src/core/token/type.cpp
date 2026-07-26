@@ -86,8 +86,6 @@ bool type::operator!=(const type& other) const noexcept {
 bool type::is_assignable_from(const type& source) const noexcept {
     if (*this == source) return true;
     if (kind_ == kind::DOUBLE && source.kind_ == kind::INT) return true;
-    if (is_array() && source.is_array())
-        return element_type() == source.element_type() && array_size() == source.array_size();
     return false;
 }
 
