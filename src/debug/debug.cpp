@@ -80,7 +80,7 @@ void print_postfix(const debug_writer& writer, const core::arena_ptr<ast::postfi
 
 void print_call_ast(const debug_writer& writer, const core::arena_ptr<ast::call_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    auto msg = indent_str(level) + "Call: " + std::string(e->callee_.lexeme_) + location_str(e->loc_);
+    auto&& msg = indent_str(level) + "Call: " + std::string(e->callee_.lexeme_) + location_str(e->loc_);
     if (e->args_.empty()) {
         writer.emit(msg + " (no args)\n");
         return;
@@ -273,8 +273,8 @@ void print_tokens(const debug_writer& writer, std::span<const core::token> token
         "═══════════════════════════════════════════════════════\n\n");
     writer.emit(std::string(60, '-') + "\n");
 
-    for (const auto& tok : tokens) {
-        auto lexeme = tok.lexeme_.empty() ? std::string_view("(empty)") : tok.lexeme_;
+    for (auto&& tok : tokens) {
+        auto&& lexeme = tok.lexeme_.empty() ? std::string_view("(empty)") : tok.lexeme_;
         std::ostringstream oss;
         oss << std::left << std::setw(20) << core::token_type_names[static_cast<size_t>(tok.type_)] << std::setw(20)
             << lexeme << tok.loc_.line_ << ":" << tok.loc_.column_ << "\n";
