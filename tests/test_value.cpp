@@ -132,22 +132,6 @@ TEST(value_test, lt_ints) {
     EXPECT_FALSE(op::lt(b, a).to_bool());
 }
 
-TEST(value_test, and_op) {
-    v t(true);
-    v f(false);
-    EXPECT_TRUE(op::and_op(t, t).to_bool());
-    EXPECT_FALSE(op::and_op(t, f).to_bool());
-    EXPECT_FALSE(op::and_op(f, t).to_bool());
-}
-
-TEST(value_test, or_op) {
-    v t(true);
-    v f(false);
-    EXPECT_TRUE(op::or_op(t, t).to_bool());
-    EXPECT_TRUE(op::or_op(t, f).to_bool());
-    EXPECT_FALSE(op::or_op(f, f).to_bool());
-}
-
 TEST(value_test, not_op) {
     v t(true);
     v f(false);

@@ -76,12 +76,6 @@ value ge(const value& a, const value& b) {
     return arithmetic_op(a, b, std::greater_equal<>{});
 }
 
-value and_op(const value& a, const value& b) {
-    return a.to_bool() && b.to_bool();
-}
-value or_op(const value& a, const value& b) {
-    return a.to_bool() || b.to_bool();
-}
 value not_op(const value& a) {
     return !a.to_bool();
 }

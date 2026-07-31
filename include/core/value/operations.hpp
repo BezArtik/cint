@@ -72,9 +72,7 @@ value ge(const value& a, const value& b);   ///< Больше или равно:
 /// @ingroup CoreOps
 /// @{
 
-value and_op(const value& a, const value& b);  ///< Логическое И: a && b
-value or_op(const value& a, const value& b);   ///< Логическое ИЛИ: a || b
-value not_op(const value& a);                  ///< Логическое НЕ: !a
+value not_op(const value& a);  ///< Логическое НЕ: !a
 
 /// @}
 
