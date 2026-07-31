@@ -11,7 +11,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <memory_resource>
 #include <span>
 #include <utility>
@@ -57,12 +56,12 @@ constexpr std::array infix_table = {
 // clang-format on
 
 int8_t get_precedence(tt type) noexcept {
-    auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
+    auto&& it = std::ranges::find(infix_table, type, &infix_rule::type_);
     return it != infix_table.end() ? it->precedence_ : -1;
 }
 
 bool is_right_assoc(tt type) noexcept {
-    auto it = std::ranges::find(infix_table, type, &infix_rule::type_);
+    auto&& it = std::ranges::find(infix_table, type, &infix_rule::type_);
     return it != infix_table.end() ? it->right_assoc_ : false;
 }
 
@@ -90,14 +89,14 @@ parser::ast_list parser::parse() {
 
     ast_list statements(&mr_);
     while (!is_at_end()) {
-        auto stmt = declaration();
+        auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
     }
     return statements;
 }
 
 bool parser::match(std::initializer_list<tt> types) noexcept {
-    for (auto type : types) {
+    for (auto&& type : types) {
         if (check(type)) {
             advance();
             return true;
@@ -128,19 +127,18 @@ const core::token& parser::peek() const noexcept {
     return tokens_[current_];
 }
 const core::token& parser::prev() const noexcept {
-    assert(current_ > 0 && "No previous token available");
     return tokens_[current_ - 1];
 }
 
 ast::stmt_ptr parser::declaration() {
-    auto parse_decl = [&](auto type) {
-        auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+    auto&& parse_decl = [&](auto&& type) {
+        auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
         return match({tt::LEFT_PAREN}) ? func_declaration(std::move(type), name)
                                        : var_declaration(std::move(type), name);
     };
     try {
         if (match({tt::KW_STRUCT})) {
-            auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+            auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
             return check(tt::LEFT_BRACE) ? struct_declaration(name)
                                          : parse_decl(core::type::struct_type(name.lexeme_, {}));
         }
@@ -158,9 +156,9 @@ core::type parser::parse_array_dimensions(core::type base_type) {
     while (match({tt::LEFT_BRACKET})) {
         size_t dim_size = 0;
         if (match({tt::NUMBER})) {
-            auto size_token = prev();
+            auto&& size_token = prev();
             try {
-                auto val = core::value::from_string(size_token.lexeme_, false);
+                auto&& val = core::value::from_string(size_token.lexeme_, false);
                 dim_size = static_cast<size_t>(val.to_int());
             } catch (const core::interpret_error&) { reporter_.parse_error(size_token, err::unexpected_token); }
             if (dim_size == 0) reporter_.parse_error(size_token, err::unexpected_token);
@@ -169,7 +167,7 @@ core::type parser::parse_array_dimensions(core::type base_type) {
         dimensions.push_back(dim_size);
     }
 
-    for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it)
+    for (auto it = dimensions.rbegin(), endit = dimensions.rend(); it != endit; ++it)
         base_type = core::type::array_type(base_type, *it);
 
     return base_type;
@@ -194,9 +192,9 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
-    auto body = block_statement();
-    auto& block = std::get<ast::block_stmt>(body->data_);
-    auto* body_copy = arena_.allocate<ast::block_stmt>(std::move(block));
+    auto&& body = block_statement();
+    auto&& block = std::get<ast::block_stmt>(body->data_);
+    auto&& body_copy = arena_.allocate<ast::block_stmt>(std::move(block));
     func.block_ = core::arena_ptr<ast::block_stmt>(body_copy);
 
     return ast::make_stmt(arena_, std::move(func));
@@ -208,8 +206,8 @@ ast::stmt_ptr parser::struct_declaration(const core::token& name) {
     std::pmr::vector<core::type::field_t> fields(temp_mr_);
 
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
-        auto field_type = parse_type();
-        auto field_name = consume(tt::IDENTIFIER, err::expected_identifier);
+        auto&& field_type = parse_type();
+        auto&& field_name = consume(tt::IDENTIFIER, err::expected_identifier);
         consume(tt::SEMICOLON, err::expected_semicolon);
         fields.emplace_back(field_name.lexeme_, std::move(field_type));
     }
@@ -217,20 +215,20 @@ ast::stmt_ptr parser::struct_declaration(const core::token& name) {
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    auto struct_type = core::type::struct_type(name.lexeme_, {fields.begin(), fields.end()});
+    auto&& struct_type = core::type::struct_type(name.lexeme_, {fields.begin(), fields.end()});
 
     return ast::make_stmt<ast::struct_declaration>(arena_, name.loc_, std::move(struct_type), name);
 }
 
 core::type parser::parse_type() {
     if (match({tt::KW_STRUCT})) {
-        auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+        auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
         return core::type::struct_type(name.lexeme_, {});
     }
 
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
-        const auto& kw = prev();
-        auto& info = get_keyword_info(kw.type_);
+        auto&& kw = prev();
+        auto&& info = get_keyword_info(kw.type_);
         if (!info.is_type_) reporter_.parse_error(kw, err::expected_type);
         return info.semantic_type_;
     }
@@ -239,8 +237,8 @@ core::type parser::parse_type() {
 }
 
 ast::func_param parser::parse_param() {
-    auto type = parse_type();
-    auto name = consume(tt::IDENTIFIER, err::expected_identifier);
+    auto&& type = parse_type();
+    auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
     type = parse_array_dimensions(type);
     return {type, name};
 }
@@ -252,7 +250,7 @@ ast::stmt_ptr parser::statement() {
     if (match({tt::KW_RETURN})) return return_statement();
     if (match({tt::LEFT_BRACE})) return block_statement();
 
-    auto expr = expression();
+    auto&& expr = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
     return ast::make_stmt<ast::expression_stmt>(arena_, prev().loc_, std::move(expr));
@@ -260,10 +258,10 @@ ast::stmt_ptr parser::statement() {
 
 ast::stmt_ptr parser::while_statement() {
     consume(tt::LEFT_PAREN, err::expected_left_paren_while);
-    auto condition = expression();
+    auto&& condition = expression();
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
 
-    auto body = statement();
+    auto&& body = statement();
     return ast::make_stmt<ast::while_stmt>(arena_, prev().loc_, std::move(condition), std::move(body));
 }
 
@@ -273,7 +271,7 @@ ast::stmt_ptr parser::for_statement() {
     ast::stmt_ptr initializer;
     if (match({tt::SEMICOLON})) {
     } else if (is_type_start(peek().type_)) {
-        auto type = parse_type();
+        auto&& type = parse_type();
         initializer = var_declaration(type, consume(tt::IDENTIFIER, err::expected_identifier));
     } else {
         initializer = statement();
@@ -287,17 +285,17 @@ ast::stmt_ptr parser::for_statement() {
     if (!check(tt::RIGHT_PAREN)) increment = expression();
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
-    auto body = statement();
+    auto&& body = statement();
     return ast::make_stmt<ast::for_stmt>(arena_, prev().loc_, std::move(initializer), std::move(condition),
                                          std::move(increment), std::move(body));
 }
 
 ast::stmt_ptr parser::if_statement() {
     consume(tt::LEFT_PAREN, err::expected_left_paren_if);
-    auto condition = expression();
+    auto&& condition = expression();
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
 
-    auto then_branch = statement();
+    auto&& then_branch = statement();
     ast::stmt_ptr else_branch;
 
     if (match({tt::KW_ELSE})) else_branch = statement();
@@ -307,7 +305,7 @@ ast::stmt_ptr parser::if_statement() {
 }
 
 ast::stmt_ptr parser::return_statement() {
-    const auto& keyword = prev();
+    auto&& keyword = prev();
 
     std::optional<ast::expression> value;
     if (!check(tt::SEMICOLON)) value = expression();
@@ -319,7 +317,7 @@ ast::stmt_ptr parser::return_statement() {
 ast::stmt_ptr parser::block_statement() {
     ast::stmt_list statements(&mr_);
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
-        auto stmt = declaration();
+        auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
@@ -331,11 +329,11 @@ ast::expression parser::expression() {
 }
 
 ast::expression parser::assignment() {
-    auto left = parse_expression(0);
+    auto&& left = parse_expression(0);
 
     if (is_assignment(peek().type_)) {
-        auto op = advance();
-        auto right = assignment();
+        auto&& op = advance();
+        auto&& right = assignment();
         return ast::make_expr<ast::assignment_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
 
@@ -343,16 +341,16 @@ ast::expression parser::assignment() {
 }
 
 ast::expression parser::parse_expression(int8_t precedence) {
-    auto left = unary();
+    auto&& left = unary();
 
     while (true) {
-        auto op_type = peek().type_;
-        auto p = get_precedence(op_type);
+        auto&& op_type = peek().type_;
+        auto&& p = get_precedence(op_type);
         if (p < precedence) break;
 
-        auto op = advance();
-        auto next_prec = is_right_assoc(op_type) ? p : p + 1;
-        auto right = parse_expression(next_prec);
+        auto&& op = advance();
+        auto&& next_prec = is_right_assoc(op_type) ? p : p + 1;
+        auto&& right = parse_expression(next_prec);
         left = ast::make_expr<ast::binary_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
 
@@ -361,21 +359,21 @@ ast::expression parser::parse_expression(int8_t precedence) {
 
 ast::expression parser::unary() {
     if (match({tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT})) {
-        const auto& op = prev();
-        auto operand = unary();
+        auto&& op = prev();
+        auto&& operand = unary();
         return ast::make_expr<ast::unary_expr>(arena_, op.loc_, op, std::move(operand));
     }
     return postfix();
 }
 
 ast::expression parser::postfix() {
-    auto expr = primary();
+    auto&& expr = primary();
 
     while (true) {
         if (match({tt::LEFT_BRACKET})) {
             expr = finish_index(std::move(expr));
         } else if (match({tt::DOT})) {
-            auto member = consume(tt::IDENTIFIER, err::expected_identifier);
+            auto&& member = consume(tt::IDENTIFIER, err::expected_identifier);
             expr = ast::make_expr<ast::member_access_expr>(arena_, member.loc_, std::move(expr), member);
         } else if (match({tt::INCREMENT, tt::DECREMENT})) {
             expr = ast::make_expr<ast::postfix_expr>(arena_, prev().loc_, std::move(expr), prev());
@@ -410,7 +408,7 @@ ast::expression parser::primary() {
     }
 
     if (match({tt::LEFT_PAREN})) {
-        auto expr = expression();
+        auto&& expr = expression();
         consume(tt::RIGHT_PAREN, err::expected_right_paren);
         return expr;
     }
@@ -433,7 +431,7 @@ ast::expression parser::finish_call(const core::token& callee) {
 }
 
 ast::expression parser::finish_index(ast::expression object) {
-    auto index = expression();
+    auto&& index = expression();
     consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
     return ast::make_expr<ast::index_expr>(arena_, prev().loc_, std::move(object), std::move(index));
 }
@@ -441,10 +439,10 @@ ast::expression parser::finish_index(ast::expression object) {
 void parser::synchronize() {
     advance();
 
-    int brace_depth = 0;
+    uint32_t brace_depth = 0;
 
     while (!is_at_end()) {
-        auto type = peek().type_;
+        auto&& type = peek().type_;
 
         if (type == tt::LEFT_BRACE) {
             ++brace_depth;
