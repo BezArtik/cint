@@ -78,7 +78,7 @@ core::type value::type() const {
             [](bool_t) { return type::bool_type(); },
             [](const string_t&) { return type::string_type(); },
             [](const array_t& a) {
-                if (a->empty() || a->empty()) return type::array_type(type::unknown_type(), 0);
+                if (a->empty()) return type::array_type(type::unknown_type(), 0);
                 return type::array_type(a->front().type(), a->size());
             },
             [](const struct_t& s) { return s.type_; },
