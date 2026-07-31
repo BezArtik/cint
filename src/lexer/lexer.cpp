@@ -25,7 +25,7 @@ lexer::token_list lexer::scan_tokens() {
     }
 
     tokens_.emplace_back(tt::END_OF_FILE, "", loc_);
-    return std::move(tokens_);
+    return tokens_;
 }
 
 void lexer::add_token(tt type) {
@@ -33,14 +33,14 @@ void lexer::add_token(tt type) {
 }
 
 void lexer::add_token(tt type, core::location loc) {
-    auto text = source_.substr(start_, current_ - start_);
+    auto&& text = source_.substr(start_, current_ - start_);
     tokens_.emplace_back(type, text, loc);
 }
 
 // clang-format off
 void lexer::scan_token() {
-    auto start_loc = loc_; 
-    auto c = advance();
+    auto&& start_loc = loc_; 
+    auto&& c = advance();
     switch (c) {
         case '(': add_token(tt::LEFT_PAREN, start_loc); break;
         case ')': add_token(tt::RIGHT_PAREN, start_loc); break;
@@ -114,12 +114,12 @@ void lexer::scan_token() {
             break;
     }
 }
-
+// clang-format on
 void lexer::consume_identifier_or_keyword(core::location start_loc) {
     while (std::isalnum(peek()) || peek() == '_') advance();
 
-    auto lexeme = source_.substr(start_, current_ - start_);
-    auto type = core::lookup_keyword(lexeme);
+    auto&& lexeme = source_.substr(start_, current_ - start_);
+    auto&& type = core::lookup_keyword(lexeme);
 
     std::optional<core::value> literal_val;
     if (type == tt::KW_TRUE)
@@ -127,7 +127,7 @@ void lexer::consume_identifier_or_keyword(core::location start_loc) {
     else if (type == tt::KW_FALSE)
         literal_val = false;
 
-    auto text = source_.substr(start_, current_ - start_);
+    auto&& text = source_.substr(start_, current_ - start_);
     tokens_.emplace_back(type, text, start_loc, literal_val);
 }
 
@@ -141,10 +141,10 @@ void lexer::consume_number(core::location start_loc) {
         while (std::isdigit(peek())) advance();
     }
 
-    auto text = source_.substr(start_, current_ - start_);
+    auto&& text = source_.substr(start_, current_ - start_);
 
     try {
-        auto val = core::value::from_string(text, is_double);
+        auto&& val = core::value::from_string(text, is_double);
         tokens_.emplace_back(tt::NUMBER, text, start_loc, val);
     } catch (const core::interpret_error&) {
         reporter_.error(start_loc, err::unexpected_character);
@@ -153,14 +153,14 @@ void lexer::consume_number(core::location start_loc) {
 }
 
 void lexer::consume_string() {
-    auto start_loc = loc_;
+    auto&& start_loc = loc_;
 
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             loc_.line_++;
             loc_.column_ = 1;
         }
-        if (peek() == '\\' && peek_next() != '\0') advance(); 
+        if (peek() == '\\' && peek_next() != '\0') advance();
         advance();
     }
 
@@ -169,25 +169,25 @@ void lexer::consume_string() {
         return;
     }
 
-    advance(); 
+    advance();
 
-    auto raw = source_.substr(start_ + 1, current_ - start_ - 2);
-    auto processed = process_escape_sequences(raw, start_loc);
+    auto&& raw = source_.substr(start_ + 1, current_ - start_ - 2);
+    auto&& processed = process_escape_sequences(raw, start_loc);
 
-    auto text = source_.substr(start_, current_ - start_);
+    auto&& text = source_.substr(start_, current_ - start_);
     tokens_.emplace_back(tt::STRING, text, start_loc, std::move(processed));
 }
-
+// clang-format off
 std::string lexer::process_escape_sequences(std::string_view raw, core::location start_loc) {
     std::string result;
     result.reserve(raw.size());
 
-    auto it = raw.begin();
-    auto end = raw.end();
+    auto&& it = raw.begin();
+    auto&& end = raw.end();
 
     while (it != end) {
         if (*it == '\\') {
-            auto next = std::next(it);
+            auto&& next = std::next(it);
             if (next == end) {
                 reporter_.error(start_loc, err::unterminated_string);
                 break;
@@ -213,6 +213,7 @@ std::string lexer::process_escape_sequences(std::string_view raw, core::location
 
     return result;
 }
+// clang-format on 
 
 char lexer::advance() noexcept {
     loc_.column_++;
