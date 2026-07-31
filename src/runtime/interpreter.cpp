@@ -34,12 +34,12 @@ namespace op = core::ops;
 namespace {
 
 core::value apply_increment(core::value& val, core::token_type op, bool return_old) {
-    auto old_val = val;
+    auto&& old_val = val;
 
-    if (auto* i = val.as_mut<core::value::int_t>()) {
-        val = (op == tt::INCREMENT ? *i + 1 : *i - 1);
-    } else if (auto* d = val.as_mut<core::value::double_t>()) {
-        val = (op == tt::INCREMENT ? *d + 1.0 : *d - 1.0);
+    if (val.is_int()) {
+        val = (op == tt::INCREMENT ? val.to_int() + 1 : val.to_int() - 1);
+    } else if (val.is_double()) {
+        val = (op == tt::INCREMENT ? val.to_double() + 1.0 : val.to_double() - 1.0);
     }
 
     return return_old ? old_val : val;
@@ -56,7 +56,6 @@ struct interpreter::execution_result {
     static execution_result normal() { return {kind::normal, {}}; }
     static execution_result return_(core::value v) { return {kind::return_, std::move(v)}; }
 
-    bool is_normal() const noexcept { return kind_ == kind::normal; }
     bool is_return() const noexcept { return kind_ == kind::return_; }
 };
 
@@ -66,7 +65,7 @@ interpreter::interpreter(core::error_reporter& reporter, const core::symbol_regi
 
 void interpreter::interpret(std::span<const ast::stmt_ptr> statements) {
     try {
-        for (const auto& stmt : statements) {
+        for (auto&& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
     } catch (const core::interpret_error&) {}
@@ -93,25 +92,25 @@ interpreter::execution_result interpreter::execute_expression_stmt(const ast::ex
 }
 
 interpreter::execution_result interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
-    auto type = registry_.resolve_type(stmt.type_);
-    auto name = stmt.name_.lexeme_;
-    auto init_val = core::value::default_value(type);
+    auto&& type = registry_.resolve_type(stmt.type_);
+    auto&& name = stmt.name_.lexeme_;
+    auto&& init_val = core::value::default_value(type);
 
     if (stmt.initializer_) {
-        if (auto* list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+        if (auto&& list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
             if (type.is_struct()) {
-                auto* st = init_val.as_mut<core::value::struct_t>();
+                auto&& st = init_val.as_mut<core::value::struct_t>();
                 auto&& fields = st->type_.struct_fields();
                 auto&& elems = list->get()->elements_;
                 for (size_t i = 0; i < elems.size(); ++i) {
-                    auto val = evaluate(elems[i]);
+                    auto&& val = evaluate(elems[i]);
                     st->fields_[i] = core::value::convert(std::move(val), fields[i].second);
                 }
             } else {
                 init_val = evaluate_initializer_list(*list->get());
             }
         } else {
-            auto init = evaluate(*stmt.initializer_);
+            auto&& init = evaluate(*stmt.initializer_);
             init_val = core::value::convert(std::move(init), type);
         }
     }
@@ -119,7 +118,7 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
     values_.define(name, std::move(init_val));
 
     if (writer_.enabled(debug::trace_level::execution)) {
-        auto* var = values_.get(name);
+        auto&& var = values_.get(name);
         writer_.emit("  " + std::string(name) + " = " + var->to_string() + "\n");
     }
     return execution_result::normal();
@@ -128,8 +127,8 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
 interpreter::execution_result interpreter::execute_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<core::value>> guard;
     if (create_scope) guard.emplace(values_);
-    for (const auto& s : stmt.statements_) {
-        auto res = execute(*s);
+    for (auto&& s : stmt.statements_) {
+        auto&& res = execute(*s);
         if (res.is_return()) return res;
     }
     return execution_result::normal();
@@ -137,7 +136,7 @@ interpreter::execution_result interpreter::execute_block(const ast::block_stmt& 
 
 interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
     bool create_scope = false;
-    if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
+    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_)) {
         create_scope = ast::has_declarations(*block);
         return execute_block(*block, create_scope);
     }
@@ -147,10 +146,10 @@ interpreter::execution_result interpreter::execute_body(const ast::statement& bo
 interpreter::execution_result interpreter::execute_while(const ast::while_stmt& stmt) {
     core::scope_guard guard(values_);
     while (true) {
-        auto cond = evaluate(stmt.condition_);
+        auto&& cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
 
-        auto res = execute_body(*stmt.block_);
+        auto&& res = execute_body(*stmt.block_);
         if (res.is_return()) return res;
     }
     return execution_result::normal();
@@ -161,10 +160,10 @@ interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
         if (stmt.condition_) {
-            auto cond = evaluate(*stmt.condition_);
+            auto&& cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        auto result = execute_body(*stmt.block_);
+        auto&& result = execute_body(*stmt.block_);
         if (result.is_return()) return result;
 
         if (stmt.increment_) evaluate(*stmt.increment_);
@@ -173,7 +172,7 @@ interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt
 }
 
 interpreter::execution_result interpreter::execute_if(const ast::if_stmt& stmt) {
-    auto cond = evaluate(stmt.condition_);
+    auto&& cond = evaluate(stmt.condition_);
 
     if (cond.to_bool()) {
         return execute_body(*stmt.then_block_);
@@ -191,7 +190,7 @@ interpreter::execution_result interpreter::execute_return_stmt(const ast::return
 
 // clang-format off
 core::value interpreter::evaluate(const ast::expression& expr) {
-    auto result = core::visit(
+    auto&& result = core::visit(
         core::overloaded{
             [this](const ast::literal_expr& e) { return evaluate_literal(e); },
             [this](const ast::variable_expr& e) { return evaluate_lvalue(e); },
@@ -210,7 +209,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
 // clang-format on
 
 core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
-    const auto& token = expr.value_;
+    auto&& token = expr.value_;
 
     if (token.literal_value_) return *token.literal_value_;
 
@@ -220,8 +219,8 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 
 // clang-format off
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
-    auto left = evaluate(expr.left_);
-    auto type = expr.op_.type_;
+    auto&& left = evaluate(expr.left_);
+    auto&& type = expr.op_.type_;
 
     if (type == tt::LOGICAL_AND) {
         if (!left.to_bool()) return false;
@@ -232,7 +231,7 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
         return evaluate(expr.right_).to_bool();
     }
 
-    auto right = evaluate(expr.right_);
+    auto&& right = evaluate(expr.right_);
     try {
         switch (type) {
             case tt::PLUS:          return op::add(left, right);
@@ -260,24 +259,24 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
     return core::visit(core::overloaded{
             [this](const ast::variable_expr& e) -> core::value& {                             
-                auto* var = values_.get(e.name_.lexeme_);                            
+                auto&& var = values_.get(e.name_.lexeme_);                            
                 return *var;
             },
             [this](const core::arena_ptr<ast::index_expr>& e) -> core::value& {
-                auto& obj = evaluate_lvalue(e->object_);
-                auto index_val = evaluate(e->index_);
-                auto i = index_val.to_int();
+                auto&& obj = evaluate_lvalue(e->object_);
+                auto&& index_val = evaluate(e->index_);
+                auto&& i = index_val.to_int();
+                auto&& arr = obj.as_mut<core::value::array_t>();
 
-                auto* arr = obj.as_mut<core::value::array_t>();
                 if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
                     throw core::interpret_error{err::index_out_of_bounds};
 
                 return (*arr)->at(static_cast<size_t>(i));
             },
             [this](const core::arena_ptr<ast::member_access_expr>& e) -> core::value& {
-                auto& obj = evaluate_lvalue(e->object_);
-                auto* st = obj.as_mut<core::value::struct_t>();
-                auto idx = st->type_.field_index(e->member_.lexeme_);
+                auto&& obj = evaluate_lvalue(e->object_);
+                auto&& st = obj.as_mut<core::value::struct_t>();
+                auto&& idx = st->type_.field_index(e->member_.lexeme_);
                 return st->fields_[*idx];
             },
             [](const auto&) -> core::value& {
@@ -287,16 +286,16 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
 }
 
 core::value interpreter::evaluate_member_access(const ast::member_access_expr& expr) {
-    auto& obj = evaluate_lvalue(expr.object_); 
-    auto* st = obj.as_mut<core::value::struct_t>();
-    auto idx = st->type_.field_index(expr.member_.lexeme_);
+    auto&& obj = evaluate_lvalue(expr.object_); 
+    auto&& st = obj.as_mut<core::value::struct_t>();
+    auto&& idx = st->type_.field_index(expr.member_.lexeme_);
     return st->fields_[*idx]; 
 }
 
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
-    auto op = expr.op_.type_;
-    auto right = evaluate(expr.value_);
-    auto& target = evaluate_lvalue(expr.target_);
+    auto&& op = expr.op_.type_;
+    auto&& right = evaluate(expr.value_);
+    auto&& target = evaluate_lvalue(expr.target_);
 
     if (op == tt::EQUAL) {
         target = core::value::convert(std::move(right), target.type());
@@ -322,8 +321,8 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
 // clang-format on
 
 core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
-    auto operand = evaluate(expr.operand_);
-    auto op = expr.op_.type_;
+    auto&& operand = evaluate(expr.operand_);
+    auto&& op = expr.op_.type_;
 
     switch (op) {
         case tt::MINUS:
@@ -345,7 +344,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 }
 // clang-format off
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
-    auto name = expr.callee_.lexeme_;
+    auto&& name = expr.callee_.lexeme_;
 
     if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.interpret_error(expr, err::stack_overflow);
     recursion_depth_++;
@@ -363,14 +362,14 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                                [this](const auto& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
-    auto func = registry_.find(name);
+    auto&& func = registry_.find(name);
     std::span<const core::value> args(args_vec.data(), expr.args_.size());
 
     return core::visit(
         core::overloaded{
         [&](core::builtin_fn_ptr builtin) -> core::value {
             try {
-                auto r = builtin(args);
+                auto&& r = builtin(args);
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
             } catch (const core::interpret_error& e) {
@@ -381,19 +380,19 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         [&](const ast::func_declaration* body) -> core::value {
             core::scope_guard guard(values_);
             for (size_t i = 0; i < body->params_.size(); ++i) {
-                const auto& param = body->params_[i];
-                auto converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
+                auto&& param = body->params_[i];
+                auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
                 values_.define(param.name_.lexeme_, std::move(converted));
             }
-            for (const auto& s : body->block_->statements_) {
-                auto result = execute(*s);
+            for (auto&& s : body->block_->statements_) {
+                auto&& result = execute(*s);
                 if (result.is_return()) {
                     if (writer_.enabled(debug::trace_level::returns)) 
                         debug::print_return(writer_, name, result.value_);
                     return result.value_; 
                 }
             }
-            auto r = core::value::default_value(body->return_type_);
+            auto&& r = core::value::default_value(body->return_type_);
             if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
             return r;
         },
@@ -412,18 +411,17 @@ core::value interpreter::evaluate_initializer_list(const ast::initializer_list_e
 
     if (elements.empty()) return std::vector<core::value>{};
 
-    auto elem_type = elements[0].type();
-    for (auto& e : elements) e = core::value::convert(std::move(e), elem_type);
+    auto&& elem_type = elements[0].type();
+    for (auto&& e : elements) e = core::value::convert(std::move(e), elem_type);
 
     return elements;
 }
 
 core::value interpreter::evaluate_index(const ast::index_expr& expr) {
-    auto obj = evaluate(expr.object_);
-    auto idx = evaluate(expr.index_);
-
-    const auto* arr = obj.as<core::value::array_t>();
-    auto i = idx.to_int();
+    auto&& obj = evaluate(expr.object_);
+    auto&& idx = evaluate(expr.index_);
+    auto&& arr = obj.as<core::value::array_t>();
+    auto&& i = idx.to_int();
 
     if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
         reporter_.interpret_error(expr, err::index_out_of_bounds);
