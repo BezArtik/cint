@@ -14,9 +14,8 @@ using tt = core::token_type;
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
-    if (!lexeme.empty()) {
+    if (!lexeme.empty())
         EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<uint8_t>(type);
-    }
 }
 
 struct single_token_case {
@@ -28,8 +27,8 @@ struct single_token_case {
 class single_token_test : public ::testing::TestWithParam<single_token_case> {};
 
 TEST_P(single_token_test, recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2) << "Expected at least token + EOF for source: " << tc.source_;
     expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
@@ -84,8 +83,8 @@ struct keyword_case {
 class keyword_test : public ::testing::TestWithParam<keyword_case> {};
 
 TEST_P(keyword_test, recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     EXPECT_NE(h.tokens()[0].type_, tt::IDENTIFIER);
@@ -120,8 +119,8 @@ struct number_case {
 class number_test : public ::testing::TestWithParam<number_case> {};
 
 TEST_P(number_test, recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::NUMBER, tc.lexeme_);
@@ -162,8 +161,8 @@ struct bool_case {
 class bool_test : public ::testing::TestWithParam<bool_case> {};
 
 TEST_P(bool_test, recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tc.expected_type_, tc.source_);
@@ -186,8 +185,8 @@ struct string_case {
 class string_test : public ::testing::TestWithParam<string_case> {};
 
 TEST_P(string_test, recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::STRING, tc.expected_lexeme_);
@@ -206,8 +205,8 @@ INSTANTIATE_TEST_SUITE_P(
 class identifier_test : public ::testing::TestWithParam<std::string_view> {};
 
 TEST_P(identifier_test, recognized) {
-    auto id = GetParam();
-    pipeline_harness h(id);
+    auto&& id = GetParam();
+    pipeline_harness h{id};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::IDENTIFIER, id);
@@ -228,8 +227,8 @@ struct token_sequence {
 class sequence_test : public ::testing::TestWithParam<token_sequence> {};
 
 TEST_P(sequence_test, Recognized) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
 
     ASSERT_EQ(h.tokens().size(), tc.expected_types_.size() + 1) << "Unexpected token count for source: " << tc.source_;
@@ -257,7 +256,7 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(lexer_test, line_comment) {
-    pipeline_harness h("42 // comment\n43");
+    pipeline_harness h{"42 // comment\n43"};
     ASSERT_TRUE(h.lex());
     ASSERT_EQ(h.tokens().size(), 3);
     expect_token(h.tokens()[0], tt::NUMBER, "42");
@@ -266,13 +265,13 @@ TEST(lexer_test, line_comment) {
 }
 
 TEST(LexerTest, unterminated_string) {
-    pipeline_harness h("\"unterminated");
+    pipeline_harness h{"\"unterminated"};
     h.lex();
     EXPECT_TRUE(h.had_error());
 }
 
 TEST(lexer_test, unexpected_character) {
-    pipeline_harness h("@");
+    pipeline_harness h{"@"};
     h.lex();
     EXPECT_TRUE(h.had_error());
 }

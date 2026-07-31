@@ -14,139 +14,139 @@ using v = core::value;
 namespace op = core::ops;
 
 TEST(value_test, default_is_void) {
-    v val;
+    v val{};
     EXPECT_TRUE(val.is_void());
 }
 
 TEST(value_test, int_value) {
-    v val(v::int_t{42});
+    v val{v::int_t{42}};
     EXPECT_EQ(val.to_int(), 42);
 }
 
 TEST(value_test, double_value) {
-    v val(3.14);
+    v val{3.14};
     EXPECT_DOUBLE_EQ(val.to_double(), 3.14);
 }
 
 TEST(value_test, bool_value) {
-    v val(true);
+    v val{true};
     EXPECT_EQ(val.to_bool(), true);
 }
 
 TEST(value_test, string_value) {
-    v val(std::string{"hello"});
+    v val{std::string{"hello"}};
     EXPECT_EQ(val.to_string(), "hello");
 }
 
 TEST(value_test, int_to_string) {
-    v val(v::int_t{42});
+    v val{v::int_t{42}};
     EXPECT_EQ(val.to_string(), "42");
 }
 
 TEST(value_test, bool_to_string) {
-    v val(true);
+    v val{true};
     EXPECT_EQ(val.to_string(), "true");
 }
 
 TEST(value_test, void_to_string) {
-    v val;
+    v val{};
     EXPECT_EQ(val.to_string(), "void");
 }
 
 TEST(value_test, int_to_double) {
-    v val(v::int_t{42});
+    v val{v::int_t{42}};
     EXPECT_DOUBLE_EQ(val.to_double(), 42.0);
 }
 
 TEST(value_test, double_to_int) {
-    v val(3.14);
+    v val{3.14};
     EXPECT_EQ(val.to_int(), 3);
 }
 
 TEST(value_test, add_ints) {
-    v a(v::int_t{10});
-    v b(v::int_t{20});
-    auto result = op::add(a, b);
+    v a{v::int_t{10}};
+    v b{v::int_t{20}};
+    auto&& result = op::add(a, b);
     EXPECT_EQ(result.to_int(), 30);
 }
 
 TEST(value_test, add_int_and_double) {
-    v a(v::int_t{10});
-    v b(3.5);
-    auto result = op::add(a, b);
+    v a{v::int_t{10}};
+    v b{3.5};
+    auto&& result = op::add(a, b);
     EXPECT_DOUBLE_EQ(result.to_double(), 13.5);
 }
 
 TEST(value_test, sub_ints) {
-    v a(v::int_t{30});
-    v b(v::int_t{10});
-    auto result = op::sub(a, b);
+    v a{v::int_t{30}};
+    v b{v::int_t{10}};
+    auto&& result = op::sub(a, b);
     EXPECT_EQ(result.to_int(), 20);
 }
 
 TEST(value_test, mul_ints) {
-    v a(v::int_t{6});
-    v b(v::int_t{7});
-    auto result = op::mul(a, b);
+    v a{v::int_t{6}};
+    v b{v::int_t{7}};
+    auto&& result = op::mul(a, b);
     EXPECT_EQ(result.to_int(), 42);
 }
 
 TEST(value_test, div_ints) {
-    v a(v::int_t{20});
-    v b(v::int_t{4});
-    auto result = op::div(a, b);
+    v a{v::int_t{20}};
+    v b{v::int_t{4}};
+    auto&& result = op::div(a, b);
     EXPECT_EQ(result.to_int(), 5);
 }
 
 TEST(value_test, div_by_zero) {
-    v a(v::int_t{1});
-    v b(v::int_t{0});
+    v a{v::int_t{1}};
+    v b{v::int_t{0}};
     EXPECT_THROW(op::div(a, b), core::interpret_error);
 }
 
 TEST(value_test, mod_ints) {
-    v a(v::int_t{17});
-    v b(v::int_t{5});
-    auto result = op::mod(a, b);
+    v a{v::int_t{17}};
+    v b{v::int_t{5}};
+    auto&& result = op::mod(a, b);
     EXPECT_EQ(result.to_int(), 2);
 }
 
 TEST(value_test, mod_by_zero) {
-    v a(v::int_t{1});
-    v b(v::int_t{0});
+    v a{v::int_t{1}};
+    v b{v::int_t{0}};
     EXPECT_THROW(op::mod(a, b), core::interpret_error);
 }
 
 TEST(value_test, eq_ints) {
-    v a(v::int_t{42});
-    v b(v::int_t{42});
-    v c(v::int_t{0});
+    v a{v::int_t{42}};
+    v b{v::int_t{42}};
+    v c{v::int_t{0}};
     EXPECT_TRUE(op::eq(a, b).to_bool());
     EXPECT_FALSE(op::eq(a, c).to_bool());
 }
 
 TEST(value_test, lt_ints) {
-    v a(v::int_t{10});
-    v b(v::int_t{20});
+    v a{v::int_t{10}};
+    v b{v::int_t{20}};
     EXPECT_TRUE(op::lt(a, b).to_bool());
     EXPECT_FALSE(op::lt(b, a).to_bool());
 }
 
 TEST(value_test, not_op) {
-    v t(true);
-    v f(false);
+    v t{true};
+    v f{false};
     EXPECT_FALSE(op::not_op(t).to_bool());
     EXPECT_TRUE(op::not_op(f).to_bool());
 }
 
 TEST(value_test, invalid_add) {
-    v a(true);
-    v b(v::int_t{1});
+    v a{true};
+    v b{v::int_t{1}};
     EXPECT_THROW(op::add(a, b), core::interpret_error);
 }
 
 TEST(value_test, struct_type_int_fields) {
-    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
     EXPECT_TRUE(st.is_struct());
     EXPECT_EQ(st.struct_name(), "Point");
     EXPECT_EQ(st.struct_fields().size(), 2);
@@ -157,17 +157,17 @@ TEST(value_test, struct_type_int_fields) {
 }
 
 TEST(value_test, struct_field_index) {
-    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
     EXPECT_EQ(st.field_index("x").value(), 0);
     EXPECT_EQ(st.field_index("y").value(), 1);
     EXPECT_FALSE(st.field_index("z").has_value());
 }
 
 TEST(value_test, struct_default_value) {
-    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto val = v::default_value(st);
+    auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& val = v::default_value(st);
     EXPECT_TRUE(val.is_struct());
-    const auto* s = val.as<v::struct_t>();
+    auto&& s = val.as<v::struct_t>();
     ASSERT_NE(s, nullptr);
     EXPECT_EQ(s->fields_.size(), 2);
     EXPECT_EQ(s->fields_[0].to_int(), 0);
@@ -176,25 +176,25 @@ TEST(value_test, struct_default_value) {
 }
 
 TEST(value_test, struct_to_string) {
-    auto st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto val = v::default_value(st);
+    auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& val = v::default_value(st);
     EXPECT_EQ(val.to_string(), "{0, 0}");
 }
 
 TEST(value_test, struct_equality) {
-    auto st1 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto st2 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto st3 = t::struct_type("Point3D", {{"x", t::int_type()}, {"y", t::int_type()}, {"z", t::int_type()}});
+    auto&& st1 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& st2 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& st3 = t::struct_type("Point3D", {{"x", t::int_type()}, {"y", t::int_type()}, {"z", t::int_type()}});
     EXPECT_EQ(st1, st2);
     EXPECT_NE(st1, st3);
 }
 
 TEST(value_test, struct_nested_default_value) {
-    auto point_t = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto rect_t = t::struct_type("Rect", {{"tl", point_t}, {"br", point_t}});
-    auto val = v::default_value(rect_t);
+    auto&& point_t = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
+    auto&& rect_t = t::struct_type("Rect", {{"tl", point_t}, {"br", point_t}});
+    auto&& val = v::default_value(rect_t);
     EXPECT_TRUE(val.is_struct());
-    const auto* r = val.as<v::struct_t>();
+    auto&& r = val.as<v::struct_t>();
     EXPECT_EQ(r->fields_.size(), 2);
     EXPECT_TRUE(r->fields_[0].is_struct());
     EXPECT_TRUE(r->fields_[1].is_struct());

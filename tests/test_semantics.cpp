@@ -15,7 +15,7 @@ struct type_error_case {
 class type_error_test : public ::testing::TestWithParam<type_error_case> {};
 
 TEST_P(type_error_test, reports_error) {
-    const auto& tc = GetParam();
+    auto&& tc = GetParam();
     pipeline_harness h(tc.source_);
     h.lex();
     h.parse();

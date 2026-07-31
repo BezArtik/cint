@@ -15,8 +15,8 @@ struct valid_execution_case {
 class valid_execution_test : public ::testing::TestWithParam<valid_execution_case> {};
 
 TEST_P(valid_execution_test, runs_without_error) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     EXPECT_TRUE(h.run_all()) << "Unexpected runtime error for: " << tc.description_;
 }
 // clang-format off
@@ -97,8 +97,8 @@ struct runtime_error_case {
 class runtime_error_test : public ::testing::TestWithParam<runtime_error_case> {};
 
 TEST_P(runtime_error_test, reports_error) {
-    const auto& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto&& tc = GetParam();
+    pipeline_harness h{tc.source_};
     h.lex();
     h.parse();
     h.check_semantics();
