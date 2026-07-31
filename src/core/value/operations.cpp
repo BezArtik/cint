@@ -36,8 +36,8 @@ value div(const value& a, const value& b) {
 }
 
 value mod(const value& a, const value& b) {
-    auto li = a.to_int();
-    auto ri = b.to_int();
+    auto&& li = a.to_int();
+    auto&& ri = b.to_int();
     if (ri == 0) throw core::interpret_error{error_code::modulo_by_zero};
     return li % ri;
 }

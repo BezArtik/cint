@@ -15,12 +15,12 @@ arena::~arena() {
 }
 
 void* arena::allocate_raw(size_t size, size_t alignment) {
-    auto* ptr = align_ptr(current_, alignment);
+    auto&& ptr = align_ptr(current_, alignment);
 
     if (ptr >= end_ || size > static_cast<size_t>(end_ - ptr)) {
         if (size > BLOCK_SIZE) {
-            auto block = std::make_unique_for_overwrite<char[]>(size);
-            auto* block_ptr = block.get();
+            auto&& block = std::make_unique_for_overwrite<char[]>(size);
+            auto&& block_ptr = block.get();
             ptr = align_ptr(block_ptr, alignment);
             current_ = block_ptr;
             end_ = block_ptr + size;
@@ -36,7 +36,7 @@ void* arena::allocate_raw(size_t size, size_t alignment) {
 }
 
 void arena::reset() noexcept {
-    for (auto it = destructors_.rbegin(); it != destructors_.rend(); ++it) (*it)();
+    for (auto it = destructors_.rbegin(), endit = destructors_.rend(); it != endit; ++it) (*it)();
 
     destructors_.clear();
 
@@ -46,15 +46,15 @@ void arena::reset() noexcept {
 }
 
 void arena::allocate_block() {
-    auto block = std::make_unique_for_overwrite<char[]>(BLOCK_SIZE);
+    auto&& block = std::make_unique_for_overwrite<char[]>(BLOCK_SIZE);
     current_ = block.get();
     end_ = current_ + BLOCK_SIZE;
     blocks_.push_back(std::move(block));
 }
 
 char* arena::align_ptr(char* ptr, size_t alignment) noexcept {
-    auto intptr = reinterpret_cast<uintptr_t>(ptr);
-    auto aligned = (intptr + alignment - 1) & ~(alignment - 1);
+    auto&& intptr = reinterpret_cast<uintptr_t>(ptr);
+    auto&& aligned = (intptr + alignment - 1) & ~(alignment - 1);
     return reinterpret_cast<char*>(aligned);
 }
 

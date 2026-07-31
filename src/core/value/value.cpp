@@ -5,7 +5,6 @@
 #include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
 
-#include <cassert>
 #include <charconv>
 
 namespace core {
@@ -50,7 +49,7 @@ core::value value::convert(core::value val, const core::type& target) {
 
 value::int_t value::parse_int(std::string_view text) {
     int_t result;
-    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
     if (ec != std::errc{} || ptr != text.data() + text.size())
         throw core::interpret_error{error_code::invalid_conversion};
     return result;
@@ -58,7 +57,7 @@ value::int_t value::parse_int(std::string_view text) {
 
 value::double_t value::parse_double(std::string_view text) {
     double_t result;
-    auto [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
+    auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
     if (ec != std::errc{} || ptr != text.data() + text.size())
         throw core::interpret_error{error_code::invalid_conversion};
     return result;
@@ -78,8 +77,8 @@ core::type value::type() const {
             [](bool_t) { return type::bool_type(); },
             [](const string_t&) { return type::string_type(); },
             [](const array_t& a) {
-                if (a->empty()) return type::array_type(type::unknown_type(), 0);
-                return type::array_type(a->front().type(), a->size());
+                return a->empty() ? type::array_type(type::unknown_type()) 
+                                  : type::array_type(a->front().type(), a->size());
             },
             [](const struct_t& s) { return s.type_; },
             [](std::monostate) { return type::void_type(); }
@@ -123,7 +122,7 @@ value::bool_t value::to_bool() const {
 }
 
 std::string value::to_string() const {
-    auto to_string_range = [&](const auto& cnt) {
+    auto&& to_string_range = [&](auto&& cnt) {
         std::string res = "{";
         res.reserve(cnt.size() * 16);
         for(size_t i = 0; i < cnt.size(); ++i) {
