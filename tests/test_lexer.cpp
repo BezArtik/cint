@@ -14,8 +14,9 @@ using tt = core::token_type;
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
-    if (!lexeme.empty())
+    if (!lexeme.empty()) {
         EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<uint8_t>(type);
+    }
 }
 
 struct single_token_case {
