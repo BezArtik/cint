@@ -111,9 +111,6 @@ public:
     /// @name Проверка категории
     /// @{
 
-    /// Примитивный тип (int, double, bool, string).
-    bool is_primitive() const noexcept;
-
     /// Числовой тип (int или double).
     bool is_numeric() const noexcept;
 

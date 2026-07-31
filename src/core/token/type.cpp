@@ -37,10 +37,6 @@ type type::struct_type(std::string_view name, std::vector<field_t> fields) {
     return type{kind::STRUCT, std::move(info)};
 }
 
-bool type::is_primitive() const noexcept {
-    return kind_ == kind::INT || kind_ == kind::DOUBLE || kind_ == kind::BOOL || kind_ == kind::STRING;
-}
-
 bool type::is_numeric() const noexcept {
     return kind_ == kind::INT || kind_ == kind::DOUBLE;
 }
