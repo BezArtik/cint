@@ -57,7 +57,7 @@ options parse_args(int argc, char* argv[]) {
             std::exit(0);
         }
 
-        auto it = std::ranges::find(flag_table, arg, &flag_info::name_);
+        auto&& it = std::ranges::find(flag_table, arg, &flag_info::name_);
         if (it != flag_table.end()) {
             opts.debug_ = true;
             opts.trace_mask_ = opts.trace_mask_ | it->level_;
@@ -79,7 +79,7 @@ int run_program(const run_config& config) {
     core::arena_memory_resource mr(arena);
     core::error_reporter reporter(config.source_);
 
-    lexer lex(config.source_, reporter, mr);
+    lexer lex{config.source_, reporter, mr};
     auto tokens = lex.scan_tokens();
 
     debug::print_tokens(config.writer_, tokens);
@@ -88,8 +88,8 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    parser p(tokens, reporter, arena, mr);
-    auto ast = p.parse();
+    parser p{tokens, reporter, arena, mr};
+    auto&& ast = p.parse();
 
     debug::print_ast(config.writer_, ast);
     if (reporter.has_error()) {
@@ -97,15 +97,15 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    auto registry = core::symbol_registry::build(ast, core::builtins);
+    auto&& registry = core::symbol_registry::build(ast, core::builtins);
 
-    type_checker checker(reporter, registry);
+    type_checker checker{reporter, registry};
     if (!checker.check(ast)) {
         std::cerr << "Semantic errors found.\n";
         return 1;
     }
 
-    interpreter interpreter(reporter, registry, config.writer_);
+    interpreter interpreter{reporter, registry, config.writer_};
     interpreter.interpret(ast);
 
     if (reporter.has_error()) {
@@ -120,7 +120,7 @@ int run_program(const run_config& config) {
 
 int main(int argc, char* argv[]) {
     try {
-        const auto opts = parse_args(argc, argv);
+        auto&& opts = parse_args(argc, argv);
 
         if (opts.filename_.empty()) {
             std::cerr << "Usage: " << argv[0] << " [options] <source_file>\n"
@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        std::ifstream file(opts.filename_);
+        std::ifstream file{opts.filename_};
         if (!file) {
             std::cerr << "Error: cannot open file '" << opts.filename_ << "'\n";
             return 1;
@@ -136,15 +136,15 @@ int main(int argc, char* argv[]) {
 
         std::stringstream buffer;
         buffer << file.rdbuf();
-        const auto source = buffer.str();
+        auto&& source = buffer.str();
 
         debug::debug_writer writer{
             opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : [](std::string_view) {}, opts.trace_mask_};
         run_config config{source, writer};
 
-        const auto start = std::chrono::steady_clock::now();
-        const auto exit_code = run_program(config);
-        const auto finish = std::chrono::steady_clock::now();
+        auto&& start = std::chrono::steady_clock::now();
+        auto&& exit_code = run_program(config);
+        auto&& finish = std::chrono::steady_clock::now();
 
         const std::chrono::duration<double> elapsed = finish - start;
         std::cout << "\nProgram execution time (" << elapsed << ")\n";
