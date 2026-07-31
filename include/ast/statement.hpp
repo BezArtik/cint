@@ -34,7 +34,7 @@ struct expression_stmt {
     expression expr_;     ///< Выражение для вычисления
     core::location loc_;  ///< Позиция в исходном коде
 
-    expression_stmt(expression e, core::location loc) : expr_(std::move(e)), loc_(loc) {}
+    expression_stmt(expression e, core::location loc) : expr_{std::move(e)}, loc_{loc} {}
 };
 
 /**
@@ -50,7 +50,7 @@ struct var_declaration {
     core::location loc_;                     ///< Позиция в исходном коде
 
     var_declaration(core::type t, const core::token& n, std::optional<expression> init, core::location loc)
-        : type_(std::move(t)), name_(n), initializer_(std::move(init)), loc_(loc) {}
+        : type_{std::move(t)}, name_{n}, initializer_{std::move(init)}, loc_{loc} {}
 };
 
 /**
@@ -67,7 +67,7 @@ struct block_stmt {
     mutable bool has_declarations_ = false;  ///< Содержит ли блок объявления переменных
 
     block_stmt() = default;
-    block_stmt(stmt_list statements, core::location loc) : statements_(std::move(statements)), loc_(loc) {}
+    block_stmt(stmt_list statements, core::location loc) : statements_{std::move(statements)}, loc_{loc} {}
 };
 
 /**
@@ -82,7 +82,7 @@ struct while_stmt {
     core::location loc_;    ///< Позиция в исходном коде
 
     while_stmt(expression cond, stmt_ptr block, core::location loc)
-        : condition_(std::move(cond)), block_(std::move(block)), loc_(loc) {}
+        : condition_{std::move(cond)}, block_{std::move(block)}, loc_{loc} {}
 };
 
 /**
@@ -104,11 +104,11 @@ struct for_stmt {
 
     for_stmt(stmt_ptr init, std::optional<expression> cond, std::optional<expression> inc, stmt_ptr block,
              core::location loc)
-        : initializer_(std::move(init)),
-          condition_(std::move(cond)),
-          increment_(std::move(inc)),
-          block_(std::move(block)),
-          loc_(loc) {}
+        : initializer_{std::move(init)},
+          condition_{std::move(cond)},
+          increment_{std::move(inc)},
+          block_{std::move(block)},
+          loc_{loc} {}
 };
 
 /**
@@ -123,10 +123,10 @@ struct if_stmt {
     core::location loc_;    ///< Позиция в исходном коде
 
     if_stmt(expression cond, stmt_ptr then_block, stmt_ptr else_block, core::location loc)
-        : condition_(std::move(cond)),
-          then_block_(std::move(then_block)),
-          else_block_(std::move(else_block)),
-          loc_(loc) {}
+        : condition_{std::move(cond)},
+          then_block_{std::move(then_block)},
+          else_block_{std::move(else_block)},
+          loc_{loc} {}
 };
 
 /**
@@ -141,7 +141,7 @@ struct return_stmt {
     core::location loc_;               ///< Позиция в исходном коде
 
     return_stmt(const core::token& kw, std::optional<expression> val, core::location loc)
-        : keyword_(kw), value_(std::move(val)), loc_(loc) {}
+        : keyword_{kw}, value_{std::move(val)}, loc_{loc} {}
 };
 
 /**
@@ -151,7 +151,7 @@ struct func_param {
     core::type type_;   ///< Тип параметра
     core::token name_;  ///< Токен имени параметра
 
-    func_param(core::type t, const core::token& n) : type_(std::move(t)), name_(n) {}
+    func_param(core::type t, const core::token& n) : type_{std::move(t)}, name_{n} {}
 };
 
 /**
@@ -168,7 +168,7 @@ struct func_declaration {
     core::location loc_;                   ///< Позиция в исходном коде
 
     func_declaration(core::type ret_type, const core::token& n)
-        : return_type_(std::move(ret_type)), name_(n), loc_(n.loc_) {}
+        : return_type_{std::move(ret_type)}, name_{n}, loc_{n.loc_} {}
 };
 
 /**
@@ -183,7 +183,7 @@ struct struct_declaration {
     core::location loc_;  ///< Позиция в исходном коде
 
     struct_declaration(core::type type, const core::token& name, core::location loc)
-        : type_(std::move(type)), name_(name), loc_(loc) {}
+        : type_{std::move(type)}, name_{name}, loc_{loc} {}
 };
 
 /**
@@ -200,7 +200,7 @@ struct statement {
     statement() = delete;
 
     template <typename T>
-    statement(T s) : data_(std::move(s)) {}
+    statement(T s) : data_{std::move(s)} {}
 };
 
 /**
@@ -215,7 +215,7 @@ struct statement {
  */
 template <typename Stmt, typename... Args>
 stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
-    auto* p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc});
+    auto&& p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc});
     return stmt_ptr(p);
 }
 
@@ -231,7 +231,7 @@ stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
  */
 template <typename Stmt>
 stmt_ptr make_stmt(core::arena& arena, Stmt&& stmt) {
-    auto* p = arena.allocate<statement>(std::forward<Stmt>(stmt));
+    auto&& p = arena.allocate<statement>(std::forward<Stmt>(stmt));
     return stmt_ptr(p);
 }
 
