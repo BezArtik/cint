@@ -102,20 +102,6 @@ void print_value(const debug_writer& writer, const core::value& val, uint32_t in
  */
 
 /**
- * @brief Выводит информацию о вызове функции.
- *
- * Формат: `[CALL] func_name(arg1, arg2, ...)`
- * Требует trace_level::calls.
- *
- * @param writer Настроенный debug_writer
- * @param expr   AST-узел вызова функции
- * @param args   Вычисленные значения аргументов
- * @param level  Уровень вложенности
- */
-void print_call(const debug_writer& writer, const ast::call_expr& expr, std::span<const core::value> args,
-                uint32_t level = 0);
-
-/**
  * @brief Выводит информацию о возврате из функции.
  *
  * Формат: `[RETURN] func_name → result`
