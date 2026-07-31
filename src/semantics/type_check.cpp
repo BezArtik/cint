@@ -21,7 +21,7 @@ type_checker::type_checker(core::error_reporter& reporter, const core::symbol_re
     : reporter_(reporter), registry_(registry) {}
 
 bool type_checker::check(std::span<const ast::stmt_ptr> statements) {
-    for (const auto& stmt : statements) check_statement(*stmt);
+    for (auto&& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
 }
 // clang-format off
@@ -44,9 +44,9 @@ void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
 }
 
 void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
-    auto name = stmt.name_.lexeme_;
-    auto type = stmt.type_;
-    auto resolved_type = registry_.resolve_type(type);
+    auto&& name = stmt.name_.lexeme_;
+    auto&& type = stmt.type_;
+    auto&& resolved_type = registry_.resolve_type(type);
 
     if (resolved_type.is_unknown()) {
         if (type.is_struct()) reporter_.error(stmt, err::undefined_type, type.struct_name());
@@ -64,11 +64,11 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     }
 
     if (stmt.initializer_) {
-        auto init_type = type_of(*stmt.initializer_);
+        auto&& init_type = type_of(*stmt.initializer_);
         if (init_type.is_unknown()) return;
 
         if (resolved_type.is_struct()) {
-            if (auto* list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+            if (auto&& list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
                 auto&& fields = resolved_type.struct_fields();
                 auto&& lst = list->get();
                 if (lst->elements_.size() > fields.size()) {
@@ -77,7 +77,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
                     return;
                 }
                 for (size_t i = 0; i < lst->elements_.size(); ++i) {
-                    auto elem_type = type_of(lst->elements_[i]);
+                    auto&& elem_type = type_of(lst->elements_[i]);
                     if (elem_type.is_unknown()) continue;
                     if (fields[i].second != elem_type) {
                         reporter_.error(stmt, err::type_mismatch_initialization, name);
@@ -91,7 +91,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
 
         if (resolved_type.is_array() && resolved_type.array_size() == 0 && init_type.is_array()) {
             if (resolved_type.element_type() == init_type.element_type()) {
-                auto inferred_type = t::array_type(type.element_type(), init_type.array_size());
+                auto&& inferred_type = t::array_type(type.element_type(), init_type.array_size());
                 symbols_.define(name, inferred_type);
                 return;
             }
@@ -111,12 +111,12 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
 void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<core::type>> guard;
     if (create_scope) guard.emplace(symbols_);
-    for (const auto& s : stmt.statements_) check_statement(*s);
+    for (auto&& s : stmt.statements_) check_statement(*s);
 }
 
 void type_checker::check_body(const ast::statement& body) {
     bool create_scope = false;
-    if (auto* block = std::get_if<ast::block_stmt>(&body.data_)) {
+    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_)) {
         create_scope = has_declarations(*block);
         check_block(*block, create_scope);
     } else {
@@ -125,7 +125,7 @@ void type_checker::check_body(const ast::statement& body) {
 }
 
 void type_checker::check_while(const ast::while_stmt& stmt) {
-    auto cond_type = type_of(stmt.condition_);
+    auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "while");
 
     core::scope_guard guard(symbols_);
@@ -137,7 +137,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
 
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
-        auto cond_type = type_of(*stmt.condition_);
+        auto&& cond_type = type_of(*stmt.condition_);
         if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "for");
     }
     if (stmt.increment_) type_of(*stmt.increment_);
@@ -145,7 +145,7 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
 }
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
-    auto cond_type = type_of(stmt.condition_);
+    auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "if");
     check_body(*stmt.then_block_);
     if (stmt.else_block_) check_body(*stmt.else_block_);
@@ -162,13 +162,13 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
         return;
     }
 
-    auto return_type = type_of(*stmt.value_);
+    auto&& return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
     if (*curr_return_type_ != return_type) reporter_.error(stmt, err::return_type_mismatch);
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
-    auto name = stmt.name_.lexeme_;
+    auto&& name = stmt.name_.lexeme_;
 
     if (symbols_.contains_in_current_scope(name)) {
         reporter_.error(stmt, err::redeclaration_function, name);
@@ -176,20 +176,20 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     }
 
     core::scope_guard guard(symbols_);
-    for (const auto& param : stmt.params_) symbols_.define(param.name_.lexeme_, param.type_);
+    for (auto&& param : stmt.params_) symbols_.define(param.name_.lexeme_, param.type_);
 
-    const auto& prev_return_type = curr_return_type_;
+    auto&& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
 
-    for (const auto& s : stmt.block_->statements_) check_statement(*s);
+    for (auto&& s : stmt.block_->statements_) check_statement(*s);
 
     curr_return_type_ = prev_return_type;
 }
 
 void type_checker::check_struct_declaration(const ast::struct_declaration& stmt) {
-    auto name = stmt.name_.lexeme_;
+    auto&& name = stmt.name_.lexeme_;
 
-    auto existing = registry_.find(name);
+    auto&& existing = registry_.find(name);
     if (existing) {
         bool is_duplicate = core::visit(core::overloaded{
                                             [&](core::symbol_registry::struct_ptr other) { return other != &stmt; },
@@ -203,14 +203,14 @@ void type_checker::check_struct_declaration(const ast::struct_declaration& stmt)
         }
     }
 
-    const auto& fields = stmt.type_.struct_fields();
+    auto&& fields = stmt.type_.struct_fields();
     std::unordered_set<std::string_view> seen;
-    for (const auto& [field_name, field_type] : fields) {
+    for (auto&& [field_name, field_type] : fields) {
         if (!seen.insert(field_name).second) {
             reporter_.error(stmt, err::redeclaration_variable, field_name);
             return;
         }
-        auto resolved = registry_.resolve_type(field_type);
+        auto&& resolved = registry_.resolve_type(field_type);
         if (resolved.is_unknown() && field_type.is_struct()) {
             reporter_.error(stmt, err::undefined_type, field_type.struct_name());
         }
@@ -235,12 +235,11 @@ t type_checker::type_of(const ast::expression& expr) {
 }
 // clang-format on
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
-    const auto& token = expr.value_;
+    auto&& token = expr.value_;
 
     switch (token.type_) {
         case tt::NUMBER:
-            if (token.literal_value_ && token.literal_value_->is_double()) return t::double_type();
-            return t::int_type();
+            return token.literal_value_ && token.literal_value_->is_double() ? t::double_type() : t::int_type();
         case tt::KW_TRUE:
         case tt::KW_FALSE:
             return t::bool_type();
@@ -253,8 +252,8 @@ t type_checker::type_of_literal(const ast::literal_expr& expr) {
 }
 
 t type_checker::type_of_variable(const ast::variable_expr& expr_) {
-    auto name = expr_.name_.lexeme_;
-    auto info = symbols_.get(name);
+    auto&& name = expr_.name_.lexeme_;
+    auto&& info = symbols_.get(name);
     if (!info) {
         reporter_.error(expr_, err::undefined_variable, name);
         return t::unknown_type();
@@ -263,11 +262,11 @@ t type_checker::type_of_variable(const ast::variable_expr& expr_) {
 }
 
 t type_checker::type_of_binary(const ast::binary_expr& expr) {
-    auto left = type_of(expr.left_);
-    auto right = type_of(expr.right_);
+    auto&& left = type_of(expr.left_);
+    auto&& right = type_of(expr.right_);
     if (left.is_unknown() || right.is_unknown()) return t::unknown_type();
 
-    auto op = expr.op_.type_;
+    auto&& op = expr.op_.type_;
 
     if (op == tt::PLUS || op == tt::MINUS || op == tt::STAR || op == tt::SLASH || op == tt::PERCENT) {
         if (!left.is_numeric() || !right.is_numeric()) {
@@ -307,8 +306,8 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
 }
 
 t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
-    auto target_type = type_of(expr.target_);
-    auto value_type = type_of(expr.value_);
+    auto&& target_type = type_of(expr.target_);
+    auto&& value_type = type_of(expr.value_);
     if (target_type.is_unknown() || value_type.is_unknown()) return t::unknown_type();
 
     if (expr.op_.type_ == tt::EQUAL) {
@@ -340,10 +339,10 @@ bool type_checker::is_lvalue(const ast::expression& expr) {
 }
 
 t type_checker::type_of_unary(const ast::unary_expr& expr) {
-    auto operand_type = type_of(expr.operand_);
+    auto&& operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
-    auto op = expr.op_.type_;
+    auto&& op = expr.op_.type_;
 
     if (op == tt::MINUS) {
         if (!operand_type.is_numeric()) {
@@ -386,7 +385,7 @@ t type_checker::type_of_unary(const ast::unary_expr& expr) {
 }
 
 t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
-    auto operand_type = type_of(expr.operand_);
+    auto&& operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
     if (!operand_type.is_numeric()) {
@@ -401,22 +400,22 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
 }
 
 t type_checker::type_of_call(const ast::call_expr& expr) {
-    auto name = expr.callee_.lexeme_;
+    auto&& name = expr.callee_.lexeme_;
 
-    auto func = registry_.find(name);
+    auto&& func = registry_.find(name);
     if (!func) {
         reporter_.error(expr, err::undefined_function, name);
         return t::unknown_type();
     }
 
-    const auto& param_types = func->type_.param_types();
+    auto&& param_types = func->type_.param_types();
     if (expr.args_.size() != param_types.size()) {
         reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
         return t::unknown_type();
     }
 
     for (size_t i = 0; i < expr.args_.size(); ++i) {
-        auto arg_type = type_of(expr.args_[i]);
+        auto&& arg_type = type_of(expr.args_[i]);
         if (arg_type.is_unknown()) return t::unknown_type();
         if (param_types[i] != arg_type) {
             reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
@@ -433,11 +432,11 @@ t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr)
         return t::unknown_type();
     }
 
-    auto first_type = type_of(expr.elements_[0]);
+    auto&& first_type = type_of(expr.elements_[0]);
     if (first_type.is_unknown()) return t::unknown_type();
 
     for (size_t i = 1; i < expr.elements_.size(); ++i) {
-        auto el_type = type_of(expr.elements_[i]);
+        auto&& el_type = type_of(expr.elements_[i]);
         if (el_type.is_unknown()) return t::unknown_type();
         if (first_type != el_type) {
             reporter_.error(expr, err::initializer_list_inconsistent_types);
@@ -449,8 +448,8 @@ t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr)
 }
 
 t type_checker::type_of_index(const ast::index_expr& expr) {
-    auto object_type = type_of(expr.object_);
-    auto index_type = type_of(expr.index_);
+    auto&& object_type = type_of(expr.object_);
+    auto&& index_type = type_of(expr.index_);
     if (object_type.is_unknown() || index_type.is_unknown()) return t::unknown_type();
 
     if (!object_type.is_array()) {
@@ -465,7 +464,7 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
 }
 
 t type_checker::type_of_member_access(const ast::member_access_expr& expr) {
-    auto obj_type = type_of(expr.object_);
+    auto&& obj_type = type_of(expr.object_);
     if (obj_type.is_unknown()) return t::unknown_type();
 
     obj_type = registry_.resolve_type(obj_type);
@@ -477,7 +476,7 @@ t type_checker::type_of_member_access(const ast::member_access_expr& expr) {
         return t::unknown_type();
     }
 
-    auto idx = obj_type.field_index(expr.member_.lexeme_);
+    auto&& idx = obj_type.field_index(expr.member_.lexeme_);
     if (!idx) {
         reporter_.error(expr, err::no_such_field, obj_type.struct_name(), expr.member_.lexeme_);
         return t::unknown_type();
