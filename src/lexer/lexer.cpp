@@ -16,7 +16,7 @@ using tt = core::token_type;
 using err = core::error_code;
 
 lexer::lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
-    : source_(source), reporter_(reporter), mr_(mr), tokens_(&mr_) {}
+    : source_{source}, reporter_{reporter}, mr_{mr}, tokens_{&mr_} {}
 
 lexer::token_list lexer::scan_tokens() {
     while (!is_at_end()) {

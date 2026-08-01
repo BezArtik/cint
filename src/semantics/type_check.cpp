@@ -128,12 +128,12 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "while");
 
-    core::scope_guard guard(symbols_);
+    core::scope_guard guard{symbols_};
     check_body(*stmt.block_);
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
-    core::scope_guard guard(symbols_);
+    core::scope_guard guard{symbols_};
 
     if (stmt.initializer_) check_statement(*stmt.initializer_);
     if (stmt.condition_) {
@@ -175,7 +175,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
         return;
     }
 
-    core::scope_guard guard(symbols_);
+    core::scope_guard guard{symbols_};
     for (auto&& param : stmt.params_) symbols_.define(param.name_.lexeme_, param.type_);
 
     auto&& prev_return_type = curr_return_type_;

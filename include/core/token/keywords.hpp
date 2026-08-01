@@ -75,7 +75,7 @@ inline const std::array keyword_table{
  * @return Тип токена (KW_* или IDENTIFIER)
  */
 inline token_type lookup_keyword(std::string_view lexeme) {
-    auto it = std::ranges::find(keyword_table, lexeme, &keyword_info::lexeme_);
+    auto&& it = std::ranges::find(keyword_table, lexeme, &keyword_info::lexeme_);
     return it != keyword_table.end() ? it->type_ : token_type::IDENTIFIER;
 }
 
@@ -90,7 +90,7 @@ inline token_type lookup_keyword(std::string_view lexeme) {
  * @pre t — одно из KW_* значений.
  */
 inline const keyword_info& get_keyword_info(token_type t) {
-    auto it = std::ranges::find(keyword_table, t, &keyword_info::type_);
+    auto&& it = std::ranges::find(keyword_table, t, &keyword_info::type_);
     assert(it != keyword_table.end());
     return *it;
 }
@@ -106,7 +106,7 @@ inline const keyword_info& get_keyword_info(token_type t) {
  */
 inline bool is_statement_start(token_type type) {
     if (type == token_type::LEFT_BRACE) return true;
-    auto it = std::ranges::find(keyword_table, type, &keyword_info::type_);
+    auto&& it = std::ranges::find(keyword_table, type, &keyword_info::type_);
     return it != keyword_table.end() && it->can_start_statement_;
 }
 

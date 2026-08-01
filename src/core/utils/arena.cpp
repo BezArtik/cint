@@ -58,7 +58,7 @@ char* arena::align_ptr(char* ptr, size_t alignment) noexcept {
     return reinterpret_cast<char*>(aligned);
 }
 
-arena_memory_resource::arena_memory_resource(arena& arena) noexcept : arena_(arena) {}
+arena_memory_resource::arena_memory_resource(arena& arena) noexcept : arena_{arena} {}
 
 void* arena_memory_resource::do_allocate(size_t bytes, size_t alignment) {
     return arena_.allocate_raw(bytes, alignment);

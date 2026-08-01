@@ -50,7 +50,7 @@ core::value apply_increment(core::value& val, core::token_type op, bool return_o
 struct interpreter::execution_result {
     enum class kind : uint8_t { normal, return_ };
 
-    kind kind_ = kind::normal;
+    kind kind_{kind::normal};
     core::value value_;
 
     static execution_result normal() { return {kind::normal, {}}; }
@@ -61,7 +61,7 @@ struct interpreter::execution_result {
 
 interpreter::interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
                          const debug::debug_writer& writer)
-    : reporter_(reporter), registry_(registry), writer_(writer) {}
+    : reporter_{reporter}, registry_{registry}, writer_{writer} {}
 
 void interpreter::interpret(std::span<const ast::node<ast::statement>> statements) {
     try {
@@ -144,7 +144,7 @@ interpreter::execution_result interpreter::execute_body(const ast::statement& bo
 }
 
 interpreter::execution_result interpreter::execute_while(const ast::while_stmt& stmt) {
-    core::scope_guard guard(values_);
+    core::scope_guard guard{values_};
     while (true) {
         auto&& cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
@@ -156,7 +156,7 @@ interpreter::execution_result interpreter::execute_while(const ast::while_stmt& 
 }
 
 interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt) {
-    core::scope_guard guard(values_);
+    core::scope_guard guard{values_};
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
         if (stmt.condition_) {
@@ -348,15 +348,15 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     } d_guard{recursion_depth_};
 
     std::array<std::byte, 4096> args_buf;
-    std::pmr::monotonic_buffer_resource args_mr(args_buf.data(), args_buf.size());
-    std::pmr::vector<core::value> args_vec(&args_mr);
+    std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
+    std::pmr::vector<core::value> args_vec{&args_mr};
     try {
         std::ranges::transform(expr.args_, std::back_inserter(args_vec),
-                               [this](const auto& arg) { return evaluate(arg); });
+                               [&](auto&& arg) { return evaluate(arg); });
     } catch (const core::interpret_error&) { return {}; }
 
     auto&& func = registry_.find(name);
-    std::span<const core::value> args(args_vec.data(), expr.args_.size());
+    std::span<const core::value> args{args_vec.data(), expr.args_.size()};
 
     return core::visit(
         core::overloaded{
@@ -371,7 +371,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             }
         },
         [&](core::symbol_registry::func_ptr body) -> core::value {
-            core::scope_guard guard(values_);
+            core::scope_guard guard{values_};
             for (size_t i = 0; i < body->params_.size(); ++i) {
                 auto&& param = body->params_[i];
                 auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
@@ -399,8 +399,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
 core::value interpreter::evaluate_initializer_list(const ast::initializer_list_expr& expr) {
     std::vector<core::value> elements;
     elements.reserve(expr.elements_.size());
-    std::ranges::transform(expr.elements_, std::back_inserter(elements),
-                           [this](const auto& elem) { return evaluate(elem); });
+    std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
 
     if (elements.empty()) return std::vector<core::value>{};
 

@@ -230,7 +230,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                 if (s.params_.empty()) {
                     params += "(none)";
                 } else {
-                    for (const auto& p : s.params_)
+                    for (auto&& p : s.params_)
                         params += std::string(p.name_.lexeme_) + " : " + type_name(p.type_) + " ";
                 }
                 writer.emit(params + "\n");
