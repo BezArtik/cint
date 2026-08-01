@@ -10,6 +10,7 @@
 #include "core/utils/arena.hpp"
 
 #include <algorithm>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -215,8 +216,7 @@ struct statement {
  */
 template <typename Stmt, typename... Args>
 stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
-    auto&& p = arena.allocate<statement>(Stmt{std::forward<Args>(args)..., loc});
-    return stmt_ptr(p);
+    return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)..., loc});
 }
 
 /**
@@ -231,8 +231,7 @@ stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
  */
 template <typename Stmt>
 stmt_ptr make_stmt(core::arena& arena, Stmt&& stmt) {
-    auto&& p = arena.allocate<statement>(std::forward<Stmt>(stmt));
-    return stmt_ptr(p);
+    return core::make_arena<statement>(arena, std::forward<Stmt>(stmt));
 }
 
 /**

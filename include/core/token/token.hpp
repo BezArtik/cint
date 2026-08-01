@@ -71,7 +71,7 @@ struct token {
      * @param val   Литеральное значение (std::nullopt для не-литералов)
      */
     token(token_type type, std::string_view lex, location loc, std::optional<value> val = std::nullopt)
-        : type_(type), lexeme_(lex), loc_(loc), literal_value_(val) {}
+        : type_{type}, lexeme_{lex}, loc_{loc}, literal_value_{val} {}
 };
 
 }  // namespace core

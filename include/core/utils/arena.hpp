@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace core {
@@ -164,5 +165,11 @@ struct arena_deleter {
  */
 template <typename T>
 using arena_ptr = std::unique_ptr<T, arena_deleter<T>>;
+
+template <typename T, typename... Args>
+arena_ptr<T> make_arena(arena& arena, Args&&... args) {
+    auto&& ptr = arena.allocate<T>(std::forward<Args>(args)...);
+    return arena_ptr<T>(ptr);
+}
 
 }  // namespace core

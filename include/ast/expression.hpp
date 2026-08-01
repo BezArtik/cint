@@ -212,8 +212,7 @@ struct member_access_expr {
  */
 template <typename T, typename... Args>
 expression make_expr(core::arena& arena, core::location loc, Args&&... args) {
-    auto&& p = arena.allocate<T>(std::forward<Args>(args)..., loc);
-    return expression{core::arena_ptr<T>{p}};
+    return expression{core::make_arena<T>(arena, std::forward<Args>(args)..., loc)};
 }
 
 /**
@@ -230,8 +229,7 @@ expression make_expr(core::arena& arena, core::location loc, Args&&... args) {
  */
 template <typename T, typename... Args>
 expression make_expr_val(const core::token& tok, Args&&... args) {
-    T val{std::forward<Args>(args)..., tok, tok.loc_};
-    return expression{std::move(val)};
+    return expression{T{std::forward<Args>(args)..., tok, tok.loc_}};
 }
 
 }  // namespace ast

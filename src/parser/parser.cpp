@@ -80,14 +80,14 @@ bool is_type_start(tt type) noexcept {
 
 parser::parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
                core::arena_memory_resource& mr)
-    : tokens_(tokens), reporter_(reporter), arena_(arena), mr_(mr) {}
+    : tokens_{tokens}, reporter_{reporter}, arena_{arena}, mr_{mr} {}
 
 parser::ast_list parser::parse() {
     std::array<std::byte, 4096> temp_buf;
-    std::pmr::monotonic_buffer_resource local_mr(temp_buf.data(), temp_buf.size());
+    std::pmr::monotonic_buffer_resource local_mr{temp_buf.data(), temp_buf.size()};
     temp_mr_ = &local_mr;
 
-    ast_list statements(&mr_);
+    ast_list statements{&mr_};
     while (!is_at_end()) {
         auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
@@ -151,7 +151,7 @@ ast::stmt_ptr parser::declaration() {
 }
 
 core::type parser::parse_array_dimensions(core::type base_type) {
-    std::pmr::vector<size_t> dimensions(temp_mr_);
+    std::pmr::vector<size_t> dimensions{temp_mr_};
 
     while (match({tt::LEFT_BRACKET})) {
         size_t dim_size = 0;
@@ -183,7 +183,7 @@ ast::stmt_ptr parser::var_declaration(core::type type, const core::token& name) 
 }
 
 ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token& name) {
-    ast::func_declaration func(return_type, name);
+    ast::func_declaration func{return_type, name};
 
     if (!check(tt::RIGHT_PAREN)) {
         do { func.params_.push_back(parse_param()); } while (match({tt::COMMA}));
@@ -194,8 +194,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 
     auto&& body = block_statement();
     auto&& block = std::get<ast::block_stmt>(body->data_);
-    auto&& body_copy = arena_.allocate<ast::block_stmt>(std::move(block));
-    func.block_ = core::arena_ptr<ast::block_stmt>(body_copy);
+    func.block_ = core::make_arena<ast::block_stmt>(arena_, std::move(block));
 
     return ast::make_stmt(arena_, std::move(func));
 }
@@ -203,7 +202,7 @@ ast::stmt_ptr parser::func_declaration(core::type return_type, const core::token
 ast::stmt_ptr parser::struct_declaration(const core::token& name) {
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
-    std::pmr::vector<core::type::field_t> fields(temp_mr_);
+    std::pmr::vector<core::type::field_t> fields{temp_mr_};
 
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& field_type = parse_type();
@@ -315,7 +314,7 @@ ast::stmt_ptr parser::return_statement() {
 }
 
 ast::stmt_ptr parser::block_statement() {
-    ast::stmt_list statements(&mr_);
+    ast::stmt_list statements{&mr_};
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
@@ -386,7 +385,7 @@ ast::expression parser::postfix() {
 }
 
 ast::expression parser::initializer_list() {
-    ast::expr_list elements(&mr_);
+    ast::expr_list elements{&mr_};
 
     if (!check(tt::RIGHT_BRACE)) {
         do {
@@ -403,7 +402,7 @@ ast::expression parser::primary() {
     if (match({tt::KW_TRUE, tt::KW_FALSE})) return ast::make_expr_val<ast::literal_expr>(prev());
 
     if (match({tt::IDENTIFIER})) {
-        const auto& name = prev();
+        auto&& name = prev();
         return match({tt::LEFT_PAREN}) ? finish_call(name) : ast::make_expr_val<ast::variable_expr>(name);
     }
 
@@ -419,7 +418,7 @@ ast::expression parser::primary() {
 }
 
 ast::expression parser::finish_call(const core::token& callee) {
-    ast::expr_list args(&mr_);
+    ast::expr_list args{&mr_};
 
     if (!check(tt::RIGHT_PAREN)) {
         do { args.push_back(expression()); } while (match({tt::COMMA}));
@@ -462,8 +461,7 @@ void parser::synchronize() {
 
         if (brace_depth == 0) {
             if (prev().type_ == tt::SEMICOLON) return;
-            if (core::is_statement_start(type) && (prev().type_ == tt::SEMICOLON || prev().type_ == tt::RIGHT_BRACE))
-                return;
+            if (core::is_statement_start(type) && prev().type_ == tt::RIGHT_BRACE) return;
         }
 
         advance();
