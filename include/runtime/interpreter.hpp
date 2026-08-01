@@ -75,7 +75,7 @@ public:
      * @note Не вызывает функции автоматически. Точка входа — первая
      *       исполняемая инструкция верхнего уровня (не func_declaration).
      */
-    void interpret(std::span<const ast::stmt_ptr> statements);
+    void interpret(std::span<const ast::node<ast::statement>> statements);
 
 private:
     /// @brief Результат выполнения инструкции.
@@ -138,8 +138,6 @@ private:
     core::value evaluate_call(const ast::call_expr& expr);
 
     core::value evaluate_initializer_list(const ast::initializer_list_expr& expr);
-    core::value evaluate_index(const ast::index_expr& expr);
-    core::value evaluate_member_access(const ast::member_access_expr& expr);
 
     /**
      * @brief Вычисляет lvalue-ссылку на переменную.

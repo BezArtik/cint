@@ -19,11 +19,8 @@ namespace ast {
 // forward declaration
 struct statement;
 
-/// Указатель на узел инструкции, размещённый в арене.
-using stmt_ptr = core::arena_ptr<statement>;
-
 /// Список инструкций (тело функции, блок кода).
-using stmt_list = std::pmr::vector<stmt_ptr>;
+using stmt_list = std::pmr::vector<node<statement>>;
 
 /**
  * @brief Инструкция-выражение: `expr;`.
@@ -78,11 +75,11 @@ struct block_stmt {
  * Тело может быть любой инструкцией, не только блоком.
  */
 struct while_stmt {
-    expression condition_;  ///< Условие продолжения цикла
-    stmt_ptr block_;        ///< Тело цикла
-    core::location loc_;    ///< Позиция в исходном коде
+    expression condition_;   ///< Условие продолжения цикла
+    node<statement> block_;  ///< Тело цикла
+    core::location loc_;     ///< Позиция в исходном коде
 
-    while_stmt(expression cond, stmt_ptr block, core::location loc)
+    while_stmt(expression cond, node<statement> block, core::location loc)
         : condition_{std::move(cond)}, block_{std::move(block)}, loc_{loc} {}
 };
 
@@ -97,13 +94,13 @@ struct while_stmt {
  * 5. переход к п.2
  */
 struct for_stmt {
-    stmt_ptr initializer_;                 ///< Инициализатор (может быть nullptr)
+    node<statement> initializer_;          ///< Инициализатор (может быть nullptr)
     std::optional<expression> condition_;  ///< Условие продолжения
     std::optional<expression> increment_;  ///< Выражение инкремента
-    stmt_ptr block_;                       ///< Тело цикла
+    node<statement> block_;                ///< Тело цикла
     core::location loc_;                   ///< Позиция в исходном коде
 
-    for_stmt(stmt_ptr init, std::optional<expression> cond, std::optional<expression> inc, stmt_ptr block,
+    for_stmt(node<statement> init, std::optional<expression> cond, std::optional<expression> inc, node<statement> block,
              core::location loc)
         : initializer_{std::move(init)},
           condition_{std::move(cond)},
@@ -118,12 +115,12 @@ struct for_stmt {
  * Ветка else опциональна. Обе ветки выполняются в своих областях видимости.
  */
 struct if_stmt {
-    expression condition_;  ///< Условие (должно быть bool)
-    stmt_ptr then_block_;   ///< Ветка then
-    stmt_ptr else_block_;   ///< Ветка else (может быть nullptr)
-    core::location loc_;    ///< Позиция в исходном коде
+    expression condition_;        ///< Условие (должно быть bool)
+    node<statement> then_block_;  ///< Ветка then
+    node<statement> else_block_;  ///< Ветка else (может быть nullptr)
+    core::location loc_;          ///< Позиция в исходном коде
 
-    if_stmt(expression cond, stmt_ptr then_block, stmt_ptr else_block, core::location loc)
+    if_stmt(expression cond, node<statement> then_block, node<statement> else_block, core::location loc)
         : condition_{std::move(cond)},
           then_block_{std::move(then_block)},
           else_block_{std::move(else_block)},
@@ -212,10 +209,10 @@ struct statement {
  * @param arena  Арена для размещения
  * @param loc    Позиция в исходном коде
  * @param args   Аргументы конструктора
- * @return Указатель stmt_ptr на размещённый узел.
+ * @return Узел node<statement> в AST
  */
 template <typename Stmt, typename... Args>
-stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
+node<statement> make_stmt(core::arena& arena, core::location loc, Args&&... args) {
     return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)..., loc});
 }
 
@@ -227,10 +224,10 @@ stmt_ptr make_stmt(core::arena& arena, core::location loc, Args&&... args) {
  * @tparam Stmt Тип узла инструкции
  * @param arena  Арена для размещения
  * @param stmt   Готовая структура инструкции
- * @return Указатель stmt_ptr на размещённый узел.
+ * @return Узел node<statement> в AST
  */
 template <typename Stmt>
-stmt_ptr make_stmt(core::arena& arena, Stmt&& stmt) {
+node<statement> make_stmt(core::arena& arena, Stmt&& stmt) {
     return core::make_arena<statement>(arena, std::forward<Stmt>(stmt));
 }
 

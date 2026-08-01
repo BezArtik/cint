@@ -2,14 +2,16 @@
 
 #include "pipeline_harness.hpp"
 
+#include "ast/statement.hpp"
 #include "core/utils/symbol_registry.hpp"
+#include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
 #include "semantics/type_check.hpp"
 
 namespace tests {
 
 pipeline_harness::pipeline_harness(std::string_view source)
-    : source_code_(source), reporter_(source_code_), mr_(arena_) {}
+    : source_code_{source}, reporter_{source_code_}, mr_{arena_} {}
 
 bool pipeline_harness::lex() {
     lexer lex(source_code_, reporter_, mr_);
@@ -42,7 +44,7 @@ bool pipeline_harness::run_all() {
 const lexer::token_list& pipeline_harness::tokens() const noexcept {
     return tokens_;
 }
-const parser::ast_list& pipeline_harness::ast() const noexcept {
+const ast::stmt_list& pipeline_harness::ast() const noexcept {
     return ast_;
 }
 bool pipeline_harness::had_error() const noexcept {

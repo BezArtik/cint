@@ -30,6 +30,15 @@ struct index_expr;
 struct member_access_expr;
 
 /**
+ * @brief Шаблонный алиас для узла AST
+ *
+ * Тип, которым представлены все узлы AST.
+ *
+ */
+template <typename T>
+using node = core::arena_ptr<T>;
+
+/**
  * @brief Алгебраический тип выражения AST.
  *
  * Представляет любое выражение как variant всех возможных
@@ -38,11 +47,14 @@ struct member_access_expr;
  *
  * @see make_expr(), make_expr_val()
  */
+// clang-format off
 using expression =
-    std::variant<literal_expr, variable_expr, core::arena_ptr<binary_expr>, core::arena_ptr<assignment_expr>,
-                 core::arena_ptr<unary_expr>, core::arena_ptr<postfix_expr>, core::arena_ptr<call_expr>,
-                 core::arena_ptr<initializer_list_expr>, core::arena_ptr<index_expr>,
-                 core::arena_ptr<member_access_expr>>;
+    std::variant<node<literal_expr>, node<variable_expr>, 
+                 node<binary_expr>,  node<assignment_expr>,
+                 node<unary_expr>,   node<postfix_expr>, 
+                 node<call_expr>,    node<initializer_list_expr>, 
+                 node<index_expr>,   node<member_access_expr>>;
+// clang-format on
 
 /// Список выражений (аргументы вызова, элементы инициализатора).
 using expr_list = std::pmr::vector<expression>;
@@ -213,23 +225,6 @@ struct member_access_expr {
 template <typename T, typename... Args>
 expression make_expr(core::arena& arena, core::location loc, Args&&... args) {
     return expression{core::make_arena<T>(arena, std::forward<Args>(args)..., loc)};
-}
-
-/**
- * @brief Создаёт узел простого выражения (по значению).
- *
- * Для узлов, не требующих размещения в арене (literal_expr, variable_expr).
- * Позиция берётся из токена.
- *
- * @tparam T     Тип узла (literal_expr, variable_expr)
- * @tparam Args  Типы аргументов конструктора T
- * @param tok    Токен (берётся позиция tok.loc_)
- * @param args   Аргументы конструктора (кроме token и location)
- * @return Готовый expression.
- */
-template <typename T, typename... Args>
-expression make_expr_val(const core::token& tok, Args&&... args) {
-    return expression{T{std::forward<Args>(args)..., tok, tok.loc_}};
 }
 
 }  // namespace ast

@@ -166,6 +166,18 @@ struct arena_deleter {
 template <typename T>
 using arena_ptr = std::unique_ptr<T, arena_deleter<T>>;
 
+/**
+ * @brief Создает arena_ptr от типа T
+ *
+ * Создает arena_ptr из указателя на память,
+ * выделенной в арене
+ *
+ * @tparam T     Произвольный тип
+ * @tparam Args  Типы аргументов конструктора T
+ * @param arena  Арена для размещения
+ * @param args   Аргументы конструктора
+ * @return       Готовый arena_ptr<T>
+ */
 template <typename T, typename... Args>
 arena_ptr<T> make_arena(arena& arena, Args&&... args) {
     auto&& ptr = arena.allocate<T>(std::forward<Args>(args)...);

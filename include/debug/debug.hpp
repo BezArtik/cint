@@ -44,7 +44,7 @@ void print_tokens(const debug_writer& writer, std::span<const core::token> token
  * @param writer     Настроенный debug_writer
  * @param statements Список инструкций верхнего уровня
  */
-void print_ast(const debug_writer& writer, std::span<const ast::stmt_ptr> statements);
+void print_ast(const debug_writer& writer, std::span<const ast::node<ast::statement>> statements);
 
 /// @}
 

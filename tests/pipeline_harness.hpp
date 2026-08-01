@@ -1,10 +1,10 @@
 #pragma once
 
+#include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
 #include "core/utils/symbol_registry.hpp"
 #include "lexer/lexer.hpp"
-#include "parser/parser.hpp"
 
 #include <optional>
 #include <string>
@@ -23,7 +23,7 @@ public:
     bool run_all();
 
     const lexer::token_list& tokens() const noexcept;
-    const parser::ast_list& ast() const noexcept;
+    const ast::stmt_list& ast() const noexcept;
     bool had_error() const noexcept;
 
 private:
@@ -32,7 +32,7 @@ private:
     core::arena arena_;
     core::arena_memory_resource mr_;
     lexer::token_list tokens_;
-    parser::ast_list ast_;
+    ast::stmt_list ast_;
     std::optional<core::symbol_registry> registry_;
 };
 

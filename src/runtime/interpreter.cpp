@@ -63,7 +63,7 @@ interpreter::interpreter(core::error_reporter& reporter, const core::symbol_regi
                          const debug::debug_writer& writer)
     : reporter_(reporter), registry_(registry), writer_(writer) {}
 
-void interpreter::interpret(std::span<const ast::stmt_ptr> statements) {
+void interpreter::interpret(std::span<const ast::node<ast::statement>> statements) {
     try {
         for (auto&& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
@@ -74,13 +74,13 @@ void interpreter::interpret(std::span<const ast::stmt_ptr> statements) {
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
     return core::visit(core::overloaded{
-            [this](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
-            [this](const ast::var_declaration& s) { return execute_var_declaration(s); },
-            [this](const ast::block_stmt& s) { return execute_block(s); },
-            [this](const ast::while_stmt& s) { return execute_while(s); },
-            [this](const ast::for_stmt& s) { return execute_for(s); },
-            [this](const ast::if_stmt& s) { return execute_if(s); },
-            [this](const ast::return_stmt& s) { return execute_return_stmt(s); },
+            [&](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
+            [&](const ast::var_declaration& s) { return execute_var_declaration(s); },
+            [&](const ast::block_stmt& s) { return execute_block(s); },
+            [&](const ast::while_stmt& s) { return execute_while(s); },
+            [&](const ast::for_stmt& s) { return execute_for(s); },
+            [&](const ast::if_stmt& s) { return execute_if(s); },
+            [&](const ast::return_stmt& s) { return execute_return_stmt(s); },
             [](const ast::func_declaration&) { return execution_result::normal(); },
             [](const ast::struct_declaration&) { return execution_result::normal(); }},
             stmt.data_);
@@ -97,7 +97,7 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
     auto&& init_val = core::value::default_value(type);
 
     if (stmt.initializer_) {
-        if (auto&& list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+        if (auto&& list = std::get_if<ast::node<ast::initializer_list_expr>>(&*stmt.initializer_)) {
             if (type.is_struct()) {
                 auto&& st = init_val.as_mut<core::value::struct_t>();
                 auto&& fields = st->type_.struct_fields();
@@ -192,16 +192,16 @@ interpreter::execution_result interpreter::execute_return_stmt(const ast::return
 core::value interpreter::evaluate(const ast::expression& expr) {
     auto&& result = core::visit(
         core::overloaded{
-            [this](const ast::literal_expr& e) { return evaluate_literal(e); },
-            [this](const ast::variable_expr& e) { return evaluate_lvalue(e); },
-            [this](const core::arena_ptr<ast::binary_expr>& e) { return evaluate_binary(*e); },
-            [this](const core::arena_ptr<ast::assignment_expr>& e) { return evaluate_assignment(*e); },
-            [this](const core::arena_ptr<ast::unary_expr>& e) { return evaluate_unary(*e); },
-            [this](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
-            [this](const core::arena_ptr<ast::call_expr>& e) { return evaluate_call(*e); },
-            [this](const core::arena_ptr<ast::initializer_list_expr>& e) { return evaluate_initializer_list(*e); },
-            [this](const core::arena_ptr<ast::index_expr>& e) { return evaluate_index(*e); },
-            [this](const core::arena_ptr<ast::member_access_expr>& e) { return evaluate_member_access(*e); }},
+            [&](const ast::node<ast::literal_expr>& e) { return evaluate_literal(*e); },
+            [&](const ast::node<ast::variable_expr>&) { return evaluate_lvalue(expr); },
+            [&](const ast::node<ast::binary_expr>& e) { return evaluate_binary(*e); },
+            [&](const ast::node<ast::assignment_expr>& e) { return evaluate_assignment(*e); },
+            [&](const ast::node<ast::unary_expr>& e) { return evaluate_unary(*e); },
+            [&](const ast::node<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
+            [&](const ast::node<ast::call_expr>& e) { return evaluate_call(*e); },
+            [&](const ast::node<ast::initializer_list_expr>& e) { return evaluate_initializer_list(*e); },
+            [&](const ast::node<ast::index_expr>&) { return evaluate_lvalue(expr); },
+            [&](const ast::node<ast::member_access_expr>&) { return evaluate_lvalue(expr); }},
         expr);
     if (writer_.enabled(debug::trace_level::execution)) debug::print_expression(writer_, expr, 0, &result);
     return result;
@@ -258,11 +258,11 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
     return core::visit(core::overloaded{
-            [this](const ast::variable_expr& e) -> core::value& {                             
-                auto&& var = values_.get(e.name_.lexeme_);                            
+            [&](const ast::node<ast::variable_expr>& e) -> core::value& {                             
+                auto&& var = values_.get(e->name_.lexeme_);                            
                 return *var;
             },
-            [this](const core::arena_ptr<ast::index_expr>& e) -> core::value& {
+            [&](const ast::node<ast::index_expr>& e) -> core::value& {
                 auto&& obj = evaluate_lvalue(e->object_);
                 auto&& index_val = evaluate(e->index_);
                 auto&& i = index_val.to_int();
@@ -273,7 +273,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
 
                 return (*arr)->at(static_cast<size_t>(i));
             },
-            [this](const core::arena_ptr<ast::member_access_expr>& e) -> core::value& {
+            [&](const ast::node<ast::member_access_expr>& e) -> core::value& {
                 auto&& obj = evaluate_lvalue(e->object_);
                 auto&& st = obj.as_mut<core::value::struct_t>();
                 auto&& idx = st->type_.field_index(e->member_.lexeme_);
@@ -283,13 +283,6 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 throw core::interpret_error{err::type_mismatch_assignment};
             }
     }, expr);
-}
-
-core::value interpreter::evaluate_member_access(const ast::member_access_expr& expr) {
-    auto&& obj = evaluate_lvalue(expr.object_); 
-    auto&& st = obj.as_mut<core::value::struct_t>();
-    auto&& idx = st->type_.field_index(expr.member_.lexeme_);
-    return st->fields_[*idx]; 
 }
 
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
@@ -377,7 +370,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 return {};
             }
         },
-        [&](const ast::func_declaration* body) -> core::value {
+        [&](core::symbol_registry::func_ptr body) -> core::value {
             core::scope_guard guard(values_);
             for (size_t i = 0; i < body->params_.size(); ++i) {
                 auto&& param = body->params_[i];
@@ -396,7 +389,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
             return r;
         },
-        [&](const ast::struct_declaration*) -> core::value {
+        [&](core::symbol_registry::struct_ptr) -> core::value {
             reporter_.interpret_error(expr, err::not_a_function, name);
             return {};
         }},
@@ -415,16 +408,4 @@ core::value interpreter::evaluate_initializer_list(const ast::initializer_list_e
     for (auto&& e : elements) e = core::value::convert(std::move(e), elem_type);
 
     return elements;
-}
-
-core::value interpreter::evaluate_index(const ast::index_expr& expr) {
-    auto&& obj = evaluate(expr.object_);
-    auto&& idx = evaluate(expr.index_);
-    auto&& arr = obj.as<core::value::array_t>();
-    auto&& i = idx.to_int();
-
-    if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
-        reporter_.interpret_error(expr, err::index_out_of_bounds);
-
-    return (*arr)->at(static_cast<size_t>(i));
 }

@@ -20,14 +20,8 @@ const T* as(const ast::statement& stmt) {
 
 template <typename T>
 const T* as(const ast::expression& expr) {
-    if constexpr (std::is_same_v<T, ast::literal_expr>) {
-        return std::get_if<ast::literal_expr>(&expr);
-    } else if constexpr (std::is_same_v<T, ast::variable_expr>) {
-        return std::get_if<ast::variable_expr>(&expr);
-    } else {
-        if (auto* p = std::get_if<core::arena_ptr<T>>(&expr)) return p->get();
-        return nullptr;
-    }
+    if (auto* p = std::get_if<ast::node<T>>(&expr)) return p->get();
+    return nullptr;
 }
 
 TEST(parser_test, empty_program) {

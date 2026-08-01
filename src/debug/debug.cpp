@@ -38,17 +38,17 @@ std::string location_str(core::location loc) {
     return " [line " + std::to_string(loc.line_) + ":" + std::to_string(loc.column_) + "]";
 }
 
-void print_literal(const debug_writer& writer, const ast::literal_expr& e, uint32_t level) {
+void print_literal(const debug_writer& writer, const ast::node<ast::literal_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Literal: " + std::string(e.value_.lexeme_) + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Literal: " + std::string(e->value_.lexeme_) + location_str(e->loc_) + "\n");
 }
 
-void print_variable(const debug_writer& writer, const ast::variable_expr& e, uint32_t level) {
+void print_variable(const debug_writer& writer, const ast::node<ast::variable_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Variable: " + std::string(e.name_.lexeme_) + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Variable: " + std::string(e->name_.lexeme_) + location_str(e->loc_) + "\n");
 }
 
-void print_binary(const debug_writer& writer, const core::arena_ptr<ast::binary_expr>& e, uint32_t level) {
+void print_binary(const debug_writer& writer, const ast::node<ast::binary_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "Binary: " + std::string(e->op_.lexeme_) + location_str(e->loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Left:\n");
@@ -57,7 +57,7 @@ void print_binary(const debug_writer& writer, const core::arena_ptr<ast::binary_
     print_expression(writer, e->right_, level + 2);
 }
 
-void print_assignment(const debug_writer& writer, const core::arena_ptr<ast::assignment_expr>& e, uint32_t level) {
+void print_assignment(const debug_writer& writer, const ast::node<ast::assignment_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "Assignment: " + std::string(e->op_.lexeme_) + location_str(e->loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Target:\n");
@@ -66,19 +66,19 @@ void print_assignment(const debug_writer& writer, const core::arena_ptr<ast::ass
     print_expression(writer, e->value_, level + 2);
 }
 
-void print_unary(const debug_writer& writer, const core::arena_ptr<ast::unary_expr>& e, uint32_t level) {
+void print_unary(const debug_writer& writer, const ast::node<ast::unary_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "Unary: " + std::string(e->op_.lexeme_) + location_str(e->loc_) + "\n");
     print_expression(writer, e->operand_, level + 1);
 }
 
-void print_postfix(const debug_writer& writer, const core::arena_ptr<ast::postfix_expr>& e, uint32_t level) {
+void print_postfix(const debug_writer& writer, const ast::node<ast::postfix_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "Postfix: " + std::string(e->op_.lexeme_) + location_str(e->loc_) + "\n");
     print_expression(writer, e->operand_, level + 1);
 }
 
-void print_call_ast(const debug_writer& writer, const core::arena_ptr<ast::call_expr>& e, uint32_t level) {
+void print_call_ast(const debug_writer& writer, const ast::node<ast::call_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     auto&& msg = indent_str(level) + "Call: " + std::string(e->callee_.lexeme_) + location_str(e->loc_);
     if (e->args_.empty()) {
@@ -92,7 +92,7 @@ void print_call_ast(const debug_writer& writer, const core::arena_ptr<ast::call_
     }
 }
 
-void print_initializer_list_ast(const debug_writer& writer, const core::arena_ptr<ast::initializer_list_expr>& e,
+void print_initializer_list_ast(const debug_writer& writer, const ast::node<ast::initializer_list_expr>& e,
                                 uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "InitializerList: [" + std::to_string(e->elements_.size()) + " elements]" +
@@ -103,7 +103,7 @@ void print_initializer_list_ast(const debug_writer& writer, const core::arena_pt
     }
 }
 
-void print_index_ast(const debug_writer& writer, const core::arena_ptr<ast::index_expr>& e, uint32_t level) {
+void print_index_ast(const debug_writer& writer, const ast::node<ast::index_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "IndexExpr" + location_str(e->loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Object:\n");
@@ -112,8 +112,7 @@ void print_index_ast(const debug_writer& writer, const core::arena_ptr<ast::inde
     print_expression(writer, e->index_, level + 2);
 }
 
-void print_member_access(const debug_writer& writer, const core::arena_ptr<ast::member_access_expr>& e,
-                         uint32_t level) {
+void print_member_access(const debug_writer& writer, const ast::node<ast::member_access_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "MemberAccess: ." + std::string(e->member_.lexeme_) + location_str(e->loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Object:\n");
@@ -128,16 +127,16 @@ void print_expression(const debug_writer& writer, const ast::expression& expr, u
 
     core::visit(
         core::overloaded{
-            [&](const ast::literal_expr& e) { print_literal(writer, e, level); },
-            [&](const ast::variable_expr& e) { print_variable(writer, e, level); },
-            [&](const core::arena_ptr<ast::binary_expr>& e) { print_binary(writer, e, level); },
-            [&](const core::arena_ptr<ast::assignment_expr>& e) { print_assignment(writer, e, level); },
-            [&](const core::arena_ptr<ast::unary_expr>& e) { print_unary(writer, e, level); },
-            [&](const core::arena_ptr<ast::postfix_expr>& e) { print_postfix(writer, e, level); },
-            [&](const core::arena_ptr<ast::call_expr>& e) { print_call_ast(writer, e, level); },
-            [&](const core::arena_ptr<ast::initializer_list_expr>& e) { print_initializer_list_ast(writer, e, level); },
-            [&](const core::arena_ptr<ast::index_expr>& e) { print_index_ast(writer, e, level); },
-            [&](const core::arena_ptr<ast::member_access_expr>& e) { print_member_access(writer, e, level); }},
+            [&](const ast::node<ast::literal_expr>& e) { print_literal(writer, e, level); },
+            [&](const ast::node<ast::variable_expr>& e) { print_variable(writer, e, level); },
+            [&](const ast::node<ast::binary_expr>& e) { print_binary(writer, e, level); },
+            [&](const ast::node<ast::assignment_expr>& e) { print_assignment(writer, e, level); },
+            [&](const ast::node<ast::unary_expr>& e) { print_unary(writer, e, level); },
+            [&](const ast::node<ast::postfix_expr>& e) { print_postfix(writer, e, level); },
+            [&](const ast::node<ast::call_expr>& e) { print_call_ast(writer, e, level); },
+            [&](const ast::node<ast::initializer_list_expr>& e) { print_initializer_list_ast(writer, e, level); },
+            [&](const ast::node<ast::index_expr>& e) { print_index_ast(writer, e, level); },
+            [&](const ast::node<ast::member_access_expr>& e) { print_member_access(writer, e, level); }},
         expr);
 
     if (eval_result && writer.enabled(trace_level::execution)) {
@@ -283,7 +282,7 @@ void print_tokens(const debug_writer& writer, std::span<const core::token> token
     writer.emit("\n");
 }
 
-void print_ast(const debug_writer& writer, std::span<const ast::stmt_ptr> statements) {
+void print_ast(const debug_writer& writer, std::span<const ast::node<ast::statement>> statements) {
     if (!writer.enabled(trace_level::ast)) return;
 
     writer.emit(

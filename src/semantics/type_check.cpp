@@ -18,24 +18,24 @@ using t = core::type;
 using err = core::error_code;
 
 type_checker::type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
-    : reporter_(reporter), registry_(registry) {}
+    : reporter_{reporter}, registry_{registry} {}
 
-bool type_checker::check(std::span<const ast::stmt_ptr> statements) {
+bool type_checker::check(std::span<const ast::node<ast::statement>> statements) {
     for (auto&& stmt : statements) check_statement(*stmt);
     return !reporter_.has_error();
 }
 // clang-format off
 void type_checker::check_statement(const ast::statement& stmt) {
     core::visit(core::overloaded{
-            [this](const ast::expression_stmt& s) { check_expression_stmt(s); },
-            [this](const ast::var_declaration& s) { check_var_declaration(s); },
-            [this](const ast::block_stmt& s) { check_block(s); },
-            [this](const ast::while_stmt& s) { check_while(s); },
-            [this](const ast::for_stmt& s) { check_for(s); },
-            [this](const ast::if_stmt& s) { check_if(s); },
-            [this](const ast::return_stmt& s) { check_return_stmt(s); },
-            [this](const ast::func_declaration& s) { check_func_declaration(s); },
-            [this](const ast::struct_declaration& s) { check_struct_declaration(s); }},
+            [&](const ast::expression_stmt& s) { check_expression_stmt(s); },
+            [&](const ast::var_declaration& s) { check_var_declaration(s); },
+            [&](const ast::block_stmt& s) { check_block(s); },
+            [&](const ast::while_stmt& s) { check_while(s); },
+            [&](const ast::for_stmt& s) { check_for(s); },
+            [&](const ast::if_stmt& s) { check_if(s); },
+            [&](const ast::return_stmt& s) { check_return_stmt(s); },
+            [&](const ast::func_declaration& s) { check_func_declaration(s); },
+            [&](const ast::struct_declaration& s) { check_struct_declaration(s); }},
         stmt.data_);
 }
 // clang-format on
@@ -68,7 +68,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
         if (init_type.is_unknown()) return;
 
         if (resolved_type.is_struct()) {
-            if (auto&& list = std::get_if<core::arena_ptr<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+            if (auto&& list = std::get_if<ast::node<ast::initializer_list_expr>>(&*stmt.initializer_)) {
                 auto&& fields = resolved_type.struct_fields();
                 auto&& lst = list->get();
                 if (lst->elements_.size() > fields.size()) {
@@ -221,16 +221,16 @@ void type_checker::check_struct_declaration(const ast::struct_declaration& stmt)
 t type_checker::type_of(const ast::expression& expr) {
     return core::visit(
         core::overloaded{
-            [this](const ast::literal_expr& e) { return type_of_literal(e); },
-            [this](const ast::variable_expr& e) { return type_of_variable(e); },
-            [this](const core::arena_ptr<ast::binary_expr>& e) { return type_of_binary(*e); },
-            [this](const core::arena_ptr<ast::assignment_expr>& e) { return type_of_assignment(*e); },
-            [this](const core::arena_ptr<ast::unary_expr>& e) { return type_of_unary(*e); },
-            [this](const core::arena_ptr<ast::postfix_expr>& e) { return type_of_postfix(*e); },
-            [this](const core::arena_ptr<ast::call_expr>& e) { return type_of_call(*e); },
-            [this](const core::arena_ptr<ast::initializer_list_expr>& e) { return type_of_initializer_list(*e); },
-            [this](const core::arena_ptr<ast::index_expr>& e) { return type_of_index(*e); },
-            [this](const core::arena_ptr<ast::member_access_expr>& e) { return type_of_member_access(*e); }},
+            [&](const ast::node<ast::literal_expr>& e) { return type_of_literal(*e); },
+            [&](const ast::node<ast::variable_expr>& e) { return type_of_variable(*e); },
+            [&](const ast::node<ast::binary_expr>& e) { return type_of_binary(*e); },
+            [&](const ast::node<ast::assignment_expr>& e) { return type_of_assignment(*e); },
+            [&](const ast::node<ast::unary_expr>& e) { return type_of_unary(*e); },
+            [&](const ast::node<ast::postfix_expr>& e) { return type_of_postfix(*e); },
+            [&](const ast::node<ast::call_expr>& e) { return type_of_call(*e); },
+            [&](const ast::node<ast::initializer_list_expr>& e) { return type_of_initializer_list(*e); },
+            [&](const ast::node<ast::index_expr>& e) { return type_of_index(*e); },
+            [&](const ast::node<ast::member_access_expr>& e) { return type_of_member_access(*e); }},
         expr);
 }
 // clang-format on
@@ -331,9 +331,9 @@ t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
     return core::visit(
-        core::overloaded{[](const ast::variable_expr&) { return true; },
-                         [this](const core::arena_ptr<ast::index_expr>& idx) { return is_lvalue(idx->object_); },
-                         [this](const core::arena_ptr<ast::member_access_expr>& e) { return is_lvalue(e->object_); },
+        core::overloaded{[](const ast::node<ast::variable_expr>&) { return true; },
+                         [&](const ast::node<ast::index_expr>& idx) { return is_lvalue(idx->object_); },
+                         [&](const ast::node<ast::member_access_expr>& e) { return is_lvalue(e->object_); },
                          [](const auto&) { return false; }},
         expr);
 }

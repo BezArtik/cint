@@ -83,7 +83,7 @@ public:
      * @param builtins Список встроенных функций (core::builtins)
      * @return Готовый реестр символов.
      */
-    static symbol_registry build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins);
+    static symbol_registry build(std::span<const ast::node<ast::statement>> ast, std::span<const builtin_def> builtins);
 
     /**
      * @brief Ищет символ по имени.
@@ -124,7 +124,7 @@ private:
      * Для структур: добавляет новую запись.
      * Другие типы объявлений игнорируются.
      */
-    void add_ast_entry(const ast::stmt_ptr& stmt);
+    void add_ast_entry(const ast::node<ast::statement>& stmt);
 
     std::vector<entry> entries_;  ///< Отсортированный по имени вектор записей
 };

@@ -10,7 +10,8 @@
 
 namespace core {
 
-symbol_registry symbol_registry::build(std::span<const ast::stmt_ptr> ast, std::span<const builtin_def> builtins) {
+symbol_registry symbol_registry::build(std::span<const ast::node<ast::statement>> ast,
+                                       std::span<const builtin_def> builtins) {
     symbol_registry registry;
     registry.entries_.reserve(builtins.size() + ast.size());
 
@@ -29,7 +30,7 @@ void symbol_registry::add_builtins(std::span<const builtin_def> builtins) {
 }
 
 // clang-format off
-void symbol_registry::add_ast_entry(const ast::stmt_ptr& stmt) {
+void symbol_registry::add_ast_entry(const ast::node<ast::statement>& stmt) {
     visit(overloaded{
             [this](const ast::func_declaration& func) {            
                 std::vector<type> param_types;
