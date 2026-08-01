@@ -349,7 +349,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
 
     std::array<std::byte, 4096> args_buf;
     std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
-    std::pmr::vector<core::value> args_vec{&args_mr};
+    std::pmr::vector<core::value> args_vec(&args_mr);
     try {
         std::ranges::transform(expr.args_, std::back_inserter(args_vec),
                                [&](auto&& arg) { return evaluate(arg); });

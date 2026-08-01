@@ -58,17 +58,17 @@ public:
     using struct_t = struct_data;                         ///< Структура (значение + тип)
 
     /// Создает void-значение
-    value() : data_(std::monostate{}) {}
+    value() : data_{std::monostate{}} {}
 
     /// Конструктор из любого поддерживаемого типа.
     template <typename T>
-    value(T v) : data_(std::move(v)) {}
+    value(T v) : data_{std::move(v)} {}
 
     /// Создаёт строковое значение (размещает строку в shared_ptr).
-    value(std::string s) : data_(std::make_shared<std::string>(std::move(s))) {}
+    value(std::string s) : data_{std::make_shared<std::string>(std::move(s))} {}
 
     /// Создаёт массив (размещает вектор в shared_ptr).
-    value(std::vector<value> v) : data_(std::make_shared<std::vector<value>>(std::move(v))) {}
+    value(std::vector<value> v) : data_{std::make_shared<std::vector<value>>(std::move(v))} {}
 
     /**
      * @brief Возвращает значение по умолчанию для указанного типа.
