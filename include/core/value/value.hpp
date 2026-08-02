@@ -60,15 +60,19 @@ public:
     /// Создает void-значение
     value() : data_{std::monostate{}} {}
 
-    /// Конструктор из любого поддерживаемого типа.
-    template <typename T>
-    value(T v) : data_{std::move(v)} {}
+    /// Создают примитивные типы.
+    value(int_t v) : data_{v} {}
+    value(double_t v) : data_{v} {}
+    value(bool_t v) : data_{v} {}
 
     /// Создаёт строковое значение (размещает строку в shared_ptr).
-    value(std::string s) : data_{std::make_shared<std::string>(std::move(s))} {}
+    value(std::string v) : data_{std::make_shared<std::string>(std::move(v))} {}
 
     /// Создаёт массив (размещает вектор в shared_ptr).
     value(std::vector<value> v) : data_{std::make_shared<std::vector<value>>(std::move(v))} {}
+
+    /// Создает структуру
+    value(struct_t v) : data_{std::move(v)} {}
 
     /**
      * @brief Возвращает значение по умолчанию для указанного типа.
