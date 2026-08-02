@@ -92,6 +92,7 @@ ast::stmt_list parser::parse() {
         auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(stmt));
     }
+    temp_mr_ = nullptr;
     return statements;
 }
 
