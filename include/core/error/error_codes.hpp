@@ -49,8 +49,7 @@ namespace core {
     X(not_a_function,                        "'{}' is not a function")                          \
     X(argument_count_mismatch,               "Function '{}' expects {} arguments, got {}")      \
     X(argument_type_mismatch,                "Argument {} type mismatch in call to '{}'")       \
-    X(redeclaration_variable,                "Redeclaration of variable '{}'")                  \
-    X(redeclaration_function,                "Redeclaration of function '{}'")                  \
+    X(redeclaration,                         "Redeclaration of '{}'")                           \
     X(return_outside_function,               "Return statement outside of function")            \
     X(return_type_mismatch,                  "Return type mismatch")                            \
     X(return_missing_value,                  "Return with no value in non-void function")       \

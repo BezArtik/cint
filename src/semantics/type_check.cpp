@@ -59,7 +59,7 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
     }
 
     if (symbols_.contains_in_current_scope(name)) {
-        reporter_.error(stmt, err::redeclaration_variable, name);
+        reporter_.error(stmt, err::redeclaration, name);
         return;
     }
 
@@ -171,7 +171,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     auto&& name = stmt.name_.lexeme_;
 
     if (symbols_.contains_in_current_scope(name)) {
-        reporter_.error(stmt, err::redeclaration_function, name);
+        reporter_.error(stmt, err::redeclaration, name);
         return;
     }
 
@@ -198,7 +198,7 @@ void type_checker::check_struct_declaration(const ast::struct_declaration& stmt)
                                         existing->info_);
 
         if (is_duplicate) {
-            reporter_.error(stmt, err::redeclaration_function, name);
+            reporter_.error(stmt, err::redeclaration, name);
             return;
         }
     }
@@ -207,7 +207,7 @@ void type_checker::check_struct_declaration(const ast::struct_declaration& stmt)
     std::unordered_set<std::string_view> seen;
     for (auto&& [field_name, field_type] : fields) {
         if (!seen.insert(field_name).second) {
-            reporter_.error(stmt, err::redeclaration_variable, field_name);
+            reporter_.error(stmt, err::redeclaration, field_name);
             return;
         }
         auto&& resolved = registry_.resolve_type(field_type);
@@ -239,7 +239,8 @@ t type_checker::type_of_literal(const ast::literal_expr& expr) {
 
     switch (token.type_) {
         case tt::NUMBER:
-            return token.literal_value_ && token.literal_value_->is_double() ? t::double_type() : t::int_type();
+            if (!token.literal_value_) return t::unknown_type();
+            return token.literal_value_->is_double() ? t::double_type() : t::int_type();
         case tt::KW_TRUE:
         case tt::KW_FALSE:
             return t::bool_type();
