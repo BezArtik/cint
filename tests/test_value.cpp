@@ -101,7 +101,7 @@ TEST(value_test, div_ints) {
 TEST(value_test, div_by_zero) {
     v a{v::int_t{1}};
     v b{v::int_t{0}};
-    EXPECT_THROW(op::div(a, b), core::interpret_error);
+    EXPECT_THROW(op::div(a, b), core::value_error);
 }
 
 TEST(value_test, mod_ints) {
@@ -114,7 +114,7 @@ TEST(value_test, mod_ints) {
 TEST(value_test, mod_by_zero) {
     v a{v::int_t{1}};
     v b{v::int_t{0}};
-    EXPECT_THROW(op::mod(a, b), core::interpret_error);
+    EXPECT_THROW(op::mod(a, b), core::value_error);
 }
 
 TEST(value_test, eq_ints) {
@@ -142,7 +142,7 @@ TEST(value_test, not_op) {
 TEST(value_test, invalid_add) {
     v a{true};
     v b{v::int_t{1}};
-    EXPECT_THROW(op::add(a, b), core::interpret_error);
+    EXPECT_THROW(op::add(a, b), core::value_error);
 }
 
 TEST(value_test, struct_type_int_fields) {

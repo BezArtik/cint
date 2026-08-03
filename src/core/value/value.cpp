@@ -50,16 +50,14 @@ core::value value::convert(core::value val, const core::type& target) {
 value::int_t value::parse_int(std::string_view text) {
     int_t result;
     auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    if (ec != std::errc{} || ptr != text.data() + text.size())
-        throw core::interpret_error{error_code::invalid_conversion};
+    if (ec != std::errc{} || ptr != text.data() + text.size()) throw core::value_error{error_code::invalid_conversion};
     return result;
 }
 
 value::double_t value::parse_double(std::string_view text) {
     double_t result;
     auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    if (ec != std::errc{} || ptr != text.data() + text.size())
-        throw core::interpret_error{error_code::invalid_conversion};
+    if (ec != std::errc{} || ptr != text.data() + text.size()) throw core::value_error{error_code::invalid_conversion};
     return result;
 }
 
@@ -92,7 +90,7 @@ value::int_t value::to_int() const {
             [](int_t v) { return v; },
             [](double_t v) { return static_cast<int_t>(v); },
             [](const string_t& v) { return parse_int(*v); },
-            [](const auto&) -> int_t { throw core::interpret_error{error_code::invalid_conversion}; }
+            [](const auto&) -> int_t { throw core::value_error{error_code::invalid_conversion}; }
         },
         data_);
 }
@@ -103,7 +101,7 @@ value::double_t value::to_double() const {
             [](int_t v) { return static_cast<double_t>(v); },
             [](double_t v) { return v; },
             [](const string_t& v) { return parse_double(*v); },
-            [](const auto&) -> double_t { throw core::interpret_error{error_code::invalid_conversion}; }
+            [](const auto&) -> double_t { throw core::value_error{error_code::invalid_conversion}; }
         },
         data_);
 }
@@ -116,7 +114,7 @@ value::bool_t value::to_bool() const {
             [](bool_t v) { return v; },
             [](const string_t& s) { return !s->empty(); },
             [](const array_t& a) { return !a->empty(); },
-            [](const auto&) -> bool_t { throw core::interpret_error{error_code::invalid_conversion}; }
+            [](const auto&) -> bool_t { throw core::value_error{error_code::invalid_conversion}; }
         },
         data_);
 }

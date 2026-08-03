@@ -135,16 +135,35 @@ struct parse_error : std::exception {
 };
 
 /**
- * @brief Исключение: фатальная ошибка времени выполнения.
+ * @brief Исключение: ошибка операции над значением.
  *
- * Содержит код ошибки для возможной обработки.
- * Выбрасывается интерпретатором и операциями над значениями.
- * Перехватывается в interpreter::interpret() — выполнение прекращается.
+ * Выбрасывается операциями системы значений (core::ops, value::to_*)
+ * при невозможности выполнить операцию: деление на ноль, неверное
+ * преобразование типа и т.д.
+ *
+ * Не зависит от интерпретатора — может возникнуть на любом этапе,
+ * где вычисляются значения (лексер при парсинге чисел, builtin-функции).
  */
-struct interpret_error : std::exception {
-    error_code code_;  ///< Код ошибки для диагностики
+struct value_error : std::exception {
+    error_code code_;
 
-    interpret_error(error_code c) noexcept : code_(c) {}
+    value_error(error_code c) noexcept : code_(c) {}
+    const char* what() const noexcept override { return "Value error"; }
+};
+
+/**
+ * @brief Исключение: ошибка времени выполнения интерпретатора.
+ *
+ * Выбрасывается интерпретатором при обходе AST: переполнение стека,
+ * выход за границу массива.
+ *
+ * Отличается от value_error тем, что возникает в контексте выполнения
+ * конкретной инструкции/выражения, а не абстрактной операции над значением.
+ */
+struct runtime_error : std::exception {
+    error_code code_;
+
+    runtime_error(error_code c) noexcept : code_(c) {}
     const char* what() const noexcept override { return "Runtime error"; }
 };
 

@@ -38,7 +38,7 @@ namespace core {
  * - **Форматирование сообщений**: через std::vformat с плейсхолдерами {}
  * - **Визуализация ошибки**: показывает строку исходного кода и позицию ошибки
  * - **Накопление ошибок**: не останавливается на первой, собирает все за проход
- * - **Фатальные ошибки**: parse_error и interpret_error прерывают выполнение
+ * - **Фатальные ошибки**: parse_error, value_error и runtime_error прерывают выполнение
  *
  * @invariant has_error() возвращает true, если была хотя бы одна ошибка.
  *
@@ -87,9 +87,27 @@ public:
     }
 
     /**
-     * @brief Сообщает о фатальной ошибке времени выполнения.
+     * @brief Сообщает о фатальной ошибке значения.
      *
-     * Выводит сообщение и выбрасывает core::interpret_error.
+     * Выводит сообщение и выбрасывает core::value_error.
+     * Используется операциями над значениями и builtin-функциями.
+     *
+     * @tparam T    Тип с полем loc_
+     * @tparam Args Типы аргументов для форматирования
+     * @param t    Объект с позицией
+     * @param code Код ошибки
+     * @param args Аргументы для форматирования
+     * @throws core::value_error Всегда.
+     */
+    template <typename T, typename... Args>
+    [[noreturn]] void value_error(const T& t, error_code code, Args&&... args) {
+        error(t.loc_, code, std::forward<Args>(args)...);
+        throw core::value_error{code};
+    }
+
+    /**
+     * @brief Сообщает о фатальной ошибке интерпретатора и выбрасывает runtime_error.
+     *
      * Используется интерпретатором при невозможности продолжить выполнение.
      *
      * @tparam T    Тип с полем loc_
@@ -97,12 +115,12 @@ public:
      * @param t    Объект с позицией
      * @param code Код ошибки
      * @param args Аргументы для форматирования
-     * @throws core::interpret_error Всегда.
+     * @throws core::runtime_error Всегда.
      */
     template <typename T, typename... Args>
-    [[noreturn]] void interpret_error(const T& t, error_code code, Args&&... args) {
+    [[noreturn]] void runtime_error(const T& t, error_code code, Args&&... args) {
         error(t.loc_, code, std::forward<Args>(args)...);
-        throw core::interpret_error{code};
+        throw core::runtime_error{code};
     }
 
     /**

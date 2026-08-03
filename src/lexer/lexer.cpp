@@ -147,7 +147,7 @@ void lexer::consume_number(core::location start_loc) {
     try {
         auto&& val = core::value::from_string(text, is_double);
         tokens_.emplace_back(tt::NUMBER, text, start_loc, val);
-    } catch (const core::interpret_error&) {
+    } catch (const core::value_error&) {
         reporter_.error(start_loc, err::unexpected_character);
         tokens_.emplace_back(tt::NUMBER, text, start_loc, std::nullopt);
     }

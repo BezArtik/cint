@@ -161,7 +161,7 @@ core::type parser::parse_array_dimensions(core::type base_type) {
             try {
                 auto&& val = core::value::from_string(size_token.lexeme_, false);
                 dim_size = static_cast<size_t>(val.to_int());
-            } catch (const core::interpret_error&) { reporter_.parse_error(size_token, err::unexpected_token); }
+            } catch (const core::value_error&) { reporter_.parse_error(size_token, err::unexpected_token); }
             if (dim_size == 0) reporter_.parse_error(size_token, err::unexpected_token);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);

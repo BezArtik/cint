@@ -68,7 +68,7 @@ void interpreter::interpret(std::span<const ast::node<ast::statement>> statement
         for (auto&& stmt : statements) {
             if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
         }
-    } catch (const core::interpret_error&) {}
+    } catch (const core::runtime_error&) {}
 }
 // clang-format off
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
@@ -210,7 +210,7 @@ core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
 
     if (token.literal_value_) return *token.literal_value_;
 
-    reporter_.interpret_error(token, err::unexpected_literal);
+    reporter_.runtime_error(token, err::unexpected_literal);
     return {};
 }
 
@@ -247,9 +247,9 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
             case tt::XOR:           return op::bit_xor(left, right);
             case tt::SHL:           return op::shl(left, right);
             case tt::SHR:           return op::shr(left, right);
-            default: reporter_.interpret_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
+            default: reporter_.runtime_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
         }
-    } catch (const core::interpret_error& e) { reporter_.interpret_error(expr, e.code_, expr.op_.lexeme_); }
+    } catch (const core::value_error& e) { reporter_.runtime_error(expr, e.code_, expr.op_.lexeme_); }
 }
 
 
@@ -266,7 +266,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 auto&& arr = obj.as_mut<core::value::array_t>();
 
                 if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
-                    throw core::interpret_error{err::index_out_of_bounds};
+                    throw core::runtime_error{err::index_out_of_bounds};
 
                 return (*arr)->at(static_cast<size_t>(i));
             },
@@ -277,7 +277,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 return st->fields_[*idx];
             },
             [](const auto&) -> core::value& {
-                throw core::interpret_error{err::type_mismatch_assignment};
+                throw core::runtime_error{err::type_mismatch_assignment};
             }
     }, expr);
 }
@@ -325,7 +325,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
         case tt::DECREMENT:
             return apply_increment(evaluate_lvalue(expr.operand_), op, false);
         default:
-            reporter_.interpret_error(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
+            reporter_.runtime_error(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
     }
 }
 
@@ -336,7 +336,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
-    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.interpret_error(expr, err::stack_overflow);
+    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.runtime_error(expr, err::stack_overflow);
     recursion_depth_++;
 
     struct depth_guard {
@@ -350,7 +350,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     try {
         std::ranges::transform(expr.args_, std::back_inserter(args_vec),
                                [&](auto&& arg) { return evaluate(arg); });
-    } catch (const core::interpret_error&) { return {}; }
+    } catch (const core::runtime_error&) { return {}; }
 
     auto&& func = registry_.find(name);
     std::span<const core::value> args{args_vec.data(), expr.args_.size()};
@@ -362,8 +362,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 auto&& r = builtin(args);
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
-            } catch (const core::interpret_error& e) {
-                reporter_.interpret_error(expr, e.code_, name);
+            } catch (const core::value_error& e) {
+                reporter_.runtime_error(expr, e.code_, name);
                 return {};
             }
         },
@@ -387,7 +387,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             return r;
         },
         [&](core::symbol_registry::struct_ptr) -> core::value {
-            reporter_.interpret_error(expr, err::not_a_function, name);
+            reporter_.runtime_error(expr, err::not_a_function, name);
             return {};
         }},
         func->info_);

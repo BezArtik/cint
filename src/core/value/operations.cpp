@@ -30,7 +30,7 @@ value mul(const value& a, const value& b) {
 
 value div(const value& a, const value& b) {
     return arithmetic_op(a, b, [](auto x, auto y) {
-        if (y == 0) throw core::interpret_error{error_code::division_by_zero};
+        if (y == 0) throw core::value_error{error_code::division_by_zero};
         return x / y;
     });
 }
@@ -38,7 +38,7 @@ value div(const value& a, const value& b) {
 value mod(const value& a, const value& b) {
     auto&& li = a.to_int();
     auto&& ri = b.to_int();
-    if (ri == 0) throw core::interpret_error{error_code::modulo_by_zero};
+    if (ri == 0) throw core::value_error{error_code::modulo_by_zero};
     return li % ri;
 }
 
