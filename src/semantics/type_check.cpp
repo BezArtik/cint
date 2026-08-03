@@ -115,13 +115,8 @@ void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
 }
 
 void type_checker::check_body(const ast::statement& body) {
-    bool create_scope = false;
-    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_)) {
-        create_scope = has_declarations(*block);
-        check_block(*block, create_scope);
-    } else {
-        check_statement(body);
-    }
+    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_)) check_block(*block, ast::has_declarations(*block));
+    check_statement(body);
 }
 
 void type_checker::check_while(const ast::while_stmt& stmt) {

@@ -59,10 +59,8 @@ struct var_declaration {
  * нет объявлений, scope при выполнении не создаётся.
  */
 struct block_stmt {
-    stmt_list statements_;                           ///< Список инструкций блока
-    core::location loc_;                             ///< Позиция в исходном коде
-    mutable bool has_declarations_checked_ = false;  ///< Была ли проверка на объявления
-    mutable bool has_declarations_ = false;  ///< Содержит ли блок объявления переменных
+    stmt_list statements_;  ///< Список инструкций блока
+    core::location loc_;    ///< Позиция в исходном коде
 
     block_stmt() = default;
     block_stmt(stmt_list statements, core::location loc) : statements_{std::move(statements)}, loc_{loc} {}
@@ -238,18 +236,11 @@ node<statement> make_stmt(core::arena& arena, Stmt&& stmt) {
  * есть var_declaration. Результат кешируется в has_declarations_.
  *
  * @param block Блок инструкций
- * @return true, если блок (рекурсивно) содержит объявления переменных.
+ * @return true, если блок содержит объявления переменных.
  */
 inline bool has_declarations(const block_stmt& block) noexcept {
-    if (!block.has_declarations_checked_) {
-        block.has_declarations_ = std::ranges::any_of(block.statements_, [](const auto& stmt) {
-            return std::holds_alternative<var_declaration>(stmt->data_) ||
-                   (std::holds_alternative<block_stmt>(stmt->data_) &&
-                    has_declarations(std::get<block_stmt>(stmt->data_)));
-        });
-        block.has_declarations_checked_ = true;
-    }
-    return block.has_declarations_;
+    return std::ranges::any_of(block.statements_,
+                               [](auto&& stmt) { return std::holds_alternative<var_declaration>(stmt->data_); });
 }
 
 }  // namespace ast
