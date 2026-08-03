@@ -20,6 +20,10 @@ lexer::lexer(std::string_view source, core::error_reporter& reporter, core::aren
     : source_{source}, reporter_{reporter}, mr_{mr}, tokens_{&mr_} {}
 
 lexer::token_list lexer::scan_tokens() {
+    start_ = 0;
+    current_ = 0;
+    loc_ = {1, 1};
+    tokens_.clear();
     while (!is_at_end()) {
         start_ = current_;
         scan_token();
