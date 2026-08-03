@@ -5,6 +5,7 @@
 #include "core/error/error_codes.hpp"
 #include "core/error/error_report.hpp"
 #include "core/token/keywords.hpp"
+#include "core/token/token.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
 #include "core/value/value.hpp"
@@ -101,8 +102,8 @@ void lexer::scan_token() {
             loc_.column_ = 0;
             break;
 
-        case '"': consume_string(); break;
-
+        case '"': consume_string(start_loc); break;
+        
         default:
             if (std::isdigit(c)) {
                 consume_number(start_loc);
@@ -152,9 +153,7 @@ void lexer::consume_number(core::location start_loc) {
     }
 }
 
-void lexer::consume_string() {
-    auto&& start_loc = loc_;
-
+void lexer::consume_string(core::location start_loc) {
     while (peek() != '"' && !is_at_end()) {
         if (peek() == '\n') {
             loc_.line_++;
