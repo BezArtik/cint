@@ -14,17 +14,18 @@ namespace tests {
 
 class pipeline_harness {
 public:
-    pipeline_harness(std::string_view source);
+    pipeline_harness(std::string_view source) : source_code_{source}, reporter_{source_code_}, mr_{arena_} {}
 
     bool lex();
     bool parse();
     bool check_semantics();
     bool interpret();
-    bool run_all();
 
-    const lexer::token_list& tokens() const noexcept;
-    const ast::stmt_list& ast() const noexcept;
-    bool had_error() const noexcept;
+    bool run_all() { return lex() && parse() && check_semantics() && interpret(); }
+
+    const lexer::token_list& tokens() const noexcept { return tokens_; }
+    const ast::stmt_list& ast() const noexcept { return ast_; }
+    bool had_error() const noexcept { return reporter_.has_error(); }
 
 private:
     std::string source_code_;

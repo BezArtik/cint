@@ -56,9 +56,6 @@ public:
     /**
      * @brief Информация о символе (одна из трёх альтернатив).
      *
-     * variant выбран вместо иерархии классов для:
-     * - Компактного хранения (размер variant = размер наибольшей альтернативы)
-     * - Явной проверки типа через std::holds_alternative / std::visit
      */
     using info_variant = std::variant<func_ptr, builtin_fn_ptr, struct_ptr>;
 
@@ -72,23 +69,22 @@ public:
     };
 
     /**
-     * @brief Строит реестр из AST и списка builtin-функций.
+     * @brief Строит реестр из AST и списка builtin-функций (фиксирован, используется неявно).
      *
      * Порядок построения:
      * 1. Добавляются все builtin-функции (могут быть переопределены)
      * 2. Обходятся объявления верхнего уровня AST
-     * 3. Записи сортируются по имени для бинарного поиска
      *
      * @param ast      Список объявлений верхнего уровня
      * @param builtins Список встроенных функций (core::builtins)
      * @return Готовый реестр символов.
      */
-    static symbol_registry build(std::span<const ast::node<ast::statement>> ast, std::span<const builtin_def> builtins);
+    static symbol_registry build(std::span<const ast::node<ast::statement>> ast);
 
     /**
      * @brief Ищет символ по имени.
      *
-     * Бинарный поиск по отсортированному вектору записей.
+     * Поиск по вектору записей.
      *
      * @param name Имя символа
      * @return Указатель на запись или nullptr, если символ не найден.
@@ -113,9 +109,6 @@ public:
 
 private:
     symbol_registry() = default;
-
-    /// Добавляет builtin-функции в реестр (до AST-объявлений).
-    void add_builtins(std::span<const builtin_def> builtins);
 
     /**
      * @brief Добавляет AST-объявление в реестр.

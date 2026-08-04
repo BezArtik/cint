@@ -2,6 +2,7 @@
 #include "core/utils/symbol_registry.hpp"
 
 #include "ast/statement.hpp"
+#include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>
@@ -10,23 +11,18 @@
 
 namespace core {
 
-symbol_registry symbol_registry::build(std::span<const ast::node<ast::statement>> ast,
-                                       std::span<const builtin_def> builtins) {
+symbol_registry symbol_registry::build(std::span<const ast::node<ast::statement>> ast) {
     symbol_registry registry;
-    registry.entries_.reserve(builtins.size() + ast.size());
+    registry.entries_.reserve(core::builtins.size() + ast.size());
 
-    registry.add_builtins(builtins);
+    for (auto&& b : core::builtins) {
+        auto&& type = type::function_type(b.return_type_, b.param_types_);
+        registry.entries_.emplace_back(b.name_, std::move(type), b.impl_);
+    }
 
     for (auto&& stmt : ast) registry.add_ast_entry(stmt);
 
     return registry;
-}
-
-void symbol_registry::add_builtins(std::span<const builtin_def> builtins) {
-    for (auto&& b : builtins) {
-        auto&& type = type::function_type(b.return_type_, b.param_types_);
-        entries_.emplace_back(b.name_, std::move(type), b.impl_);
-    }
 }
 
 // clang-format off

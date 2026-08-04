@@ -2,7 +2,6 @@
 
 #include "core/error/error_report.hpp"
 #include "core/utils/arena.hpp"
-#include "core/utils/builtins.hpp"
 #include "core/utils/symbol_registry.hpp"
 #include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
@@ -76,8 +75,8 @@ struct run_config {
 
 int run_program(const run_config& config) {
     core::arena arena;
-    core::arena_memory_resource mr(arena);
-    core::error_reporter reporter(config.source_);
+    core::arena_memory_resource mr{arena};
+    core::error_reporter reporter{config.source_};
 
     lexer lex{config.source_, reporter, mr};
     auto tokens = lex.scan_tokens();
@@ -97,7 +96,7 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    auto&& registry = core::symbol_registry::build(ast, core::builtins);
+    auto&& registry = core::symbol_registry::build(ast);
 
     type_checker checker{reporter, registry};
     if (!checker.check(ast)) {
@@ -146,7 +145,7 @@ int main(int argc, char* argv[]) {
         auto&& exit_code = run_program(config);
         auto&& finish = std::chrono::steady_clock::now();
 
-        const std::chrono::duration<double> elapsed = finish - start;
+        const std::chrono::duration<double> elapsed{finish - start};
         std::cout << "\nProgram execution time (" << elapsed << ")\n";
 
         if (exit_code == 0) std::cout << "Program finished successfully.\n";
