@@ -55,22 +55,6 @@ constexpr std::array infix_table = {
 };
 // clang-format on
 
-int8_t get_precedence(tt type) noexcept {
-    auto&& it = std::ranges::find(infix_table, type, &infix_rule::type_);
-    return it != infix_table.end() ? it->precedence_ : -1;
-}
-
-bool is_right_assoc(tt type) noexcept {
-    auto&& it = std::ranges::find(infix_table, type, &infix_rule::type_);
-    return it != infix_table.end() ? it->right_assoc_ : false;
-}
-
-bool is_assignment(tt type) noexcept {
-    return type == tt::EQUAL || type == tt::PLUS_EQUAL || type == tt::MINUS_EQUAL || type == tt::STAR_EQUAL ||
-           type == tt::SLASH_EQUAL || type == tt::PERCENT_EQUAL || type == tt::BIT_AND_EQUAL ||
-           type == tt::BIT_OR_EQUAL || type == tt::XOR_EQUAL || type == tt::SHL_EQUAL || type == tt::SHR_EQUAL;
-}
-
 bool is_type_start(tt type) noexcept {
     return type == tt::KW_INT || type == tt::KW_DOUBLE || type == tt::KW_BOOL || type == tt::KW_STRING ||
            type == tt::KW_VOID || type == tt::KW_STRUCT;
@@ -97,13 +81,9 @@ ast::stmt_list parser::parse() {
 }
 
 bool parser::match(std::initializer_list<tt> types) noexcept {
-    for (auto&& type : types) {
-        if (check(type)) {
-            advance();
-            return true;
-        }
-    }
-    return false;
+    auto&& matched = std::ranges::any_of(types, [&](auto&& type) { return check(type); });
+    if (matched) advance();
+    return matched;
 }
 
 const core::token& parser::consume(tt type, err code) {
@@ -228,7 +208,7 @@ core::type parser::parse_type() {
 
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
         auto&& kw = prev();
-        auto&& info = get_keyword_info(kw.type_);
+        auto&& info = core::get_keyword_info(kw.type_);
         if (!info.is_type_) reporter_.parse_error(kw, err::expected_type);
         return info.semantic_type_;
     }
@@ -330,8 +310,11 @@ ast::expression parser::expression() {
 
 ast::expression parser::assignment() {
     auto&& left = parse_expression(0);
+    auto&& type = peek().type_;
 
-    if (is_assignment(peek().type_)) {
+    if (type == tt::EQUAL || type == tt::PLUS_EQUAL || type == tt::MINUS_EQUAL || type == tt::STAR_EQUAL ||
+        type == tt::SLASH_EQUAL || type == tt::PERCENT_EQUAL || type == tt::BIT_AND_EQUAL || type == tt::BIT_OR_EQUAL ||
+        type == tt::XOR_EQUAL || type == tt::SHL_EQUAL || type == tt::SHR_EQUAL) {
         auto&& op = advance();
         auto&& right = assignment();
         return ast::make_expr<ast::assignment_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
@@ -345,11 +328,11 @@ ast::expression parser::parse_expression(int8_t precedence) {
 
     while (true) {
         auto&& op_type = peek().type_;
-        auto&& p = get_precedence(op_type);
-        if (p < precedence) break;
+        auto&& it = std::ranges::find(infix_table, op_type, &infix_rule::type_);
+        if (it == infix_table.end() || it->precedence_ < precedence) break;
 
         auto&& op = advance();
-        auto&& next_prec = is_right_assoc(op_type) ? p : p + 1;
+        auto&& next_prec = it->right_assoc_ ? it->precedence_ : it->precedence_ + 1;
         auto&& right = parse_expression(next_prec);
         left = ast::make_expr<ast::binary_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
@@ -398,9 +381,8 @@ ast::expression parser::initializer_list() {
 }
 
 ast::expression parser::primary() {
-    if (match({tt::NUMBER, tt::STRING})) return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, prev());
-
-    if (match({tt::KW_TRUE, tt::KW_FALSE})) return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, prev());
+    if (match({tt::NUMBER, tt::STRING, tt::KW_TRUE, tt::KW_FALSE}))
+        return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, prev());
 
     if (match({tt::IDENTIFIER})) {
         auto&& name = prev();
