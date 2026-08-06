@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <string_view>
 
 namespace core {
@@ -89,10 +88,9 @@ inline token_type lookup_keyword(std::string_view lexeme) {
  * @return Информация о ключевом слове.
  * @pre t — одно из KW_* значений.
  */
-inline const keyword_info& get_keyword_info(token_type t) {
+inline const keyword_info* get_keyword_info(token_type t) noexcept {
     auto&& it = std::ranges::find(keyword_table, t, &keyword_info::type_);
-    assert(it != keyword_table.end());
-    return *it;
+    return it != keyword_table.end() ? &*it : nullptr;
 }
 
 /**

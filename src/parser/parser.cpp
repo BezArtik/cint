@@ -208,9 +208,8 @@ core::type parser::parse_type() {
 
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
         auto&& kw = prev();
-        auto&& info = core::get_keyword_info(kw.type_);
-        if (!info.is_type_) reporter_.parse_error(kw, err::expected_type);
-        return info.semantic_type_;
+        if (auto* info = core::get_keyword_info(kw.type_)) return info->semantic_type_;
+        reporter_.parse_error(kw, err::expected_type);
     }
 
     reporter_.parse_error(peek(), err::expected_type);
