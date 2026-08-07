@@ -364,6 +364,39 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 // clang-format on
 
+TEST(parser_test, error_recovery) {
+    pipeline_harness h{"int x = ; int y = 42;"};
+    ASSERT_TRUE(h.lex());
+    h.parse();
+    EXPECT_TRUE(h.had_error());
+    ASSERT_EQ(h.ast().size(), 1);
+    auto&& decl = as<ast::var_declaration>(*h.ast()[0]);
+    ASSERT_NE(decl, nullptr);
+    EXPECT_EQ(decl->name_.lexeme_, "y");
+}
+
+TEST(parser_test, array_declaration) {
+    pipeline_harness h{"int arr[10];"};
+    ASSERT_TRUE(h.lex());
+    ASSERT_TRUE(h.parse());
+    auto&& decl = as<ast::var_declaration>(*h.ast()[0]);
+    ASSERT_NE(decl, nullptr);
+    EXPECT_TRUE(decl->type_.is_array());
+    EXPECT_EQ(decl->type_.array_size(), 10);
+    EXPECT_TRUE(decl->type_.element_type().is_int());
+}
+
+TEST(parser_test, array_initializer) {
+    pipeline_harness h{"int arr[] = {1, 2, 3};"};
+    ASSERT_TRUE(h.lex());
+    ASSERT_TRUE(h.parse());
+    auto&& decl = as<ast::var_declaration>(*h.ast()[0]);
+    ASSERT_TRUE(decl->initializer_.has_value());
+    auto&& list = as<ast::initializer_list_expr>(*decl->initializer_);
+    ASSERT_NE(list, nullptr);
+    EXPECT_EQ(list->elements_.size(), 3);
+}
+
 TEST(parser_test, struct_declaration_empty) {
     pipeline_harness h{"struct Point { int x; int y; };"};
     ASSERT_TRUE(h.lex());

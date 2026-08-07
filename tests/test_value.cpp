@@ -66,36 +66,31 @@ TEST(value_test, double_to_int) {
 TEST(value_test, add_ints) {
     v a{v::int_t{10}};
     v b{v::int_t{20}};
-    auto&& result = op::add(a, b);
-    EXPECT_EQ(result.to_int(), 30);
+    EXPECT_EQ(op::add(a, b).to_int(), 30);
 }
 
 TEST(value_test, add_int_and_double) {
     v a{v::int_t{10}};
     v b{3.5};
-    auto&& result = op::add(a, b);
-    EXPECT_DOUBLE_EQ(result.to_double(), 13.5);
+    EXPECT_DOUBLE_EQ(op::add(a, b).to_double(), 13.5);
 }
 
 TEST(value_test, sub_ints) {
     v a{v::int_t{30}};
     v b{v::int_t{10}};
-    auto&& result = op::sub(a, b);
-    EXPECT_EQ(result.to_int(), 20);
+    EXPECT_EQ(op::sub(a, b).to_int(), 20);
 }
 
 TEST(value_test, mul_ints) {
     v a{v::int_t{6}};
     v b{v::int_t{7}};
-    auto&& result = op::mul(a, b);
-    EXPECT_EQ(result.to_int(), 42);
+    EXPECT_EQ(op::mul(a, b).to_int(), 42);
 }
 
 TEST(value_test, div_ints) {
     v a{v::int_t{20}};
     v b{v::int_t{4}};
-    auto&& result = op::div(a, b);
-    EXPECT_EQ(result.to_int(), 5);
+    EXPECT_EQ(op::div(a, b).to_int(), 5);
 }
 
 TEST(value_test, div_by_zero) {
@@ -107,8 +102,7 @@ TEST(value_test, div_by_zero) {
 TEST(value_test, mod_ints) {
     v a{v::int_t{17}};
     v b{v::int_t{5}};
-    auto&& result = op::mod(a, b);
-    EXPECT_EQ(result.to_int(), 2);
+    EXPECT_EQ(op::mod(a, b).to_int(), 2);
 }
 
 TEST(value_test, mod_by_zero) {
@@ -137,6 +131,46 @@ TEST(value_test, not_op) {
     v f{false};
     EXPECT_FALSE(op::not_op(t).to_bool());
     EXPECT_TRUE(op::not_op(f).to_bool());
+}
+
+TEST(value_test, unary_minus_int) {
+    v a{v::int_t{42}};
+    EXPECT_EQ(op::unary_minus(a).to_int(), -42);
+}
+
+TEST(value_test, bit_and) {
+    v a{v::int_t{0b1100}};
+    v b{v::int_t{0b1010}};
+    EXPECT_EQ(op::bit_and(a, b).to_int(), 0b1000);
+}
+
+TEST(value_test, bit_or) {
+    v a{v::int_t{0b1001}};
+    v b{v::int_t{0b0110}};
+    EXPECT_EQ(op::bit_or(a, b).to_int(), 0b1111);
+}
+
+TEST(value_test, bit_xor) {
+    v a{v::int_t{0b1011}};
+    v b{v::int_t{0b0110}};
+    EXPECT_EQ(op::bit_xor(a, b).to_int(), 0b1101);
+}
+
+TEST(value_test, bit_not) {
+    v a{v::int_t{10}};
+    EXPECT_EQ(op::bit_not(a).to_int(), -11);
+}
+
+TEST(value_test, shl) {
+    v a{v::int_t{0b0001}};
+    v b{v::int_t{2}};
+    EXPECT_EQ(op::shl(a, b).to_int(), 0b0100);
+}
+
+TEST(value_test, shr) {
+    v a{v::int_t{0b1000}};
+    v b{v::int_t{3}};
+    EXPECT_EQ(op::shr(a, b).to_int(), 0b0001);
 }
 
 TEST(value_test, invalid_add) {
@@ -198,6 +232,35 @@ TEST(value_test, struct_nested_default_value) {
     EXPECT_EQ(r->fields_.size(), 2);
     EXPECT_TRUE(r->fields_[0].is_struct());
     EXPECT_TRUE(r->fields_[1].is_struct());
+}
+
+TEST(value_test, convert_int_to_double) {
+    v val{v::int_t{42}};
+    auto&& converted = v::convert(val, t::double_type());
+    EXPECT_TRUE(converted.is_double());
+    EXPECT_DOUBLE_EQ(converted.to_double(), 42.0);
+}
+
+TEST(value_test, convert_same_type) {
+    v val{v::int_t{42}};
+    auto&& converted = v::convert(val, t::int_type());
+    EXPECT_EQ(converted.to_int(), 42);
+}
+
+TEST(value_test, from_string_int) {
+    auto val = v::from_string("42", false);
+    EXPECT_TRUE(val.is_int());
+    EXPECT_EQ(val.to_int(), 42);
+}
+
+TEST(value_test, from_string_double) {
+    auto&& val = v::from_string("3.14", true);
+    EXPECT_TRUE(val.is_double());
+    EXPECT_DOUBLE_EQ(val.to_double(), 3.14);
+}
+
+TEST(value_test, from_string_invalid) {
+    EXPECT_THROW(v::from_string("abc", false), core::value_error);
 }
 
 }  // namespace tests

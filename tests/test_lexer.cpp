@@ -277,4 +277,13 @@ TEST(lexer_test, unexpected_character) {
     EXPECT_TRUE(h.had_error());
 }
 
+TEST(lexer_test, unexpected_character_recovery) {
+    pipeline_harness h{"42 @ 43"};
+    h.lex();
+    EXPECT_TRUE(h.had_error());
+    ASSERT_GE(h.tokens().size(), 3);
+    expect_token(h.tokens()[0], tt::NUMBER, "42");
+    expect_token(h.tokens()[1], tt::NUMBER, "43");
+}
+
 }  // namespace tests
