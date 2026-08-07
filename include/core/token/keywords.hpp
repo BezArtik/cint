@@ -21,13 +21,12 @@ namespace core {
  * Связывает лексему ключевого слова с:
  * - Типом токена (для лексера)
  * - Семантическим типом (для парсера, при использовании как спецификатора типа)
- * - Флагами is_type_ и can_start_statement_ (для парсера)
+ * - Флагом can_start_statement_ (для парсера)
  */
 struct keyword_info {
     std::string_view lexeme_;   ///< Текст ключевого слова (напр. "if")
     token_type type_;           ///< Тип токена (напр. KW_IF)
     type semantic_type_;        ///< Семантический тип (для type-ключевых слов)
-    bool is_type_;              ///< Является ли спецификатором типа (int, double, ...)
     bool can_start_statement_;  ///< Может ли начинать инструкцию (if, while, for, ...)
 };
 
@@ -43,25 +42,25 @@ struct keyword_info {
  */
 inline const std::array keyword_table{
     // Управляющие конструкции
-    keyword_info{"if", token_type::KW_IF, type::void_type(), false, true},
-    keyword_info{"else", token_type::KW_ELSE, type::void_type(), false, false},
-    keyword_info{"while", token_type::KW_WHILE, type::void_type(), false, true},
-    keyword_info{"for", token_type::KW_FOR, type::void_type(), false, true},
-    keyword_info{"return", token_type::KW_RETURN, type::void_type(), false, true},
+    keyword_info{"if", token_type::KW_IF, type::void_type(), true},
+    keyword_info{"else", token_type::KW_ELSE, type::void_type(), false},
+    keyword_info{"while", token_type::KW_WHILE, type::void_type(), true},
+    keyword_info{"for", token_type::KW_FOR, type::void_type(), true},
+    keyword_info{"return", token_type::KW_RETURN, type::void_type(), true},
 
     // Спецификаторы типов
-    keyword_info{"int", token_type::KW_INT, type::int_type(), true, true},
-    keyword_info{"double", token_type::KW_DOUBLE, type::double_type(), true, true},
-    keyword_info{"bool", token_type::KW_BOOL, type::bool_type(), true, true},
-    keyword_info{"string", token_type::KW_STRING, type::string_type(), true, true},
-    keyword_info{"void", token_type::KW_VOID, type::void_type(), true, true},
+    keyword_info{"int", token_type::KW_INT, type::int_type(), true},
+    keyword_info{"double", token_type::KW_DOUBLE, type::double_type(), true},
+    keyword_info{"bool", token_type::KW_BOOL, type::bool_type(), true},
+    keyword_info{"string", token_type::KW_STRING, type::string_type(), true},
+    keyword_info{"void", token_type::KW_VOID, type::void_type(), true},
 
     // Структуры
-    keyword_info{"struct", token_type::KW_STRUCT, type::void_type(), false, true},
+    keyword_info{"struct", token_type::KW_STRUCT, type::void_type(), true},
 
     // Литералы
-    keyword_info{"true", token_type::KW_TRUE, type::bool_type(), false, false},
-    keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false, false},
+    keyword_info{"true", token_type::KW_TRUE, type::bool_type(), false},
+    keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false},
 };
 
 /**
