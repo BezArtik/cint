@@ -309,12 +309,10 @@ ast::expression parser::expression() {
 
 ast::expression parser::assignment() {
     auto&& left = parse_expression(0);
-    auto&& type = peek().type_;
 
-    if (type == tt::EQUAL || type == tt::PLUS_EQUAL || type == tt::MINUS_EQUAL || type == tt::STAR_EQUAL ||
-        type == tt::SLASH_EQUAL || type == tt::PERCENT_EQUAL || type == tt::BIT_AND_EQUAL || type == tt::BIT_OR_EQUAL ||
-        type == tt::XOR_EQUAL || type == tt::SHL_EQUAL || type == tt::SHR_EQUAL) {
-        auto&& op = advance();
+    if (match({tt::EQUAL, tt::PLUS_EQUAL, tt::MINUS_EQUAL, tt::STAR_EQUAL, tt::SLASH_EQUAL, tt::PERCENT_EQUAL,
+               tt::BIT_AND_EQUAL, tt::BIT_OR_EQUAL, tt::XOR_EQUAL, tt::SHL_EQUAL, tt::SHR_EQUAL})) {
+        auto&& op = prev();
         auto&& right = assignment();
         return ast::make_expr<ast::assignment_expr>(arena_, op.loc_, std::move(left), op, std::move(right));
     }
