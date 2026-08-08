@@ -22,6 +22,8 @@ symbol_registry symbol_registry::build(std::span<const ast::node<ast::statement>
 
     for (auto&& stmt : ast) registry.add_ast_entry(stmt);
 
+    std::ranges::sort(registry.entries_, {}, &entry::name_);
+
     return registry;
 }
 
@@ -56,7 +58,7 @@ void symbol_registry::add_ast_entry(const ast::node<ast::statement>& stmt) {
 }
 // clang-format on
 const symbol_registry::entry* symbol_registry::find(std::string_view name) const noexcept {
-    auto&& it = std::ranges::find(entries_, name, &entry::name_);
+    auto&& it = std::ranges::lower_bound(entries_, name, {}, &entry::name_);
     return it != entries_.end() && it->name_ == name ? &*it : nullptr;
 }
 
