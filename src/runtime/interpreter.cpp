@@ -136,7 +136,7 @@ interpreter::execution_result interpreter::execute_block(const ast::block_stmt& 
 
 interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
     if (auto&& block = std::get_if<ast::block_stmt>(&body.data_))
-        return execute_block(*block, ast::has_declarations(*block));
+        return execute_block(*block, block->has_declarations_);
     return execute(body);
 }
 

@@ -300,7 +300,8 @@ ast::node<ast::statement> parser::block_statement() {
         if (stmt) statements.push_back(std::move(stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    return ast::make_stmt<ast::block_stmt>(arena_, prev().loc_, std::move(statements));
+    auto&& has_decls = ast::has_declarations(statements);
+    return ast::make_stmt<ast::block_stmt>(arena_, prev().loc_, std::move(statements), has_decls);
 }
 
 ast::expression parser::expression() {

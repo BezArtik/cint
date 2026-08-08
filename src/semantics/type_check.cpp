@@ -116,7 +116,7 @@ void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
 
 void type_checker::check_body(const ast::statement& body) {
     if (auto&& block = std::get_if<ast::block_stmt>(&body.data_))
-        check_block(*block, ast::has_declarations(*block));
+        check_block(*block, block->has_declarations_);
     else
         check_statement(body);
 }
