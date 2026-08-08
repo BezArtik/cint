@@ -203,18 +203,11 @@ core::value interpreter::evaluate(const ast::expression& expr) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_expression(writer_, expr, 0, &result);
     return result;
 }
-// clang-format on
 
 core::value interpreter::evaluate_literal(const ast::literal_expr& expr) {
-    auto&& token = expr.value_;
-
-    if (token.literal_value_) return *token.literal_value_;
-
-    reporter_.runtime_error(token, err::unexpected_literal);
-    return {};
+    return expr.value_;
 }
 
-// clang-format off
 core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
     auto&& left = evaluate(expr.left_);
     auto&& type = expr.op_.type_;

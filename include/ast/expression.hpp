@@ -11,6 +11,7 @@
 
 #include "core/token/token.hpp"
 #include "core/utils/arena.hpp"
+#include "core/value/value.hpp"
 
 #include <variant>
 #include <vector>
@@ -62,14 +63,14 @@ using expr_list = std::pmr::vector<expression>;
 /**
  * @brief Литеральное значение: число, строка, true/false.
  *
- * Содержит токен с уже вычисленным литеральным значением
- * (core::token::literal_value_).
+ * Содержит литеральное значение.
+ *
  */
 struct literal_expr {
-    core::token value_;   ///< Токен с литеральным значением
+    core::value value_;   ///< Литеральное значение
     core::location loc_;  ///< Позиция в исходном коде
 
-    literal_expr(const core::token& value, core::location loc) : value_{value}, loc_{loc} {}
+    literal_expr(core::value value, core::location loc) : value_{std::move(value)}, loc_{loc} {}
 };
 
 /**

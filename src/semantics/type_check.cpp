@@ -232,21 +232,15 @@ t type_checker::type_of(const ast::expression& expr) {
 }
 // clang-format on
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
-    auto&& token = expr.value_;
+    auto&& val = expr.value_;
 
-    switch (token.type_) {
-        case tt::NUMBER:
-            if (!token.literal_value_) return t::unknown_type();
-            return token.literal_value_->is_double() ? t::double_type() : t::int_type();
-        case tt::KW_TRUE:
-        case tt::KW_FALSE:
-            return t::bool_type();
-        case tt::STRING:
-            return t::string_type();
-        default:
-            reporter_.error(expr, err::unexpected_literal);
-            return t::unknown_type();
-    }
+    if (val.is_int()) return t::int_type();
+    if (val.is_double()) return t::double_type();
+    if (val.is_bool()) return t::bool_type();
+    if (val.is_string()) return t::string_type();
+
+    reporter_.error(expr, err::unexpected_literal);
+    return t::unknown_type();
 }
 
 t type_checker::type_of_variable(const ast::variable_expr& expr_) {

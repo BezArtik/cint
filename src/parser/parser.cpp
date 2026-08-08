@@ -377,10 +377,60 @@ ast::expression parser::initializer_list() {
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     return ast::make_expr<ast::initializer_list_expr>(arena_, prev().loc_, std::move(elements));
 }
+// clang-format off
+std::string parser::process_escape_sequences(std::string_view raw, core::location start_loc) {
+    std::string result;
+    result.reserve(raw.size());
 
+    auto&& it = raw.begin();
+    auto&& end = raw.end();
+
+    while (it != end) {
+        if (*it == '\\') {
+            auto&& next = std::next(it);
+            if (next == end) {
+                reporter_.error(start_loc, err::unterminated_string);
+                break;
+            }
+            switch (*next) {
+                case 'n':  result.push_back('\n'); break;
+                case 't':  result.push_back('\t'); break;
+                case 'r':  result.push_back('\r'); break;
+                case '\\': result.push_back('\\'); break;
+                case '"':  result.push_back('"');  break;
+                case '0':  result.push_back('\0'); break;
+                default:
+                    reporter_.error(start_loc, err::unexpected_character, *next);
+                    result.push_back(*next);
+                    break;
+            }
+            std::advance(it, 2);
+        } else {
+            result.push_back(*it);
+            ++it;
+        }
+    }
+
+    return result;
+}
+// clang-format on
 ast::expression parser::primary() {
-    if (match({tt::NUMBER, tt::STRING, tt::KW_TRUE, tt::KW_FALSE}))
-        return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, prev());
+    if (match({tt::NUMBER})) {
+        auto&& token = prev();
+        auto&& is_double = token.lexeme_.find('.') != std::string_view::npos;
+        auto&& val = core::value::from_string(token.lexeme_, is_double);
+        return ast::make_expr<ast::literal_expr>(arena_, token.loc_, std::move(val));
+    }
+
+    if (match({tt::STRING})) {
+        auto&& token = prev();
+        auto&& raw = token.lexeme_.substr(1, token.lexeme_.size() - 2);
+        auto&& processed = process_escape_sequences(raw, token.loc_);
+        return ast::make_expr<ast::literal_expr>(arena_, token.loc_, core::value{std::move(processed)});
+    }
+
+    if (match({tt::KW_TRUE})) return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, true);
+    if (match({tt::KW_FALSE})) return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, false);
 
     if (match({tt::IDENTIFIER})) {
         auto&& name = prev();

@@ -97,7 +97,8 @@ TEST_P(binary_expr_test, parsed) {
     EXPECT_EQ(left->name_.lexeme_, tc.left_name_);
     auto&& right = as<ast::literal_expr>(bin->right_);
     ASSERT_NE(right, nullptr);
-    EXPECT_EQ(right->value_.lexeme_, tc.right_lexeme_);
+    EXPECT_TRUE(right->value_.is_int());
+    EXPECT_EQ(right->value_.to_int(), std::stoll(std::string(tc.right_lexeme_)));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -136,7 +137,8 @@ TEST(parser_test, assignment_expression) {
     EXPECT_EQ(var->name_.lexeme_, "x");
     auto&& lit = as<ast::literal_expr>(assign->value_);
     ASSERT_NE(lit, nullptr);
-    EXPECT_EQ(lit->value_.lexeme_, "42");
+    EXPECT_TRUE(lit->value_.is_int());
+    EXPECT_EQ(lit->value_.to_int(), 42);
 }
 
 TEST(parser_test, multiplication_before_addition) {
@@ -151,7 +153,8 @@ TEST(parser_test, multiplication_before_addition) {
     EXPECT_EQ(bin->op_.lexeme_, "+");
     auto&& left = as<ast::literal_expr>(bin->left_);
     ASSERT_NE(left, nullptr);
-    EXPECT_EQ(left->value_.lexeme_, "1");
+    EXPECT_TRUE(left->value_.is_int());
+    EXPECT_EQ(left->value_.to_int(), 1);
     auto&& right = as<ast::binary_expr>(bin->right_);
     ASSERT_NE(right, nullptr);
     EXPECT_EQ(right->op_.lexeme_, "*");
@@ -278,7 +281,8 @@ TEST(parser_test, if_statement) {
     ASSERT_NE(ifs, nullptr);
     auto&& cond = as<ast::literal_expr>(ifs->condition_);
     ASSERT_NE(cond, nullptr);
-    EXPECT_EQ(cond->value_.lexeme_, "true");
+    EXPECT_TRUE(cond->value_.is_bool());
+    EXPECT_EQ(cond->value_.to_bool(), true);
     EXPECT_NE(ifs->then_block_, nullptr);
     EXPECT_EQ(ifs->else_block_, nullptr);
 }
@@ -336,7 +340,8 @@ TEST(parser_test, return_with_value) {
     EXPECT_TRUE(ret->value_.has_value());
     auto&& lit = as<ast::literal_expr>(*ret->value_);
     ASSERT_NE(lit, nullptr);
-    EXPECT_EQ(lit->value_.lexeme_, "42");
+    EXPECT_TRUE(lit->value_.is_int());
+    EXPECT_EQ(lit->value_.to_int(), 42);
 }
 
 struct syntax_error_case {

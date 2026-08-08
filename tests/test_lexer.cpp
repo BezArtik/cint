@@ -4,7 +4,6 @@
 #include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
-#include <string>
 #include <string_view>
 #include <vector>
 
@@ -114,7 +113,6 @@ INSTANTIATE_TEST_SUITE_P(
 struct number_case {
     std::string_view source_;
     std::string_view lexeme_;
-    bool is_double_;
 };
 
 class number_test : public ::testing::TestWithParam<number_case> {};
@@ -125,38 +123,22 @@ TEST_P(number_test, recognized) {
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::NUMBER, tc.lexeme_);
-
-    ASSERT_TRUE(h.tokens()[0].literal_value_);
-    if (tc.is_double_) {
-        EXPECT_TRUE(h.tokens()[0].literal_value_->is_double());
-        EXPECT_DOUBLE_EQ(h.tokens()[0].literal_value_->to_double(), std::stod(std::string(tc.lexeme_)));
-    } else {
-        EXPECT_TRUE(h.tokens()[0].literal_value_->is_int());
-        EXPECT_EQ(h.tokens()[0].literal_value_->to_int(), std::stoll(std::string(tc.lexeme_)));
-    }
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
-        integers, number_test,
+        numbers, number_test,
         ::testing::Values(
-            number_case{"0", "0", false}, 
-            number_case{"42", "42", false},
-            number_case{"999", "999", false}
-));
-
-INSTANTIATE_TEST_SUITE_P(
-        doubles, number_test,
-        ::testing::Values(
-            number_case{"3.14", "3.14", true}, 
-            number_case{"0.0", "0.0", true},
-            number_case{"1.5", "1.5", true}
+            number_case{"0", "0"}, 
+            number_case{"42", "42"},
+            number_case{"999", "999"},
+            number_case{"3.14", "3.14"},
+            number_case{"0.0", "0.0"}
 ));
 
 struct bool_case {
     std::string_view source_;
     core::token_type expected_type_;
-    bool expected_value_;
 };
 
 class bool_test : public ::testing::TestWithParam<bool_case> {};
@@ -167,16 +149,14 @@ TEST_P(bool_test, recognized) {
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tc.expected_type_, tc.source_);
-    ASSERT_TRUE(h.tokens()[0].literal_value_.has_value());
-    EXPECT_EQ(h.tokens()[0].literal_value_->to_bool(), tc.expected_value_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
         bool_literals, bool_test,
         ::testing::Values(
-            bool_case{"true", tt::KW_TRUE, true},
-            bool_case{"false", tt::KW_FALSE, false}));
+            bool_case{"true", tt::KW_TRUE},
+            bool_case{"false", tt::KW_FALSE}));
 
 struct string_case {
     std::string_view source_;
@@ -191,7 +171,6 @@ TEST_P(string_test, recognized) {
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::STRING, tc.expected_lexeme_);
-    EXPECT_TRUE(h.tokens()[0].literal_value_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
@@ -211,7 +190,6 @@ TEST_P(identifier_test, recognized) {
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::IDENTIFIER, id);
-    EXPECT_FALSE(h.tokens()[0].literal_value_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 

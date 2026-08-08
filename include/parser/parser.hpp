@@ -285,6 +285,18 @@ private:
     ast::expression initializer_list();
 
     /**
+     * @brief Обрабатывает escape-последовательности в строке.
+     *
+     * Поддерживаемые последовательности:
+     * - \\n, \\t, \\r, \\\\, \\", \\0
+     *
+     * @param raw       Исходная строка (без внешних кавычек)
+     * @param start_loc Позиция начала строки (для сообщений об ошибках)
+     * @return Обработанная строка с раскрытыми escape-последовательностями.
+     */
+    std::string process_escape_sequences(std::string_view raw, core::location start_loc);
+
+    /**
      * @brief Разбирает первичное (атомарное) выражение.
      *
      * Обрабатывает:

@@ -40,7 +40,7 @@ std::string location_str(core::location loc) {
 
 void print_literal(const debug_writer& writer, const ast::node<ast::literal_expr>& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Literal: " + std::string(e->value_.lexeme_) + location_str(e->loc_) + "\n");
+    writer.emit(indent_str(level) + "Literal: " + e->value_.to_string() + location_str(e->loc_) + "\n");
 }
 
 void print_variable(const debug_writer& writer, const ast::node<ast::variable_expr>& e, uint32_t level) {

@@ -8,7 +8,6 @@
 #include "core/token/token.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/arena.hpp"
-#include "core/value/value.hpp"
 
 #include <cctype>
 #include <string_view>
@@ -31,10 +30,6 @@ lexer::token_list lexer::scan_tokens() {
 
     tokens_.emplace_back(tt::END_OF_FILE, "", loc_);
     return tokens_;
-}
-
-void lexer::add_token(tt type) {
-    add_token(type, loc_);
 }
 
 void lexer::add_token(tt type, core::location loc) {
@@ -123,38 +118,19 @@ void lexer::scan_token() {
 void lexer::consume_identifier_or_keyword(core::location start_loc) {
     while (std::isalnum(peek()) || peek() == '_') advance();
 
-    auto&& lexeme = source_.substr(start_, current_ - start_);
-    auto&& type = core::lookup_keyword(lexeme);
-
-    std::optional<core::value> literal_val;
-    if (type == tt::KW_TRUE)
-        literal_val = true;
-    else if (type == tt::KW_FALSE)
-        literal_val = false;
-
-    auto&& text = source_.substr(start_, current_ - start_);
-    tokens_.emplace_back(type, text, start_loc, literal_val);
+    auto&& type = core::lookup_keyword(source_.substr(start_, current_ - start_));
+    add_token(type, start_loc);
 }
 
 void lexer::consume_number(core::location start_loc) {
     while (std::isdigit(peek())) advance();
 
-    bool is_double = false;
     if (peek() == '.' && std::isdigit(peek_next())) {
-        is_double = true;
         advance();
         while (std::isdigit(peek())) advance();
     }
 
-    auto&& text = source_.substr(start_, current_ - start_);
-
-    try {
-        auto&& val = core::value::from_string(text, is_double);
-        tokens_.emplace_back(tt::NUMBER, text, start_loc, val);
-    } catch (const core::value_error&) {
-        reporter_.error(start_loc, err::unexpected_character);
-        tokens_.emplace_back(tt::NUMBER, text, start_loc, std::nullopt);
-    }
+    add_token(tt::NUMBER, start_loc);
 }
 
 void lexer::consume_string(core::location start_loc) {
@@ -173,50 +149,8 @@ void lexer::consume_string(core::location start_loc) {
     }
 
     advance();
-
-    auto&& raw = source_.substr(start_ + 1, current_ - start_ - 2);
-    auto&& processed = process_escape_sequences(raw, start_loc);
-
-    auto&& text = source_.substr(start_, current_ - start_);
-    tokens_.emplace_back(tt::STRING, text, start_loc, std::move(processed));
+    add_token(tt::STRING, start_loc);
 }
-// clang-format off
-std::string lexer::process_escape_sequences(std::string_view raw, core::location start_loc) {
-    std::string result;
-    result.reserve(raw.size());
-
-    auto&& it = raw.begin();
-    auto&& end = raw.end();
-
-    while (it != end) {
-        if (*it == '\\') {
-            auto&& next = std::next(it);
-            if (next == end) {
-                reporter_.error(start_loc, err::unterminated_string);
-                break;
-            }
-            switch (*next) {
-                case 'n':  result.push_back('\n'); break;
-                case 't':  result.push_back('\t'); break;
-                case 'r':  result.push_back('\r'); break;
-                case '\\': result.push_back('\\'); break;
-                case '"':  result.push_back('"');  break;
-                case '0':  result.push_back('\0'); break;
-                default:
-                    reporter_.error(start_loc, err::unexpected_character, *next);
-                    result.push_back(*next);
-                    break;
-            }
-            std::advance(it, 2);
-        } else {
-            result.push_back(*it);
-            ++it;
-        }
-    }
-
-    return result;
-}
-// clang-format on 
 
 char lexer::advance() noexcept {
     loc_.column_++;

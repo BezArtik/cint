@@ -10,10 +10,8 @@
 #pragma once
 
 #include "core/token/token_types.hpp"
-#include "core/value/value.hpp"
 
 #include <cstdint>
-#include <optional>
 #include <string_view>
 
 namespace core {
@@ -39,16 +37,8 @@ struct location {
  * - **Тип** — классификация лексемы (число, оператор, ключевое слово, ...)
  * - **Лексему** — исходный текст (string_view в исходную строку)
  * - **Позицию** — местоположение в исходном коде
- * - **Литеральное значение** — для чисел, строк, true/false (опционально)
  *
- * Литеральное значение вычисляется **на этапе лексера** (не во время выполнения):
- * - Числа: сразу парсятся в int64_t или double
- * - Строки: обрабатываются escape-последовательности
- * - true/false: преобразуются в bool
  *
- * Это позволяет:
- * - Не парсить числа повторно при вычислении выражений
- * - Обнаруживать ошибки формата чисел на раннем этапе
  *
  * @note Лексема (lexeme_) ссылается на исходную строку программы —
  *       время жизни токена ограничено временем жизни исходного кода.
@@ -57,7 +47,6 @@ struct token {
     token_type type_;          ///< Тип токена
     std::string_view lexeme_;  ///< Исходный текст лексемы
     location loc_;             ///< Позиция в исходном коде
-    std::optional<value> literal_value_;  ///< Вычисленное литеральное значение (для чисел, строк, true/false)
 
     /// Создаёт неинициализированный токен.
     token() = default;
@@ -68,10 +57,8 @@ struct token {
      * @param type  Тип токена
      * @param lex   Исходный текст лексемы
      * @param loc   Позиция в исходном коде
-     * @param val   Литеральное значение (std::nullopt для не-литералов)
      */
-    token(token_type type, std::string_view lex, location loc, std::optional<value> val = std::nullopt)
-        : type_{type}, lexeme_{lex}, loc_{loc}, literal_value_{val} {}
+    token(token_type type, std::string_view lex, location loc) : type_{type}, lexeme_{lex}, loc_{loc} {}
 };
 
 }  // namespace core
