@@ -96,14 +96,8 @@ public:
      * @param name Имя переменной
      * @return Указатель на значение или nullptr, если переменная не найдена.
      */
-    T* get(std::string_view name) noexcept {
-        auto it =
-            std::find_if(entries_.rbegin(), entries_.rend(), [&](const auto& entry) { return entry.name_ == name; });
-        return it != entries_.rend() ? &it->value_ : nullptr;
-    }
-
-    /// @brief Константная версия get().
-    const T* get(std::string_view name) const noexcept { return const_cast<scoped_map*>(this)->get(name); }
+    T* get(std::string_view name) noexcept { return get_impl(*this, name); }
+    const T* get(std::string_view name) const noexcept { return get_impl(*this, name); }
 
     /**
      * @brief Проверяет, объявлена ли переменная в текущей области.
@@ -125,6 +119,13 @@ public:
 private:
     std::vector<entry> entries_;  ///< Все записи (от глобальных к локальным)
     size_t current_depth_ = 0;    ///< Текущая глубина (0 — глобальная)
+
+    template <typename Self>
+    static auto* get_impl(Self& self, std::string_view name) noexcept {
+        auto&& it = std::find_if(self.entries_.rbegin(), self.entries_.rend(),
+                                 [&](auto&& entry) { return entry.name_ == name; });
+        return it != self.entries_.rend() ? &it->value_ : nullptr;
+    }
 };
 
 /**
