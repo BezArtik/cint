@@ -1,12 +1,9 @@
 
-.vscode/
-/scripts
-merged_project.txt
-.vs/
-/out
-.cache/
 compile_commands.json
+merged.txt
+/.clangd
+/.cache
+/out
 /html/
 /latex/
-*.tmp
 Doxyfile
