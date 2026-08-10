@@ -1,6 +1,14 @@
 ﻿cmake_minimum_required(VERSION 3.20...4.1)
 project(interpreter LANGUAGES CXX)
 
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+add_custom_target(compile_commands_symlink ALL
+  COMMAND ${CMAKE_COMMAND} -E create_symlink
+    ${CMAKE_BINARY_DIR}/compile_commands.json
+    ${CMAKE_SOURCE_DIR}/compile_commands.json
+  COMMENT "Symlink compile_commands.json to project root"
+)
+
 option(BUILD_TESTS "Build tests" ON)
 option(ENABLE_SANITIZERS "Enable ASan and UBSan" OFF)
 option(ENABLE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
