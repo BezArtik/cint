@@ -7,7 +7,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <cstddef>
 #include <string_view>
 #include <vector>
@@ -23,8 +22,6 @@ namespace core {
  * внешних блоков. При выходе из блока его переменные удаляются.
  *
  * Структура данных: **линейный вектор с маркерами глубины**.
- * Альтернативы (стек словарей, дерево) были отвергнуты в пользу
- * cache-friendly
  *
  * Операции и их сложность:
  * - push():    O(1) — инкремент счётчика глубины
@@ -33,23 +30,11 @@ namespace core {
  * - get():     O(n) — линейный поиск от конца к началу
  * - contains_in_current_scope(): O(k) — поиск только в текущем уровне
  *
- * @tparam T Тип хранимых значений (для переменных — core::type, для значений — runtime_var).
- *
+ * @tparam T Тип хранимых значений.
  *
  */
 template <typename T>
 class scoped_map {
-    /**
-     * @brief Запись словаря: имя, значение, глубина области видимости.
-     *
-     * Глубина 0 — глобальная область. Каждый push() увеличивает счётчик.
-     */
-    struct entry {
-        std::string_view name_;
-        T value_;
-        size_t scope_depth_;
-    };
-
 public:
     scoped_map() { entries_.reserve(256); }
 
@@ -67,11 +52,8 @@ public:
      * Удаляет все записи с текущей глубиной (pop с конца вектора).
      * Переменные внешних областей снова становятся видимыми.
      *
-     * @pre current_depth_ > 0 (нельзя закрыть глобальную область)
      */
     void pop() noexcept {
-        assert(current_depth_ > 0 && "Cannot pop global scope");
-
         while (!entries_.empty() && entries_.back().scope_depth_ == current_depth_) entries_.pop_back();
         --current_depth_;
     }
@@ -109,7 +91,7 @@ public:
      * @return true, если переменная уже объявлена в текущем блоке.
      */
     bool contains_in_current_scope(std::string_view name) const noexcept {
-        for (auto it = entries_.rbegin(); it != entries_.rend(); ++it) {
+        for (auto it = entries_.rbegin(), endit = entries_.rend(); it != endit; ++it) {
             if (it->scope_depth_ < current_depth_) break;
             if (it->name_ == name) return true;
         }
@@ -117,6 +99,17 @@ public:
     }
 
 private:
+    /**
+     * @brief Запись словаря: имя, значение, глубина области видимости.
+     *
+     * Глубина 0 — глобальная область. Каждый push() увеличивает счётчик.
+     */
+    struct entry {
+        std::string_view name_;
+        T value_;
+        size_t scope_depth_;
+    };
+
     std::vector<entry> entries_;  ///< Все записи (от глобальных к локальным)
     size_t current_depth_ = 0;    ///< Текущая глубина (0 — глобальная)
 
