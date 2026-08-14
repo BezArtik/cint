@@ -31,7 +31,7 @@ core::value value::default_value(const core::type& t) {
         case k::STRUCT: {
             std::vector<value> fields;
             fields.reserve(t.struct_fields().size());
-            for (const auto& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
+            for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
             return struct_t{t, fields};
         }
         default:

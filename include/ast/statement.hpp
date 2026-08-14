@@ -31,8 +31,6 @@ using stmt_list = std::pmr::vector<node<statement>>;
 struct expression_stmt {
     expression expr_;     ///< Выражение для вычисления
     core::location loc_;  ///< Позиция в исходном коде
-
-    expression_stmt(expression e, core::location loc) : expr_{std::move(e)}, loc_{loc} {}
 };
 
 /**
@@ -46,9 +44,6 @@ struct var_declaration {
     core::token name_;                       ///< Токен имени
     std::optional<expression> initializer_;  ///< Опциональный инициализатор
     core::location loc_;                     ///< Позиция в исходном коде
-
-    var_declaration(core::type t, const core::token& n, std::optional<expression> init, core::location loc)
-        : type_{std::move(t)}, name_{n}, initializer_{std::move(init)}, loc_{loc} {}
 };
 
 /**
@@ -62,10 +57,6 @@ struct block_stmt {
     stmt_list statements_;   ///< Список инструкций блока
     bool has_declarations_;  ///< Флаг для оптимизации
     core::location loc_;     ///< Позиция в исходном коде
-
-    block_stmt() = default;
-    block_stmt(stmt_list statements, bool has_decls, core::location loc)
-        : statements_{std::move(statements)}, has_declarations_{has_decls}, loc_{loc} {}
 };
 
 /**
@@ -78,9 +69,6 @@ struct while_stmt {
     expression condition_;   ///< Условие продолжения цикла
     node<statement> block_;  ///< Тело цикла
     core::location loc_;     ///< Позиция в исходном коде
-
-    while_stmt(expression cond, node<statement> block, core::location loc)
-        : condition_{std::move(cond)}, block_{std::move(block)}, loc_{loc} {}
 };
 
 /**
@@ -99,14 +87,6 @@ struct for_stmt {
     std::optional<expression> increment_;  ///< Выражение инкремента
     node<statement> block_;                ///< Тело цикла
     core::location loc_;                   ///< Позиция в исходном коде
-
-    for_stmt(node<statement> init, std::optional<expression> cond, std::optional<expression> inc, node<statement> block,
-             core::location loc)
-        : initializer_{std::move(init)},
-          condition_{std::move(cond)},
-          increment_{std::move(inc)},
-          block_{std::move(block)},
-          loc_{loc} {}
 };
 
 /**
@@ -119,12 +99,6 @@ struct if_stmt {
     node<statement> then_block_;  ///< Ветка then
     node<statement> else_block_;  ///< Ветка else (может быть nullptr)
     core::location loc_;          ///< Позиция в исходном коде
-
-    if_stmt(expression cond, node<statement> then_block, node<statement> else_block, core::location loc)
-        : condition_{std::move(cond)},
-          then_block_{std::move(then_block)},
-          else_block_{std::move(else_block)},
-          loc_{loc} {}
 };
 
 /**
@@ -137,9 +111,6 @@ struct return_stmt {
     core::token keyword_;              ///< Токен ключевого слова return
     std::optional<expression> value_;  ///< Возвращаемое значение (опционально)
     core::location loc_;               ///< Позиция в исходном коде
-
-    return_stmt(const core::token& kw, std::optional<expression> val, core::location loc)
-        : keyword_{kw}, value_{std::move(val)}, loc_{loc} {}
 };
 
 /**
@@ -148,8 +119,6 @@ struct return_stmt {
 struct func_param {
     core::type type_;   ///< Тип параметра
     core::token name_;  ///< Токен имени параметра
-
-    func_param(core::type t, const core::token& n) : type_{std::move(t)}, name_{n} {}
 };
 
 /**
@@ -179,9 +148,6 @@ struct struct_declaration {
     core::type type_;     ///< Тип структуры (с полной информацией о полях)
     core::token name_;    ///< Токен имени структуры
     core::location loc_;  ///< Позиция в исходном коде
-
-    struct_declaration(core::type type, const core::token& name, core::location loc)
-        : type_{std::move(type)}, name_{name}, loc_{loc} {}
 };
 
 /**

@@ -47,18 +47,6 @@ struct token {
     token_type type_;          ///< Тип токена
     std::string_view lexeme_;  ///< Исходный текст лексемы
     location loc_;             ///< Позиция в исходном коде
-
-    /// Создаёт неинициализированный токен.
-    token() = default;
-
-    /**
-     * @brief Создаёт токен с указанными параметрами.
-     *
-     * @param type  Тип токена
-     * @param lex   Исходный текст лексемы
-     * @param loc   Позиция в исходном коде
-     */
-    token(token_type type, std::string_view lex, location loc) : type_{type}, lexeme_{lex}, loc_{loc} {}
 };
 
 }  // namespace core

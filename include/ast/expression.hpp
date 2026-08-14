@@ -46,7 +46,7 @@ using node = core::arena_ptr<T>;
  * видов выражений. Указатели на сложные узлы (binary_expr, call_expr, ...)
  * обёрнуты в core::arena_ptr — время жизни узлов управляется ареной.
  *
- * @see make_expr(), make_expr_val()
+ * @see make_expr()
  */
 // clang-format off
 using expression =
@@ -69,8 +69,6 @@ using expr_list = std::pmr::vector<expression>;
 struct literal_expr {
     core::value value_;   ///< Литеральное значение
     core::location loc_;  ///< Позиция в исходном коде
-
-    literal_expr(core::value value, core::location loc) : value_{std::move(value)}, loc_{loc} {}
 };
 
 /**
@@ -82,8 +80,6 @@ struct literal_expr {
 struct variable_expr {
     core::token name_;    ///< Токен имени переменной
     core::location loc_;  ///< Позиция в исходном коде
-
-    variable_expr(const core::token& name, core::location loc) : name_{name}, loc_{loc} {}
 };
 
 /**
@@ -97,9 +93,6 @@ struct binary_expr {
     core::token op_;      ///< Токен оператора
     expression right_;    ///< Правый операнд
     core::location loc_;  ///< Позиция в исходном коде
-
-    binary_expr(expression left, const core::token& op, expression right, core::location loc)
-        : left_{std::move(left)}, op_{op}, right_{std::move(right)}, loc_{loc} {}
 };
 
 /**
@@ -114,9 +107,6 @@ struct assignment_expr {
     core::token op_;      ///< Токен оператора присваивания
     expression value_;    ///< Присваиваемое значение
     core::location loc_;  ///< Позиция в исходном коде
-
-    assignment_expr(expression target, const core::token& op, expression value, core::location loc)
-        : target_{std::move(target)}, op_{op}, value_{std::move(value)}, loc_{loc} {}
 };
 
 /**
@@ -129,9 +119,6 @@ struct unary_expr {
     core::token op_;      ///< Токен унарного оператора
     expression operand_;  ///< Операнд
     core::location loc_;  ///< Позиция в исходном коде
-
-    unary_expr(const core::token& op, expression operand, core::location loc)
-        : op_{op}, operand_{std::move(operand)}, loc_{loc} {}
 };
 
 /**
@@ -144,9 +131,6 @@ struct postfix_expr {
     expression operand_;  ///< Операнд (должен быть lvalue)
     core::token op_;      ///< Токен оператора (INCREMENT или DECREMENT)
     core::location loc_;  ///< Позиция в исходном коде
-
-    postfix_expr(expression operand, core::token op, core::location loc)
-        : operand_{std::move(operand)}, op_{op}, loc_{loc} {}
 };
 
 /**
@@ -160,9 +144,6 @@ struct call_expr {
     core::token callee_;  ///< Токен имени функции
     expr_list args_;      ///< Список аргументов
     core::location loc_;  ///< Позиция в исходном коде
-
-    call_expr(const core::token& callee, expr_list args, core::location loc)
-        : callee_{callee}, args_{std::move(args)}, loc_{loc} {}
 };
 
 /**
@@ -174,8 +155,6 @@ struct call_expr {
 struct initializer_list_expr {
     expr_list elements_;  ///< Список элементов
     core::location loc_;  ///< Позиция в исходном коде
-
-    initializer_list_expr(expr_list elements, core::location loc) : elements_{std::move(elements)}, loc_{loc} {}
 };
 
 /**
@@ -188,9 +167,6 @@ struct index_expr {
     expression object_;   ///< Выражение-массив
     expression index_;    ///< Индексное выражение
     core::location loc_;  ///< Позиция в исходном коде
-
-    index_expr(expression object, expression index, core::location loc)
-        : object_{std::move(object)}, index_{std::move(index)}, loc_{loc} {}
 };
 
 /**
@@ -203,9 +179,6 @@ struct member_access_expr {
     expression object_;   ///< Выражение-структура
     core::token member_;  ///< Токен имени поля
     core::location loc_;  ///< Позиция в исходном коде
-
-    member_access_expr(expression object, const core::token& member, core::location loc)
-        : object_{std::move(object)}, member_{member}, loc_{loc} {}
 };
 
 /**

@@ -208,7 +208,7 @@ core::type parser::parse_type() {
 
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
         auto&& kw = prev();
-        if (auto* info = core::get_keyword_info(kw.type_)) return info->semantic_type_;
+        if (auto&& info = core::get_keyword_info(kw.type_)) return info->semantic_type_;
         reporter_.parse_error(kw, err::expected_type);
     }
 
@@ -426,7 +426,7 @@ ast::expression parser::primary() {
         auto&& token = prev();
         auto&& raw = token.lexeme_.substr(1, token.lexeme_.size() - 2);
         auto&& processed = process_escape_sequences(raw, token.loc_);
-        return ast::make_expr<ast::literal_expr>(arena_, token.loc_, core::value{std::move(processed)});
+        return ast::make_expr<ast::literal_expr>(arena_, token.loc_, std::move(processed));
     }
 
     if (match({tt::KW_TRUE})) return ast::make_expr<ast::literal_expr>(arena_, prev().loc_, true);
