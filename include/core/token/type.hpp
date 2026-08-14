@@ -41,18 +41,6 @@ namespace core {
  */
 class type {
 public:
-    /// @brief Категория типа.
-    enum class kind : uint8_t {
-        INT,       ///< Целое число (64 бита)
-        DOUBLE,    ///< Число с плавающей точкой
-        BOOL,      ///< Булево значение
-        STRING,    ///< Строка
-        VOID,      ///< Отсутствие значения
-        FUNCTION,  ///< Функция (возвращаемый тип + параметры)
-        ARRAY,     ///< Массив (тип элемента + размер)
-        STRUCT,    ///< Структура (имя + поля)
-        UNKNOWN    ///< Неизвестный тип (ошибка вывода)
-    };
 
     /// @brief Поле структуры: имя + тип.
     using field_t = std::pair<std::string_view, type>;
@@ -153,9 +141,6 @@ public:
 
     /// @}
 
-    /// Категория типа.
-    kind get_kind() const noexcept;
-
     /// @name Сравнение
     /// @{
 
@@ -175,31 +160,39 @@ public:
 private:
     /// @cond INTERNAL
 
-    struct function_info {
+    struct int_t {};
+    struct double_t {};
+    struct bool_t {};
+    struct string_t {};
+    struct void_t {};
+    struct unknown_t {};
+    struct function_t {
         std::unique_ptr<type> return_type_;
         std::vector<type> param_types_;
     };
-
-    struct array_info {
+    struct array_t {
         std::unique_ptr<type> element_type_;
         size_t size_;
     };
-
-    struct struct_info {
+    struct struct_t {
         std::string_view name_;
         std::vector<field_t> fields_;
     };
 
-    type(kind k);
-
     template <typename Info>
-    type(kind k, Info info) : kind_(k), info_(std::move(info)) {}
+    type(Info info) : data_(std::move(info)) {}
 
-    kind kind_ = kind::UNKNOWN;
-    using info_variant = std::variant<std::shared_ptr<function_info>, std::shared_ptr<array_info>,
-                                      std::shared_ptr<struct_info>, std::monostate>;
-
-    info_variant info_;
+    std::variant<
+        int_t,
+        double_t,
+        bool_t,
+        string_t,
+        void_t,
+        std::shared_ptr<function_t>,
+        std::shared_ptr<array_t>,
+        std::shared_ptr<struct_t>,
+        unknown_t
+    > data_;
 
     /// @endcond
 };

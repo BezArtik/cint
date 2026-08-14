@@ -12,95 +12,67 @@
 
 namespace core {
 // clang-format off
-type::type(kind k) : kind_(k), info_(std::monostate{}) {}
 
-type type::int_type() { return type(kind::INT); }
-type type::double_type() { return type(kind::DOUBLE); }
-type type::bool_type() { return type(kind::BOOL); }
-type type::string_type() { return type(kind::STRING); }
-type type::void_type() { return type(kind::VOID); }
-type type::unknown_type() { return type(kind::UNKNOWN); }
-
+type type::int_type() { return type(int_t{}); }
+type type::double_type() { return type(double_t{}); }
+type type::bool_type() { return type(bool_t{}); }
+type type::string_type() { return type(string_t{}); }
+type type::void_type() { return type(void_t{}); }
+type type::unknown_type() { return type(unknown_t{}); }
 type type::function_type(type return_type, std::vector<type> param_types) {
-    auto&& info = std::make_shared<function_info>(std::make_unique<type>(std::move(return_type)), std::move(param_types));
-    return type{kind::FUNCTION, std::move(info)};
+    return std::make_shared<function_t>(std::make_unique<type>(std::move(return_type)), std::move(param_types));
 }
-
 type type::array_type(type element_type, size_t size) {
-    auto&& info = std::make_shared<array_info>(std::make_unique<type>(std::move(element_type)), size);
-    return type{kind::ARRAY, std::move(info)};
+    return std::make_shared<array_t>(std::make_unique<type>(std::move(element_type)), size);
 }
-
 type type::struct_type(std::string_view name, std::vector<field_t> fields) {
-    auto&& info = std::make_shared<struct_info>(name, std::move(fields));
-    return type{kind::STRUCT, std::move(info)};
+    return std::make_shared<struct_t>(name, std::move(fields));
 }
 
-bool type::is_numeric() const noexcept {
-    return kind_ == kind::INT || kind_ == kind::DOUBLE;
-}
-
-bool type::is_int() const noexcept { return kind_ == kind::INT; }
-bool type::is_double() const noexcept { return kind_ == kind::DOUBLE; }
-bool type::is_bool() const noexcept { return kind_ == kind::BOOL; }
-bool type::is_string() const noexcept { return kind_ == kind::STRING; }
-bool type::is_void() const noexcept { return kind_ == kind::VOID; }
-bool type::is_function() const noexcept { return kind_ == kind::FUNCTION; }
-bool type::is_unknown() const noexcept { return kind_ == kind::UNKNOWN; }
-bool type::is_array() const noexcept { return kind_ == kind::ARRAY; }
-bool type::is_struct() const noexcept { return kind_ == kind::STRUCT; }
-// clang-format on
+bool type::is_int()      const noexcept { return std::holds_alternative<int_t>(data_); }
+bool type::is_double()   const noexcept { return std::holds_alternative<double_t>(data_); }
+bool type::is_bool()     const noexcept { return std::holds_alternative<bool_t>(data_); }
+bool type::is_string()   const noexcept { return std::holds_alternative<string_t>(data_); }
+bool type::is_void()     const noexcept { return std::holds_alternative<void_t>(data_); }
+bool type::is_unknown()  const noexcept { return std::holds_alternative<unknown_t>(data_); }
+bool type::is_function() const noexcept { return std::holds_alternative<std::shared_ptr<function_t>>(data_); }
+bool type::is_array()    const noexcept { return std::holds_alternative<std::shared_ptr<array_t>>(data_); }
+bool type::is_struct()   const noexcept { return std::holds_alternative<std::shared_ptr<struct_t>>(data_); }
+bool type::is_numeric()  const noexcept { return is_int() || is_double(); }
 
 bool type::operator==(const type& other) const noexcept {
-    if (kind_ != other.kind_) return false;
+    if (data_.index() != other.data_.index()) return false;
 
     if (is_function()) {
-        auto&& lhs = *std::get<std::shared_ptr<function_info>>(info_);
-        auto&& rhs = *std::get<std::shared_ptr<function_info>>(other.info_);
+        auto&& lhs = *std::get<std::shared_ptr<function_t>>(data_);
+        auto&& rhs = *std::get<std::shared_ptr<function_t>>(other.data_);
         if (*lhs.return_type_ != *rhs.return_type_) return false;
         return lhs.param_types_.size() == rhs.param_types_.size() &&
                std::ranges::equal(lhs.param_types_, rhs.param_types_);
     }
     if (is_array()) {
-        auto&& lhs = *std::get<std::shared_ptr<array_info>>(info_);
-        auto&& rhs = *std::get<std::shared_ptr<array_info>>(other.info_);
+        auto&& lhs = *std::get<std::shared_ptr<array_t>>(data_);
+        auto&& rhs = *std::get<std::shared_ptr<array_t>>(other.data_);
         return lhs.size_ == rhs.size_ && *lhs.element_type_ == *rhs.element_type_;
     }
     if (is_struct()) {
-        auto&& lhs = *std::get<std::shared_ptr<struct_info>>(info_);
-        auto&& rhs = *std::get<std::shared_ptr<struct_info>>(other.info_);
+        auto&& lhs = *std::get<std::shared_ptr<struct_t>>(data_);
+        auto&& rhs = *std::get<std::shared_ptr<struct_t>>(other.data_);
         return lhs.name_ == rhs.name_;
     }
     return true;
 }
 
-bool type::operator!=(const type& other) const noexcept {
-    return !(*this == other);
-}
+bool type::operator!=(const type& other) const noexcept { return !(*this == other); }
 
-const type& type::return_type() const {
-    return *std::get<std::shared_ptr<function_info>>(info_)->return_type_;
-}
+const type& type::return_type() const { return *std::get<std::shared_ptr<function_t>>(data_)->return_type_; }
+std::span<const type> type::param_types() const { return std::get<std::shared_ptr<function_t>>(data_)->param_types_; }
 
-std::span<const type> type::param_types() const {
-    return std::get<std::shared_ptr<function_info>>(info_)->param_types_;
-}
+const type& type::element_type() const { return *std::get<std::shared_ptr<array_t>>(data_)->element_type_; }
+size_t type::array_size() const { return std::get<std::shared_ptr<array_t>>(data_)->size_; }
 
-const type& type::element_type() const {
-    return *std::get<std::shared_ptr<array_info>>(info_)->element_type_;
-}
-
-size_t type::array_size() const {
-    return std::get<std::shared_ptr<array_info>>(info_)->size_;
-}
-
-std::string_view type::struct_name() const {
-    return std::get<std::shared_ptr<struct_info>>(info_)->name_;
-}
-
-std::span<const type::field_t> type::struct_fields() const {
-    return std::get<std::shared_ptr<struct_info>>(info_)->fields_;
-}
+std::string_view type::struct_name() const { return std::get<std::shared_ptr<struct_t>>(data_)->name_; }
+std::span<const type::field_t> type::struct_fields() const { return std::get<std::shared_ptr<struct_t>>(data_)->fields_; }
 
 std::optional<size_t> type::field_index(std::string_view name) const noexcept {
     auto&& fields = struct_fields();
@@ -108,9 +80,6 @@ std::optional<size_t> type::field_index(std::string_view name) const noexcept {
     if (it == fields.end()) return std::nullopt;
     return std::distance(fields.begin(), it);
 }
-
-type::kind type::get_kind() const noexcept {
-    return kind_;
-}
+// clang-format on
 
 }  // namespace core

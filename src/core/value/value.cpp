@@ -10,33 +10,28 @@
 namespace core {
 
 core::value value::default_value(const core::type& t) {
-    using k = core::type::kind;
-    switch (t.get_kind()) {
-        case k::INT:
-            return int_t{};
-        case k::DOUBLE:
-            return double_t{};
-        case k::BOOL:
-            return bool_t{};
-        case k::STRING:
-            return std::string{};
-        case k::VOID:
-            return {};
-        case k::ARRAY: {
-            std::vector<value> elements;
-            elements.reserve(t.array_size());
-            for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
-            return elements;
-        }
-        case k::STRUCT: {
-            std::vector<value> fields;
-            fields.reserve(t.struct_fields().size());
-            for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
-            return struct_t{t, fields};
-        }
-        default:
-            return {};
+    if (t.is_int())    return int_t{};
+    if (t.is_double()) return double_t{};
+    if (t.is_bool())   return bool_t{};
+    if (t.is_string()) return std::string{};
+    if (t.is_void())   return {};
+    if (t.is_unknown()) return {};
+
+    if (t.is_array()) {
+        std::vector<core::value> elements;
+        elements.reserve(t.array_size());
+        for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
+        return elements;
     }
+
+    if (t.is_struct()) {
+        std::vector<core::value> fields;
+        fields.reserve(t.struct_fields().size());
+        for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
+        return struct_t{t, std::move(fields)};
+    }
+
+    return {};
 }
 
 core::value value::convert(core::value val, const core::type& target) {
