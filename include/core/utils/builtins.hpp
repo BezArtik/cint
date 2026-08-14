@@ -33,7 +33,7 @@ using builtin_fn_ptr = value (*)(std::span<const value>);
  * определяет имя, сигнатуру и реализацию встроенной функции.
  */
 struct builtin_def {
-    std::string_view name_;          ///< Имя функции (напр. "print_int")
+    std::string_view name_;          ///< Имя функции
     type return_type_;               ///< Тип возвращаемого значения
     std::vector<type> param_types_;  ///< Типы параметров (порядок важен)
     builtin_fn_ptr impl_;            ///< Указатель на реализацию
@@ -41,7 +41,7 @@ struct builtin_def {
 
 /**
  * @defgroup Builtins Встроенные функции
- * @brief Стандартная библиотека языка CInt.
+ * @brief Стандартная библиотека языка.
  * @ingroup CoreUtils
  *
  * Встроенные функции доступны в любой программе без объявления.

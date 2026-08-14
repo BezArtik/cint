@@ -34,7 +34,6 @@ namespace core {
  * Строится **один раз** перед семантическим анализом статическим методом
  * build(). После построения реестр не изменяется.
  *
- * Поиск — линейный поиск по вектору имён.
  *
  * Особенности:
  * - **Builtin-функции** можно переопределить пользовательской функцией
@@ -54,18 +53,12 @@ public:
     using struct_ptr = const ast::struct_declaration*;
 
     /**
-     * @brief Информация о символе (одна из трёх альтернатив).
-     *
-     */
-    using info_variant = std::variant<func_ptr, builtin_fn_ptr, struct_ptr>;
-
-    /**
      * @brief Запись реестра: имя, тип, информация о реализации.
      */
     struct entry {
         std::string_view name_;  ///< Имя символа
         type type_;  ///< Тип символа (сигнатура функции или структурный тип)
-        info_variant info_;  ///< Информация о реализации
+        std::variant<func_ptr, builtin_fn_ptr, struct_ptr> info_;  ///< Информация о реализации
     };
 
     /**
