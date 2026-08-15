@@ -124,9 +124,9 @@ private:
      * - Тип + идентификатор → var_declaration()
      * - Иначе → statement()
      *
-     * @return Указатель на узел AST или nullptr при ошибке.
+     * @return Узел AST или nullopt при ошибке.
      */
-    ast::node<ast::statement> declaration();
+    std::optional<ast::statement> declaration();
 
     /**
      * @brief Разбирает инструкцию.
@@ -139,9 +139,9 @@ private:
      * - `{`     → block_statement()
      * - Иначе   → expression + `;`
      *
-     * @return Указатель на узел инструкции.
+     * @return Узел инструкции.
      */
-    ast::node<ast::statement> statement();
+    ast::statement statement();
 
     /**
      * @brief Разбирает объявление переменной.
@@ -152,7 +152,7 @@ private:
      * @param name Токен имени переменной (уже потреблён)
      * @return Узел var_declaration.
      */
-    ast::node<ast::statement> var_declaration(core::type type, const core::token& name);
+    ast::statement var_declaration(core::type type, const core::token& name);
 
     /**
      * @brief Разбирает объявление функции.
@@ -163,7 +163,7 @@ private:
      * @param name        Токен имени функции (уже потреблён)
      * @return Узел func_declaration.
      */
-    ast::node<ast::statement> func_declaration(core::type return_type, const core::token& name);
+    ast::statement func_declaration(core::type return_type, const core::token& name);
 
     /**
      * @brief Разбирает объявление структуры.
@@ -173,7 +173,7 @@ private:
      * @param name Токен имени структуры (уже потреблён)
      * @return Узел struct_declaration.
      */
-    ast::node<ast::statement> struct_declaration(const core::token& name);
+    ast::statement struct_declaration(const core::token& name);
 
     /**
      * @brief Разбирает цикл while.
@@ -182,7 +182,7 @@ private:
      *
      * @return Узел while_stmt.
      */
-    ast::node<ast::statement> while_statement();
+    ast::statement while_statement();
 
     /**
      * @brief Разбирает цикл for.
@@ -191,7 +191,7 @@ private:
      *
      * @return Узел for_stmt.
      */
-    ast::node<ast::statement> for_statement();
+    ast::statement for_statement();
 
     /**
      * @brief Разбирает условную инструкцию if/else.
@@ -200,7 +200,7 @@ private:
      *
      * @return Узел if_stmt.
      */
-    ast::node<ast::statement> if_statement();
+    ast::statement if_statement();
 
     /**
      * @brief Разбирает блок инструкций в фигурных скобках.
@@ -209,7 +209,7 @@ private:
      *
      * @return Узел block_stmt.
      */
-    ast::node<ast::statement> block_statement();
+    ast::statement block_statement();
 
     /**
      * @brief Разбирает инструкцию возврата.
@@ -218,7 +218,7 @@ private:
      *
      * @return Узел return_stmt.
      */
-    ast::node<ast::statement> return_statement();
+    ast::statement return_statement();
 
     /**
      * @brief Разбирает выражение с учётом приоритета.

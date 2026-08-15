@@ -19,23 +19,23 @@ using err = core::error_code;
 type_checker::type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
     : reporter_{reporter}, registry_{registry} {}
 
-bool type_checker::check(std::span<const ast::node<ast::statement>> statements) {
-    for (auto&& stmt : statements) check_statement(*stmt);
+bool type_checker::check(std::span<const ast::statement> statements) {
+    for (auto&& stmt : statements) check_statement(stmt);
     return !reporter_.has_error();
 }
 // clang-format off
 void type_checker::check_statement(const ast::statement& stmt) {
     core::visit(core::overloaded{
-            [&](const ast::expression_stmt& s) { check_expression_stmt(s); },
-            [&](const ast::var_declaration& s) { check_var_declaration(s); },
-            [&](const ast::block_stmt& s) { check_block(s); },
-            [&](const ast::while_stmt& s) { check_while(s); },
-            [&](const ast::for_stmt& s) { check_for(s); },
-            [&](const ast::if_stmt& s) { check_if(s); },
-            [&](const ast::return_stmt& s) { check_return_stmt(s); },
-            [&](const ast::func_declaration& s) { check_func_declaration(s); },
-            [&](const ast::struct_declaration& s) { check_struct_declaration(s); }},
-        stmt.data_);
+            [&](const ast::node<ast::expression_stmt>& s) { check_expression_stmt(*s); },
+            [&](const ast::node<ast::var_declaration>& s) { check_var_declaration(*s); },
+            [&](const ast::node<ast::block_stmt>& s) { check_block(*s); },
+            [&](const ast::node<ast::while_stmt>& s) { check_while(*s); },
+            [&](const ast::node<ast::for_stmt>& s) { check_for(*s); },
+            [&](const ast::node<ast::if_stmt>& s) { check_if(*s); },
+            [&](const ast::node<ast::return_stmt>& s) { check_return_stmt(*s); },
+            [&](const ast::node<ast::func_declaration>& s) { check_func_declaration(*s); },
+            [&](const ast::node<ast::struct_declaration>& s) { check_struct_declaration(*s); }},
+        stmt);
 }
 // clang-format on
 void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
@@ -110,12 +110,12 @@ void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
 void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
     std::optional<core::scope_guard<core::type>> guard;
     if (create_scope) guard.emplace(symbols_);
-    for (auto&& s : stmt.statements_) check_statement(*s);
+    for (auto&& s : stmt.statements_) check_statement(s);
 }
 
 void type_checker::check_body(const ast::statement& body) {
-    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_))
-        check_block(*block, block->has_declarations_);
+    if (auto&& block = std::get_if<ast::node<ast::block_stmt>>(&body))
+        check_block(**block, (*block)->has_declarations_);
     else
         check_statement(body);
 }
@@ -125,7 +125,7 @@ void type_checker::check_while(const ast::while_stmt& stmt) {
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "while");
 
     core::scope_guard guard{symbols_};
-    check_body(*stmt.block_);
+    check_body(stmt.block_);
 }
 
 void type_checker::check_for(const ast::for_stmt& stmt) {
@@ -137,13 +137,13 @@ void type_checker::check_for(const ast::for_stmt& stmt) {
         if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "for");
     }
     if (stmt.increment_) type_of(*stmt.increment_);
-    check_body(*stmt.block_);
+    check_body(stmt.block_);
 }
 
 void type_checker::check_if(const ast::if_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt, err::condition_not_bool, "if");
-    check_body(*stmt.then_block_);
+    check_body(stmt.then_block_);
     if (stmt.else_block_) check_body(*stmt.else_block_);
 }
 
@@ -177,8 +177,8 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     auto&& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
 
-    auto&& block = std::get<ast::block_stmt>(stmt.block_->data_);
-    for (auto&& s : block.statements_) check_statement(*s);
+    auto&& block = std::get<ast::node<ast::block_stmt>>(stmt.block_);
+    for (auto&& s : block->statements_) check_statement(s);
 
     curr_return_type_ = prev_return_type;
 }

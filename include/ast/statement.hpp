@@ -9,18 +9,46 @@
 #include "ast/expression.hpp"
 #include "core/utils/arena.hpp"
 
-#include <algorithm>
 #include <utility>
 #include <variant>
 #include <vector>
+#include <optional>
 
 namespace ast {
 
-// forward declaration
-struct statement;
+// Forward declarations
+struct expression_stmt;
+struct var_declaration;
+struct block_stmt;
+struct while_stmt;
+struct for_stmt;
+struct if_stmt;
+struct return_stmt;
+struct func_declaration;
+struct struct_declaration;
+
+/**
+ * @brief Алгебраический тип инструкции AST.
+ *
+ * Представляет любую инструкцию или объявление как variant.
+ * Все узлы хранятся через node<T>.
+ *
+ * @see make_stmt()
+ */
+using statement = std::variant<
+    node<expression_stmt>,
+    node<var_declaration>,
+    node<block_stmt>,
+    node<while_stmt>,
+    node<for_stmt>,
+    node<if_stmt>,
+    node<return_stmt>,
+    node<func_declaration>,
+    node<struct_declaration>
+>;
 
 /// Список инструкций (тело функции, блок кода).
-using stmt_list = std::pmr::vector<node<statement>>;
+using stmt_list = std::pmr::vector<statement>;
 
 /**
  * @brief Инструкция-выражение: `expr;`.
@@ -66,9 +94,9 @@ struct block_stmt {
  * Тело может быть любой инструкцией, не только блоком.
  */
 struct while_stmt {
-    expression condition_;   ///< Условие продолжения цикла
-    node<statement> block_;  ///< Тело цикла
-    core::location loc_;     ///< Позиция в исходном коде
+    expression condition_;  ///< Условие продолжения цикла
+    statement block_;       ///< Тело цикла
+    core::location loc_;    ///< Позиция в исходном коде
 };
 
 /**
@@ -82,10 +110,10 @@ struct while_stmt {
  * 5. переход к п.2
  */
 struct for_stmt {
-    node<statement> initializer_;          ///< Инициализатор (может быть nullptr)
+    std::optional<statement> initializer_; ///< Инициализатор (может быть nullopt)
     std::optional<expression> condition_;  ///< Условие продолжения
     std::optional<expression> increment_;  ///< Выражение инкремента
-    node<statement> block_;                ///< Тело цикла
+    statement block_;                      ///< Тело цикла
     core::location loc_;                   ///< Позиция в исходном коде
 };
 
@@ -95,10 +123,10 @@ struct for_stmt {
  * Ветка else опциональна. Обе ветки выполняются в своих областях видимости.
  */
 struct if_stmt {
-    expression condition_;        ///< Условие (должно быть bool)
-    node<statement> then_block_;  ///< Ветка then
-    node<statement> else_block_;  ///< Ветка else (может быть nullptr)
-    core::location loc_;          ///< Позиция в исходном коде
+    expression condition_;                 ///< Условие (должно быть bool)
+    statement then_block_;                 ///< Ветка then
+    std::optional<statement> else_block_;  ///< Ветка else (может быть nullopt)
+    core::location loc_;                   ///< Позиция в исходном коде
 };
 
 /**
@@ -131,7 +159,7 @@ struct func_declaration {
     core::type return_type_;               ///< Тип возвращаемого значения
     core::token name_;                     ///< Токен имени функции
     std::pmr::vector<func_param> params_;  ///< Список параметров
-    node<statement> block_;                ///< Тело функции
+    statement block_;                      ///< Тело функции
     core::location loc_;                   ///< Позиция в исходном коде
 };
 
@@ -148,34 +176,20 @@ struct struct_declaration {
 };
 
 /**
- * @brief Алгебраический тип инструкции AST.
- *
- * Представляет любую инструкцию или объявление как variant.
- * Конструктор шаблонный — принимает любую из структур-вариантов.
- */
-struct statement {
-    std::variant<expression_stmt, var_declaration, block_stmt, for_stmt, while_stmt, if_stmt, return_stmt,
-                 func_declaration, struct_declaration>
-        data_;
-
-    statement() = delete;
-
-    template <typename T>
-    statement(T s) : data_{std::move(s)} {}
-};
-
-/**
  * @brief Создаёт узел инструкции в арене.
+ *
+ * Размещает объект типа Stmt в переданной арене и возвращает
+ * statement, содержащий node<Stmt>.
  *
  * @tparam Stmt Тип узла инструкции
  * @tparam Args Типы аргументов конструктора
  * @param arena  Арена для размещения
  * @param args   Аргументы конструктора
- * @return Узел node<statement> в AST
+ * @return Готовый statement с node<Stmt>.
  */
 template <typename Stmt, typename... Args>
-node<statement> make_stmt(core::arena& arena, Args&&... args) {
-    return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)...});
+statement make_stmt(core::arena& arena, Args&&... args) {
+    return statement{core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};
 }
 
 }  // namespace ast

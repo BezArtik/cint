@@ -75,7 +75,7 @@ public:
      * @note Не вызывает функции автоматически. Точка входа — первая
      *       исполняемая инструкция верхнего уровня (не func_declaration).
      */
-    void interpret(std::span<const ast::node<ast::statement>> statements);
+    void interpret(std::span<const ast::statement> statements);
 
 private:
     /// @brief Результат выполнения инструкции.

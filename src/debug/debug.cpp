@@ -153,100 +153,100 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
 
     core::visit(
         core::overloaded{
-            [&](const ast::expression_stmt& s) {
+            [&](const ast::node<ast::expression_stmt>& s) {
                 header << "ExpressionStmt\n";
                 writer.emit(header.str());
-                print_expression(writer, s.expr_, level + 1);
+                print_expression(writer, s->expr_, level + 1);
             },
-            [&](const ast::var_declaration& s) {
-                header << "VarDeclaration: " << s.name_.lexeme_ << " : " << type_name(s.type_);
-                if (s.initializer_) {
+            [&](const ast::node<ast::var_declaration>& s) {
+                header << "VarDeclaration: " << s->name_.lexeme_ << " : " << type_name(s->type_);
+                if (s->initializer_) {
                     header << " =\n";
                     writer.emit(header.str());
-                    print_expression(writer, *s.initializer_, level + 1);
+                    print_expression(writer, *s->initializer_, level + 1);
                 } else {
                     header << "\n";
                     writer.emit(header.str());
                 }
             },
-            [&](const ast::block_stmt& s) {
-                header << "BlockStmt [" << s.statements_.size() << " statements]\n";
+            [&](const ast::node<ast::block_stmt>& s) {
+                header << "BlockStmt [" << s->statements_.size() << " statements]\n";
                 writer.emit(header.str());
-                for (const auto& inner : s.statements_) print_statement(writer, *inner, level + 1);
+                for (auto&& inner : s->statements_) print_statement(writer, inner, level + 1);
             },
-            [&](const ast::while_stmt& s) {
+            [&](const ast::node<ast::while_stmt>& s) {
                 header << "WhileStmt\n";
                 writer.emit(header.str());
                 writer.emit(indent_str(level + 1) + "Condition:\n");
-                print_expression(writer, s.condition_, level + 2);
+                print_expression(writer, s->condition_, level + 2);
                 writer.emit(indent_str(level + 1) + "Body:\n");
-                print_statement(writer, *s.block_, level + 2);
+                print_statement(writer, s->block_, level + 2);
             },
-            [&](const ast::for_stmt& s) {
+            [&](const ast::node<ast::for_stmt>& s) {
                 header << "ForStmt\n";
                 writer.emit(header.str());
-                if (s.initializer_) {
+                if (s->initializer_) {
                     writer.emit(indent_str(level + 1) + "Initializer:\n");
-                    print_statement(writer, *s.initializer_, level + 2);
+                    print_statement(writer, *s->initializer_, level + 2);
                 }
-                if (s.condition_) {
+                if (s->condition_) {
                     writer.emit(indent_str(level + 1) + "Condition:\n");
-                    print_expression(writer, *s.condition_, level + 2);
+                    print_expression(writer, *s->condition_, level + 2);
                 }
-                if (s.increment_) {
+                if (s->increment_) {
                     writer.emit(indent_str(level + 1) + "Increment:\n");
-                    print_expression(writer, *s.increment_, level + 2);
+                    print_expression(writer, *s->increment_, level + 2);
                 }
                 writer.emit(indent_str(level + 1) + "Body:\n");
-                print_statement(writer, *s.block_, level + 2);
+                print_statement(writer, s->block_, level + 2);
             },
-            [&](const ast::if_stmt& s) {
+            [&](const ast::node<ast::if_stmt>& s) {
                 header << "IfStmt\n";
                 writer.emit(header.str());
                 writer.emit(indent_str(level + 1) + "Condition:\n");
-                print_expression(writer, s.condition_, level + 2);
+                print_expression(writer, s->condition_, level + 2);
                 writer.emit(indent_str(level + 1) + "Then:\n");
-                print_statement(writer, *s.then_block_, level + 2);
-                if (s.else_block_) {
+                print_statement(writer, s->then_block_, level + 2);
+                if (s->else_block_) {
                     writer.emit(indent_str(level + 1) + "Else:\n");
-                    print_statement(writer, *s.else_block_, level + 2);
+                    print_statement(writer, *s->else_block_, level + 2);
                 }
             },
-            [&](const ast::return_stmt& s) {
-                if (s.value_) {
+            [&](const ast::node<ast::return_stmt>& s) {
+                if (s->value_) {
                     header << "ReturnStmt\n";
                     writer.emit(header.str());
-                    print_expression(writer, *s.value_, level + 1);
+                    print_expression(writer, *s->value_, level + 1);
                 } else {
                     header << "ReturnStmt (void)\n";
                     writer.emit(header.str());
                 }
             },
-            [&](const ast::func_declaration& s) {
-                header << "FuncDeclaration: " << s.name_.lexeme_ << " -> " << type_name(s.return_type_) << "\n";
+            [&](const ast::node<ast::func_declaration>& s) {
+                header << "FuncDeclaration: " << s->name_.lexeme_ << " -> " << type_name(s->return_type_) << "\n";
                 writer.emit(header.str());
                 auto params = indent_str(level + 1) + "Params: ";
-                if (s.params_.empty()) {
+                if (s->params_.empty()) {
                     params += "(none)";
                 } else {
-                    for (auto&& p : s.params_)
+                    for (auto&& p : s->params_)
                         params += std::string(p.name_.lexeme_) + " : " + type_name(p.type_) + " ";
                 }
                 writer.emit(params + "\n");
                 writer.emit(indent_str(level + 1) + "Body:\n");
-                auto&& block = std::get<ast::block_stmt>(s.block_->data_);
-                for (auto&& inner : block.statements_) print_statement(writer, *inner, level + 2);
+                auto&& block = std::get<ast::node<ast::block_stmt>>(s->block_);
+                for (auto&& inner : block->statements_) print_statement(writer, inner, level + 2);
             },
-            [&](const ast::struct_declaration& s) {
-                header << "StructDeclaration: " << s.name_.lexeme_ << "\n";
+            [&](const ast::node<ast::struct_declaration>& s) {
+                header << "StructDeclaration: " << s->name_.lexeme_ << "\n";
                 writer.emit(header.str());
                 writer.emit(indent_str(level + 1) + "Fields:\n");
-                for (auto&& [field_name, field_type] : s.type_.struct_fields()) {
+                for (auto&& [field_name, field_type] : s->type_.struct_fields()) {
                     writer.emit(indent_str(level + 2) + std::string{field_name} + " : " + type_name(field_type) + "\n");
                 }
             },
         },
-        stmt.data_);
+        stmt);
 
     if (exec_result && writer.enabled(trace_level::execution)) {
         writer.emit(indent_str(level) + "  → ");
@@ -282,7 +282,7 @@ void print_tokens(const debug_writer& writer, std::span<const core::token> token
     writer.emit("\n");
 }
 
-void print_ast(const debug_writer& writer, std::span<const ast::node<ast::statement>> statements) {
+void print_ast(const debug_writer& writer, std::span<const ast::statement> statements) {
     if (!writer.enabled(trace_level::ast)) return;
 
     writer.emit(
@@ -291,7 +291,7 @@ void print_ast(const debug_writer& writer, std::span<const ast::node<ast::statem
         "═══════════════════════════════════════════════════════\n\n");
 
     for (const auto& stmt : statements) {
-        print_statement(writer, *stmt);
+        print_statement(writer, stmt);
         writer.emit("\n");
     }
 }

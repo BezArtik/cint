@@ -74,7 +74,7 @@ ast::stmt_list parser::parse() {
     ast::stmt_list statements{&mr_};
     while (!is_at_end()) {
         auto&& stmt = declaration();
-        if (stmt) statements.push_back(std::move(stmt));
+        if (stmt) statements.push_back(std::move(*stmt));
     }
     temp_mr_ = nullptr;
     return statements;
@@ -111,7 +111,7 @@ const core::token& parser::prev() const noexcept {
     return tokens_[current_ - 1];
 }
 
-ast::node<ast::statement> parser::declaration() {
+std::optional<ast::statement> parser::declaration() {
     auto&& parse_decl = [&](auto&& type) {
         auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
         return match({tt::LEFT_PAREN}) ? func_declaration(std::move(type), name)
@@ -127,7 +127,7 @@ ast::node<ast::statement> parser::declaration() {
         return statement();
     } catch (const core::parse_error&) {
         synchronize();
-        return nullptr;
+        return std::nullopt;
     }
 }
 
@@ -154,7 +154,7 @@ core::type parser::parse_array_dimensions(core::type base_type) {
     return base_type;
 }
 
-ast::node<ast::statement> parser::var_declaration(core::type type, const core::token& name) {
+ast::statement parser::var_declaration(core::type type, const core::token& name) {
     type = parse_array_dimensions(type);
 
     std::optional<ast::expression> initializer;
@@ -163,7 +163,7 @@ ast::node<ast::statement> parser::var_declaration(core::type type, const core::t
     return ast::make_stmt<ast::var_declaration>(arena_, std::move(type), name, std::move(initializer), name.loc_);
 }
 
-ast::node<ast::statement> parser::func_declaration(core::type return_type, const core::token& name) {
+ast::statement parser::func_declaration(core::type return_type, const core::token& name) {
     std::pmr::vector<ast::func_param> params{&mr_};
     if (!check(tt::RIGHT_PAREN)) {
         do { params.push_back(parse_param()); } while (match({tt::COMMA}));
@@ -178,7 +178,7 @@ ast::node<ast::statement> parser::func_declaration(core::type return_type, const
                                                  std::move(body), name.loc_);
 }
 
-ast::node<ast::statement> parser::struct_declaration(const core::token& name) {
+ast::statement parser::struct_declaration(const core::token& name) {
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
     std::pmr::vector<core::type::field_t> fields{temp_mr_};
@@ -220,7 +220,7 @@ ast::func_param parser::parse_param() {
     return {type, name};
 }
 
-ast::node<ast::statement> parser::statement() {
+ast::statement parser::statement() {
     if (match({tt::KW_WHILE})) return while_statement();
     if (match({tt::KW_FOR})) return for_statement();
     if (match({tt::KW_IF})) return if_statement();
@@ -233,7 +233,7 @@ ast::node<ast::statement> parser::statement() {
     return ast::make_stmt<ast::expression_stmt>(arena_, std::move(expr), prev().loc_);
 }
 
-ast::node<ast::statement> parser::while_statement() {
+ast::statement parser::while_statement() {
     consume(tt::LEFT_PAREN, err::expected_left_paren_while);
     auto&& condition = expression();
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
@@ -242,10 +242,10 @@ ast::node<ast::statement> parser::while_statement() {
     return ast::make_stmt<ast::while_stmt>(arena_, std::move(condition), std::move(body), prev().loc_);
 }
 
-ast::node<ast::statement> parser::for_statement() {
+ast::statement parser::for_statement() {
     consume(tt::LEFT_PAREN, err::expected_left_paren_for);
 
-    ast::node<ast::statement> initializer;
+    std::optional<ast::statement> initializer;
     if (match({tt::SEMICOLON})) {
     } else if (is_type_start(peek().type_)) {
         auto&& type = parse_type();
@@ -267,13 +267,13 @@ ast::node<ast::statement> parser::for_statement() {
                                          std::move(body), prev().loc_);
 }
 
-ast::node<ast::statement> parser::if_statement() {
+ast::statement parser::if_statement() {
     consume(tt::LEFT_PAREN, err::expected_left_paren_if);
     auto&& condition = expression();
     consume(tt::RIGHT_PAREN, err::expected_right_paren_condition);
 
     auto&& then_branch = statement();
-    ast::node<ast::statement> else_branch;
+    std::optional<ast::statement> else_branch;
 
     if (match({tt::KW_ELSE})) else_branch = statement();
 
@@ -281,7 +281,7 @@ ast::node<ast::statement> parser::if_statement() {
                                         prev().loc_);
 }
 
-ast::node<ast::statement> parser::return_statement() {
+ast::statement parser::return_statement() {
     auto&& keyword = prev();
 
     std::optional<ast::expression> value;
@@ -291,15 +291,15 @@ ast::node<ast::statement> parser::return_statement() {
     return ast::make_stmt<ast::return_stmt>(arena_, keyword, std::move(value), keyword.loc_);
 }
 
-ast::node<ast::statement> parser::block_statement() {
+ast::statement parser::block_statement() {
     ast::stmt_list statements{&mr_};
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& stmt = declaration();
-        if (stmt) statements.push_back(std::move(stmt));
+        if (stmt) statements.push_back(std::move(*stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     auto&& has_decls = std::ranges::any_of(statements, 
-            [](auto&& stmt) { return std::holds_alternative<ast::var_declaration>(stmt->data_); });
+            [](auto&& stmt) { return std::holds_alternative<ast::node<ast::var_declaration>>(stmt); });
     return ast::make_stmt<ast::block_stmt>(arena_, std::move(statements), has_decls, prev().loc_);
 }
 

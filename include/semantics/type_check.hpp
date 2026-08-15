@@ -59,7 +59,7 @@ public:
      * @param statements Список AST-узлов верхнего уровня
      * @return true, если ошибок не обнаружено.
      */
-    bool check(std::span<const ast::node<ast::statement>> statements);
+    bool check(std::span<const ast::statement> statements);
 
 private:
     /// Диспетчеризует проверку по типу инструкции.

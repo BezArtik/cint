@@ -61,10 +61,10 @@ interpreter::interpreter(core::error_reporter& reporter, const core::symbol_regi
                          const debug::debug_writer& writer)
     : reporter_{reporter}, registry_{registry}, writer_{writer} {}
 
-void interpreter::interpret(std::span<const ast::node<ast::statement>> statements) {
+void interpreter::interpret(std::span<const ast::statement> statements) {
     try {
         for (auto&& stmt : statements) {
-            if (!std::holds_alternative<ast::func_declaration>(stmt->data_)) execute(*stmt);
+            if (!std::holds_alternative<ast::node<ast::func_declaration>>(stmt)) execute(stmt);
         }
     } catch (const core::runtime_error&) {}
 }
@@ -72,16 +72,16 @@ void interpreter::interpret(std::span<const ast::node<ast::statement>> statement
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
     return core::visit(core::overloaded{
-            [&](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
-            [&](const ast::var_declaration& s) { return execute_var_declaration(s); },
-            [&](const ast::block_stmt& s) { return execute_block(s); },
-            [&](const ast::while_stmt& s) { return execute_while(s); },
-            [&](const ast::for_stmt& s) { return execute_for(s); },
-            [&](const ast::if_stmt& s) { return execute_if(s); },
-            [&](const ast::return_stmt& s) { return execute_return_stmt(s); },
-            [](const ast::func_declaration&) { return execution_result::normal(); },
-            [](const ast::struct_declaration&) { return execution_result::normal(); }},
-            stmt.data_);
+            [&](const ast::node<ast::expression_stmt>& s) { return execute_expression_stmt(*s); },
+            [&](const ast::node<ast::var_declaration>& s) { return execute_var_declaration(*s); },
+            [&](const ast::node<ast::block_stmt>& s) { return execute_block(*s); },
+            [&](const ast::node<ast::while_stmt>& s) { return execute_while(*s); },
+            [&](const ast::node<ast::for_stmt>& s) { return execute_for(*s); },
+            [&](const ast::node<ast::if_stmt>& s) { return execute_if(*s); },
+            [&](const ast::node<ast::return_stmt>& s) { return execute_return_stmt(*s); },
+            [](const ast::node<ast::func_declaration>&) { return execution_result::normal(); },
+            [](const ast::node<ast::struct_declaration>&) { return execution_result::normal(); }},
+            stmt);
 }
 // clang-format on
 interpreter::execution_result interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
@@ -126,15 +126,15 @@ interpreter::execution_result interpreter::execute_block(const ast::block_stmt& 
     std::optional<core::scope_guard<core::value>> guard;
     if (create_scope) guard.emplace(values_);
     for (auto&& s : stmt.statements_) {
-        auto&& res = execute(*s);
+        auto&& res = execute(s);
         if (res.is_return()) return res;
     }
     return execution_result::normal();
 }
 
 interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
-    if (auto&& block = std::get_if<ast::block_stmt>(&body.data_))
-        return execute_block(*block, block->has_declarations_);
+    if (auto&& block = std::get_if<ast::node<ast::block_stmt>>(&body))
+        return execute_block(**block, (*block)->has_declarations_);
     return execute(body);
 }
 
@@ -144,7 +144,7 @@ interpreter::execution_result interpreter::execute_while(const ast::while_stmt& 
         auto&& cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
 
-        auto&& res = execute_body(*stmt.block_);
+        auto&& res = execute_body(stmt.block_);
         if (res.is_return()) return res;
     }
     return execution_result::normal();
@@ -158,7 +158,7 @@ interpreter::execution_result interpreter::execute_for(const ast::for_stmt& stmt
             auto&& cond = evaluate(*stmt.condition_);
             if (!cond.to_bool()) break;
         }
-        auto&& result = execute_body(*stmt.block_);
+        auto&& result = execute_body(stmt.block_);
         if (result.is_return()) return result;
 
         if (stmt.increment_) evaluate(*stmt.increment_);
@@ -170,7 +170,7 @@ interpreter::execution_result interpreter::execute_if(const ast::if_stmt& stmt) 
     auto&& cond = evaluate(stmt.condition_);
 
     if (cond.to_bool()) {
-        return execute_body(*stmt.then_block_);
+        return execute_body(stmt.then_block_);
     } else if (stmt.else_block_) {
         return execute_body(*stmt.else_block_);
     }
@@ -365,9 +365,9 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
                 values_.define(param.name_.lexeme_, std::move(converted));
             }
-            auto&& block = std::get<ast::block_stmt>(body->block_->data_);
-            for (auto&& s : block.statements_) {
-                auto&& result = execute(*s);
+            auto&& block = std::get<ast::node<ast::block_stmt>>(body->block_);
+            for (auto&& s : block->statements_) {
+                auto&& result = execute(s);
                 if (result.is_return()) {
                     if (writer_.enabled(debug::trace_level::returns)) 
                         debug::print_return(writer_, name, result.value_);
