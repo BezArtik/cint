@@ -168,28 +168,14 @@ struct statement {
  * @brief Создаёт узел инструкции в арене.
  *
  * @tparam Stmt Тип узла инструкции
- * @tparam Args Типы аргументов конструктора (кроме location)
+ * @tparam Args Типы аргументов конструктора
  * @param arena  Арена для размещения
- * @param loc    Позиция в исходном коде
  * @param args   Аргументы конструктора
  * @return Узел node<statement> в AST
  */
 template <typename Stmt, typename... Args>
-node<statement> make_stmt(core::arena& arena, core::location loc, Args&&... args) {
-    return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)..., loc});
-}
-
-/**
- * @brief Проверяет, содержит ли блок объявления переменных.
- *
- * Используется для оптимизации: scope создаётся только если в блоке
- * есть var_declaration. Результат кешируется в has_declarations_.
- *
- * @param stmts Список всех statements
- * @return true, если statement содержит объявления переменных.
- */
-inline bool has_declarations(const stmt_list& stmts) noexcept {
-    return std::ranges::any_of(stmts, [](auto&& stmt) { return std::holds_alternative<var_declaration>(stmt->data_); });
+node<statement> make_stmt(core::arena& arena, Args&&... args) {
+    return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)...});
 }
 
 }  // namespace ast

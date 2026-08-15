@@ -190,15 +190,12 @@ struct member_access_expr {
  * @tparam T     Тип узла (binary_expr, call_expr, ...)
  * @tparam Args  Типы аргументов конструктора T
  * @param arena  Арена для размещения
- * @param loc    Позиция в исходном коде
- * @param args   Аргументы конструктора (кроме location)
+ * @param args   Аргументы конструктора
  * @return Готовый expression с arena_ptr<T>.
- *
- * @note location всегда передаётся последним аргументом в конструктор T.
  */
 template <typename T, typename... Args>
-expression make_expr(core::arena& arena, core::location loc, Args&&... args) {
-    return expression{core::make_arena<T>(arena, std::forward<Args>(args)..., loc)};
+expression make_expr(core::arena& arena, Args&&... args) {
+    return expression{core::make_arena<T>(arena, std::forward<Args>(args)...)};
 }
 
 }  // namespace ast
