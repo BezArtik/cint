@@ -6,7 +6,6 @@
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
 #include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
@@ -19,7 +18,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <iterator>
 #include <memory_resource>
 #include <string>
@@ -367,7 +365,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
                 values_.define(param.name_.lexeme_, std::move(converted));
             }
-            for (auto&& s : body->block_->statements_) {
+            auto&& block = std::get<ast::block_stmt>(body->block_->data_);
+            for (auto&& s : block.statements_) {
                 auto&& result = execute(*s);
                 if (result.is_return()) {
                     if (writer_.enabled(debug::trace_level::returns)) 

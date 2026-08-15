@@ -251,8 +251,10 @@ TEST_P(call_test, parsed) {
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
-    ASSERT_GE(func->block_->statements_.size(), 1);
-    auto&& es = as<ast::expression_stmt>(*func->block_->statements_[0]);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    ASSERT_GE(block->statements_.size(), 1);
+    auto&& es = as<ast::expression_stmt>(*block->statements_[0]);
     ASSERT_NE(es, nullptr);
     auto&& call = as<ast::call_expr>(es->expr_);
     ASSERT_NE(call, nullptr);
@@ -276,8 +278,10 @@ TEST(parser_test, if_statement) {
     ASSERT_EQ(h.ast().size(), 1);
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
-    ASSERT_EQ(func->block_->statements_.size(), 1);
-    auto&& ifs = as<ast::if_stmt>(*func->block_->statements_[0]);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    ASSERT_EQ(block->statements_.size(), 1);
+    auto&& ifs = as<ast::if_stmt>(*block->statements_[0]);
     ASSERT_NE(ifs, nullptr);
     auto&& cond = as<ast::literal_expr>(ifs->condition_);
     ASSERT_NE(cond, nullptr);
@@ -292,7 +296,10 @@ TEST(parser_test, if_else_statement) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& ifs = as<ast::if_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    auto&& ifs = as<ast::if_stmt>(*block->statements_[0]);
     ASSERT_NE(ifs, nullptr);
     EXPECT_NE(ifs->else_block_, nullptr);
 }
@@ -302,7 +309,10 @@ TEST(parser_test, while_statement) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& ws = as<ast::while_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    auto&& ws = as<ast::while_stmt>(*block->statements_[0]);
     ASSERT_NE(ws, nullptr);
     EXPECT_NE(ws->block_, nullptr);
 }
@@ -312,7 +322,10 @@ TEST(parser_test, for_statement) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& fs = as<ast::for_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    auto&& fs = as<ast::for_stmt>(*block->statements_[0]);
     ASSERT_NE(fs, nullptr);
     EXPECT_NE(fs->initializer_, nullptr);
     EXPECT_TRUE(fs->condition_.has_value());
@@ -325,7 +338,9 @@ TEST(parser_test, return_void) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& ret = as<ast::return_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    auto&& ret = as<ast::return_stmt>(*block->statements_[0]);
     ASSERT_NE(ret, nullptr);
     EXPECT_FALSE(ret->value_.has_value());
 }
@@ -335,7 +350,10 @@ TEST(parser_test, return_with_value) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& ret = as<ast::return_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    auto&& ret = as<ast::return_stmt>(*block->statements_[0]);
     ASSERT_NE(ret, nullptr);
     EXPECT_TRUE(ret->value_.has_value());
     auto&& lit = as<ast::literal_expr>(*ret->value_);
@@ -453,8 +471,10 @@ TEST(parser_test, member_access) {
     ASSERT_EQ(h.ast().size(), 1);
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
     ASSERT_NE(func, nullptr);
-    ASSERT_EQ(func->block_->statements_.size(), 1);
-    auto&& es = as<ast::expression_stmt>(*func->block_->statements_[0]);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    ASSERT_EQ(block->statements_.size(), 1);
+    auto&& es = as<ast::expression_stmt>(*block->statements_[0]);
     ASSERT_NE(es, nullptr);
     auto&& assign = as<ast::assignment_expr>(es->expr_);
     ASSERT_NE(assign, nullptr);
@@ -472,8 +492,13 @@ TEST(parser_test, nested_member_access) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     auto&& func = as<ast::func_declaration>(*h.ast()[0]);
-    auto&& es = as<ast::expression_stmt>(*func->block_->statements_[0]);
+    ASSERT_NE(func, nullptr);
+    auto&& block = as<ast::block_stmt>(*func->block_);
+    ASSERT_NE(block, nullptr);
+    auto&& es = as<ast::expression_stmt>(*block->statements_[0]);
+    ASSERT_NE(es, nullptr);
     auto&& assign = as<ast::assignment_expr>(es->expr_);
+    ASSERT_NE(assign, nullptr);
     auto&& outer = as<ast::member_access_expr>(assign->target_);
     ASSERT_NE(outer, nullptr);
     EXPECT_EQ(outer->member_.lexeme_, "x");

@@ -6,7 +6,6 @@
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/utils/symbol_registry.hpp"
@@ -178,7 +177,8 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     auto&& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
 
-    for (auto&& s : stmt.block_->statements_) check_statement(*s);
+    auto&& block = std::get<ast::block_stmt>(stmt.block_->data_);
+    for (auto&& s : block.statements_) check_statement(*s);
 
     curr_return_type_ = prev_return_type;
 }

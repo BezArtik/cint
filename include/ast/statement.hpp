@@ -131,11 +131,8 @@ struct func_declaration {
     core::type return_type_;               ///< Тип возвращаемого значения
     core::token name_;                     ///< Токен имени функции
     std::pmr::vector<func_param> params_;  ///< Список параметров
-    core::arena_ptr<block_stmt> block_;    ///< Тело функции
+    node<statement> block_;                ///< Тело функции
     core::location loc_;                   ///< Позиция в исходном коде
-
-    func_declaration(core::type ret_type, const core::token& n)
-        : return_type_{std::move(ret_type)}, name_{n}, loc_{n.loc_} {}
 };
 
 /**
@@ -180,21 +177,6 @@ struct statement {
 template <typename Stmt, typename... Args>
 node<statement> make_stmt(core::arena& arena, core::location loc, Args&&... args) {
     return core::make_arena<statement>(arena, Stmt{std::forward<Args>(args)..., loc});
-}
-
-/**
- * @brief Создаёт узел инструкции в арене (принимает готовую структуру).
- *
- * Используется, когда инструкция уже сконструирована (например, func_declaration).
- *
- * @tparam Stmt Тип узла инструкции
- * @param arena  Арена для размещения
- * @param stmt   Готовая структура инструкции
- * @return Узел node<statement> в AST
- */
-template <typename Stmt>
-node<statement> make_stmt(core::arena& arena, Stmt&& stmt) {
-    return core::make_arena<statement>(arena, std::forward<Stmt>(stmt));
 }
 
 /**

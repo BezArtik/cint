@@ -5,7 +5,6 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/value/value.hpp"
 
@@ -235,13 +234,14 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                 }
                 writer.emit(params + "\n");
                 writer.emit(indent_str(level + 1) + "Body:\n");
-                for (const auto& inner : s.block_->statements_) print_statement(writer, *inner, level + 2);
+                auto&& block = std::get<ast::block_stmt>(s.block_->data_);
+                for (auto&& inner : block.statements_) print_statement(writer, *inner, level + 2);
             },
             [&](const ast::struct_declaration& s) {
                 header << "StructDeclaration: " << s.name_.lexeme_ << "\n";
                 writer.emit(header.str());
                 writer.emit(indent_str(level + 1) + "Fields:\n");
-                for (const auto& [field_name, field_type] : s.type_.struct_fields()) {
+                for (auto&& [field_name, field_type] : s.type_.struct_fields()) {
                     writer.emit(indent_str(level + 2) + std::string{field_name} + " : " + type_name(field_type) + "\n");
                 }
             },
