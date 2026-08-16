@@ -30,7 +30,7 @@ symbol_registry symbol_registry::build(std::span<const ast::statement> ast) {
 // clang-format off
 void symbol_registry::add_ast_entry(const ast::statement& stmt) {
     visit(overloaded{
-            [&](const ast::node<ast::func_declaration>& func) {            
+            [&](const ast::node<ast::func_declaration_stmt>& func) {            
                 std::vector<type> param_types;
                 param_types.reserve(func->params_.size());
                 std::ranges::transform(func->params_, std::back_inserter(param_types),
@@ -48,7 +48,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt) {
                     entries_.emplace_back(func->name_.lexeme_, std::move(type), &*func);
                 }
             },
-            [&](const ast::node<ast::struct_declaration>& strct) {
+            [&](const ast::node<ast::struct_declaration_stmt>& strct) {
                 auto&& name = strct->name_.lexeme_;
                 auto&& it = std::ranges::find(entries_, name, &entry::name_);
                 if (it == entries_.end()) entries_.emplace_back(name, strct->type_, &*strct);

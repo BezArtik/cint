@@ -8,7 +8,6 @@
  */
 
 #pragma once
-#include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
 #include "core/token/token.hpp"

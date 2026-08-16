@@ -160,7 +160,7 @@ ast::statement parser::var_declaration(core::type type, const core::token& name)
     std::optional<ast::expression> initializer;
     if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? initializer_list() : expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
-    return ast::make_stmt<ast::var_declaration>(arena_, std::move(type), name, std::move(initializer), name.loc_);
+    return ast::make_stmt<ast::var_declaration_stmt>(arena_, std::move(type), name, std::move(initializer), name.loc_);
 }
 
 ast::statement parser::func_declaration(core::type return_type, const core::token& name) {
@@ -174,7 +174,7 @@ ast::statement parser::func_declaration(core::type return_type, const core::toke
 
     auto&& body = block_statement();
 
-    return ast::make_stmt<ast::func_declaration>(arena_, std::move(return_type), name, std::move(params), 
+    return ast::make_stmt<ast::func_declaration_stmt>(arena_, std::move(return_type), name, std::move(params), 
                                                  std::move(body), name.loc_);
 }
 
@@ -195,7 +195,7 @@ ast::statement parser::struct_declaration(const core::token& name) {
 
     auto&& struct_type = core::type::struct_type(name.lexeme_, {fields.begin(), fields.end()});
 
-    return ast::make_stmt<ast::struct_declaration>(arena_, std::move(struct_type), name, name.loc_);
+    return ast::make_stmt<ast::struct_declaration_stmt>(arena_, std::move(struct_type), name, name.loc_);
 }
 
 core::type parser::parse_type() {
@@ -299,7 +299,7 @@ ast::statement parser::block_statement() {
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     auto&& has_decls = std::ranges::any_of(statements, 
-            [](auto&& stmt) { return std::holds_alternative<ast::node<ast::var_declaration>>(stmt); });
+            [](auto&& stmt) { return std::holds_alternative<ast::node<ast::var_declaration_stmt>>(stmt); });
     return ast::make_stmt<ast::block_stmt>(arena_, std::move(statements), has_decls, prev().loc_);
 }
 

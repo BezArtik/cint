@@ -158,7 +158,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                 writer.emit(header.str());
                 print_expression(writer, s->expr_, level + 1);
             },
-            [&](const ast::node<ast::var_declaration>& s) {
+            [&](const ast::node<ast::var_declaration_stmt>& s) {
                 header << "VarDeclaration: " << s->name_.lexeme_ << " : " << type_name(s->type_);
                 if (s->initializer_) {
                     header << " =\n";
@@ -222,7 +222,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                     writer.emit(header.str());
                 }
             },
-            [&](const ast::node<ast::func_declaration>& s) {
+            [&](const ast::node<ast::func_declaration_stmt>& s) {
                 header << "FuncDeclaration: " << s->name_.lexeme_ << " -> " << type_name(s->return_type_) << "\n";
                 writer.emit(header.str());
                 auto params = indent_str(level + 1) + "Params: ";
@@ -237,7 +237,7 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                 auto&& block = std::get<ast::node<ast::block_stmt>>(s->block_);
                 for (auto&& inner : block->statements_) print_statement(writer, inner, level + 2);
             },
-            [&](const ast::node<ast::struct_declaration>& s) {
+            [&](const ast::node<ast::struct_declaration_stmt>& s) {
                 header << "StructDeclaration: " << s->name_.lexeme_ << "\n";
                 writer.emit(header.str());
                 writer.emit(indent_str(level + 1) + "Fields:\n");

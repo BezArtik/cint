@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "ast/expression.hpp"
-#include "ast/statement.hpp"
+#include "ast/node.hpp"
 #include "core/token/token.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"

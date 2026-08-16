@@ -65,7 +65,7 @@ private:
     /// Диспетчеризует проверку по типу инструкции.
     void check_statement(const ast::statement& stmt);
     void check_expression_stmt(const ast::expression_stmt& stmt);
-    void check_var_declaration(const ast::var_declaration& stmt);
+    void check_var_declaration(const ast::var_declaration_stmt& stmt);
     void check_block(const ast::block_stmt& stmt, bool create_scope = false);
 
     /**
@@ -82,7 +82,7 @@ private:
     void check_for(const ast::for_stmt& stmt);
     void check_if(const ast::if_stmt& stmt);
     void check_return_stmt(const ast::return_stmt& stmt);
-    void check_struct_declaration(const ast::struct_declaration& stmt);
+    void check_struct_declaration(const ast::struct_declaration_stmt& stmt);
 
     /**
      * @brief Проверяет объявление функции.
@@ -91,7 +91,7 @@ private:
      * curr_return_type_ для проверки return-инструкций внутри тела.
      * Проверяет отсутствие повторных объявлений.
      */
-    void check_func_declaration(const ast::func_declaration& stmt);
+    void check_func_declaration(const ast::func_declaration_stmt& stmt);
 
     /**
      * @brief Вычисляет тип выражения.

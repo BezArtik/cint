@@ -48,7 +48,7 @@ TEST_P(var_decl_test, parsed) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     EXPECT_EQ(decl->name_.lexeme_, tc.expected_name_);
     EXPECT_EQ(decl->type_, tc.expected_type_);
@@ -87,7 +87,7 @@ TEST_P(binary_expr_test, parsed) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     ASSERT_TRUE(decl->initializer_);
     auto&& bin = as<ast::binary_expr>(*decl->initializer_);
@@ -147,7 +147,7 @@ TEST(parser_test, multiplication_before_addition) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     auto&& bin = as<ast::binary_expr>(*decl->initializer_);
     ASSERT_TRUE(bin);
@@ -165,7 +165,7 @@ TEST(parser_test, grouping_overrides_precedence) {
     pipeline_harness h{"int r = (1 + 2) * 3;"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     auto&& bin = as<ast::binary_expr>(*decl->initializer_);
     ASSERT_TRUE(bin);
@@ -188,7 +188,7 @@ TEST_P(unary_test, parsed) {
     pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     auto&& un = as<ast::unary_expr>(*decl->initializer_);
     ASSERT_TRUE(un);
@@ -222,7 +222,7 @@ TEST_P(func_decl_test, parsed) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     EXPECT_EQ(func->name_.lexeme_, tc.name_);
     EXPECT_EQ(func->return_type_, tc.return_type_);
@@ -251,7 +251,7 @@ TEST_P(call_test, parsed) {
     pipeline_harness h{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -278,7 +278,7 @@ TEST(parser_test, if_statement) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -296,7 +296,7 @@ TEST(parser_test, if_else_statement) {
     pipeline_harness h{"void f() { if (x) { return 0; } else { return 1; } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -309,7 +309,7 @@ TEST(parser_test, while_statement) {
     pipeline_harness h{"void f() { while (x < 10) { x = x + 1; } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -321,7 +321,7 @@ TEST(parser_test, for_statement) {
     pipeline_harness h{"void f() { for (int i = 0; i < 10; i = i + 1) { } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -336,7 +336,7 @@ TEST(parser_test, return_void) {
     pipeline_harness h{"void f() { return; }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -349,7 +349,7 @@ TEST(parser_test, return_with_value) {
     pipeline_harness h{"int f() { return 42; }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -393,7 +393,7 @@ TEST(parser_test, error_recovery) {
     h.parse();
     EXPECT_TRUE(h.had_error());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     EXPECT_EQ(decl->name_.lexeme_, "y");
 }
@@ -402,7 +402,7 @@ TEST(parser_test, array_declaration) {
     pipeline_harness h{"int arr[10];"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     EXPECT_TRUE(decl->type_.is_array());
     EXPECT_EQ(decl->type_.array_size(), 10);
@@ -413,7 +413,7 @@ TEST(parser_test, array_initializer) {
     pipeline_harness h{"int arr[] = {1, 2, 3};"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& decl = as<ast::var_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     ASSERT_TRUE(decl->initializer_);
     auto&& list = as<ast::initializer_list_expr>(*decl->initializer_);
@@ -426,7 +426,7 @@ TEST(parser_test, struct_declaration_empty) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::struct_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::struct_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     EXPECT_EQ(decl->name_.lexeme_, "Point");
     EXPECT_EQ(decl->type_.struct_fields().size(), 2);
@@ -442,7 +442,7 @@ TEST(parser_test, struct_declaration_nested) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 2);
-    auto&& rect = as<ast::struct_declaration>(h.ast()[1]);
+    auto&& rect = as<ast::struct_declaration_stmt>(h.ast()[1]);
     ASSERT_TRUE(rect);
     EXPECT_EQ(rect->name_.lexeme_, "Rect");
     EXPECT_EQ(rect->type_.struct_fields().size(), 2);
@@ -454,7 +454,7 @@ TEST(parser_test, struct_variable_declaration) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 2);
-    auto&& decl = as<ast::var_declaration>(h.ast()[1]);
+    auto&& decl = as<ast::var_declaration_stmt>(h.ast()[1]);
     ASSERT_TRUE(decl);
     EXPECT_EQ(decl->name_.lexeme_, "p");
     EXPECT_TRUE(decl->type_.is_struct());
@@ -470,7 +470,7 @@ TEST(parser_test, member_access) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -492,7 +492,7 @@ TEST(parser_test, nested_member_access) {
         "}"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
-    auto&& func = as<ast::func_declaration>(h.ast()[0]);
+    auto&& func = as<ast::func_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(func);
     auto&& block = as<ast::block_stmt>(func->block_);
     ASSERT_TRUE(block);
@@ -514,7 +514,7 @@ TEST(parser_test, struct_with_string_field) {
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
-    auto&& decl = as<ast::struct_declaration>(h.ast()[0]);
+    auto&& decl = as<ast::struct_declaration_stmt>(h.ast()[0]);
     ASSERT_TRUE(decl);
     EXPECT_EQ(decl->type_.struct_fields().size(), 2);
     EXPECT_TRUE(decl->type_.struct_fields()[0].second.is_string());

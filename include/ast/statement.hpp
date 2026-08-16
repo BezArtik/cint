@@ -6,49 +6,15 @@
 
 #pragma once
 
+#include "ast/node.hpp"
 #include "ast/expression.hpp"
 #include "core/utils/arena.hpp"
 
 #include <utility>
-#include <variant>
 #include <vector>
 #include <optional>
 
 namespace ast {
-
-// Forward declarations
-struct expression_stmt;
-struct var_declaration;
-struct block_stmt;
-struct while_stmt;
-struct for_stmt;
-struct if_stmt;
-struct return_stmt;
-struct func_declaration;
-struct struct_declaration;
-
-/**
- * @brief Алгебраический тип инструкции AST.
- *
- * Представляет любую инструкцию или объявление как variant.
- * Все узлы хранятся через node<T>.
- *
- * @see make_stmt()
- */
-using statement = std::variant<
-    node<expression_stmt>,
-    node<var_declaration>,
-    node<block_stmt>,
-    node<while_stmt>,
-    node<for_stmt>,
-    node<if_stmt>,
-    node<return_stmt>,
-    node<func_declaration>,
-    node<struct_declaration>
->;
-
-/// Список инструкций (тело функции, блок кода).
-using stmt_list = std::pmr::vector<statement>;
 
 /**
  * @brief Инструкция-выражение: `expr;`.
@@ -67,10 +33,10 @@ struct expression_stmt {
  * Может иметь инициализатор. Тип проверяется на этапе type checking.
  * Поддерживает автоматический вывод размера массива из инициализатора.
  */
-struct var_declaration {
+struct var_declaration_stmt {
     core::type type_;                        ///< Тип переменной
     core::token name_;                       ///< Токен имени
-    std::optional<expression> initializer_;  ///< Опциональный инициализатор
+    std::optional<expression> initializer_;  ///< Инициализатор
     core::location loc_;                     ///< Позиция в исходном коде
 };
 
@@ -110,7 +76,7 @@ struct while_stmt {
  * 5. переход к п.2
  */
 struct for_stmt {
-    std::optional<statement> initializer_; ///< Инициализатор (может быть nullopt)
+    std::optional<statement> initializer_; ///< Инициализатор
     std::optional<expression> condition_;  ///< Условие продолжения
     std::optional<expression> increment_;  ///< Выражение инкремента
     statement block_;                      ///< Тело цикла
@@ -125,7 +91,7 @@ struct for_stmt {
 struct if_stmt {
     expression condition_;                 ///< Условие (должно быть bool)
     statement then_block_;                 ///< Ветка then
-    std::optional<statement> else_block_;  ///< Ветка else (может быть nullopt)
+    std::optional<statement> else_block_;  ///< Ветка else
     core::location loc_;                   ///< Позиция в исходном коде
 };
 
@@ -137,7 +103,7 @@ struct if_stmt {
  */
 struct return_stmt {
     core::token keyword_;              ///< Токен ключевого слова return
-    std::optional<expression> value_;  ///< Возвращаемое значение (опционально)
+    std::optional<expression> value_;  ///< Возвращаемое значение
     core::location loc_;               ///< Позиция в исходном коде
 };
 
@@ -155,7 +121,7 @@ struct func_param {
  * Содержит полную сигнатуру и тело. Параметры образуют новую область
  * видимости. Функция может быть вызвана рекурсивно (в пределах MAX_RECURSION_DEPTH).
  */
-struct func_declaration {
+struct func_declaration_stmt {
     core::type return_type_;               ///< Тип возвращаемого значения
     core::token name_;                     ///< Токен имени функции
     std::pmr::vector<func_param> params_;  ///< Список параметров
@@ -169,7 +135,7 @@ struct func_declaration {
  * Определяет новый структурный тип с именованными полями.
  * Тип сохраняется в symbol_registry для дальнейшего использования.
  */
-struct struct_declaration {
+struct struct_declaration_stmt {
     core::type type_;     ///< Тип структуры (с полной информацией о полях)
     core::token name_;    ///< Токен имени структуры
     core::location loc_;  ///< Позиция в исходном коде

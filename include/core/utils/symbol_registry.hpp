@@ -47,10 +47,10 @@ namespace core {
 class symbol_registry {
 public:
     /// Указатель на узел пользовательской функции в AST.
-    using func_ptr = const ast::func_declaration*;
+    using func_ptr = const ast::func_declaration_stmt*;
 
     /// Указатель на узел структуры в AST.
-    using struct_ptr = const ast::struct_declaration*;
+    using struct_ptr = const ast::struct_declaration_stmt*;
 
     /**
      * @brief Запись реестра: имя, тип, информация о реализации.

@@ -64,7 +64,7 @@ interpreter::interpreter(core::error_reporter& reporter, const core::symbol_regi
 void interpreter::interpret(std::span<const ast::statement> statements) {
     try {
         for (auto&& stmt : statements) {
-            if (!std::holds_alternative<ast::node<ast::func_declaration>>(stmt)) execute(stmt);
+            if (!std::holds_alternative<ast::node<ast::func_declaration_stmt>>(stmt)) execute(stmt);
         }
     } catch (const core::runtime_error&) {}
 }
@@ -73,14 +73,14 @@ interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
     return core::visit(core::overloaded{
             [&](const ast::node<ast::expression_stmt>& s) { return execute_expression_stmt(*s); },
-            [&](const ast::node<ast::var_declaration>& s) { return execute_var_declaration(*s); },
+            [&](const ast::node<ast::var_declaration_stmt>& s) { return execute_var_declaration(*s); },
             [&](const ast::node<ast::block_stmt>& s) { return execute_block(*s); },
             [&](const ast::node<ast::while_stmt>& s) { return execute_while(*s); },
             [&](const ast::node<ast::for_stmt>& s) { return execute_for(*s); },
             [&](const ast::node<ast::if_stmt>& s) { return execute_if(*s); },
             [&](const ast::node<ast::return_stmt>& s) { return execute_return_stmt(*s); },
-            [](const ast::node<ast::func_declaration>&) { return execution_result::normal(); },
-            [](const ast::node<ast::struct_declaration>&) { return execution_result::normal(); }},
+            [](const ast::node<ast::func_declaration_stmt>&) { return execution_result::normal(); },
+            [](const ast::node<ast::struct_declaration_stmt>&) { return execution_result::normal(); }},
             stmt);
 }
 // clang-format on
@@ -89,7 +89,7 @@ interpreter::execution_result interpreter::execute_expression_stmt(const ast::ex
     return execution_result::normal();
 }
 
-interpreter::execution_result interpreter::execute_var_declaration(const ast::var_declaration& stmt) {
+interpreter::execution_result interpreter::execute_var_declaration(const ast::var_declaration_stmt& stmt) {
     auto&& type = registry_.resolve_type(stmt.type_);
     auto&& name = stmt.name_.lexeme_;
     auto&& init_val = core::value::default_value(type);

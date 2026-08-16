@@ -9,56 +9,12 @@
 
 #pragma once
 
+#include "ast/node.hpp"
 #include "core/token/token.hpp"
 #include "core/utils/arena.hpp"
 #include "core/value/value.hpp"
 
-#include <variant>
-#include <vector>
-
 namespace ast {
-
-// Forward declarations
-struct literal_expr;
-struct variable_expr;
-struct binary_expr;
-struct assignment_expr;
-struct unary_expr;
-struct postfix_expr;
-struct call_expr;
-struct initializer_list_expr;
-struct index_expr;
-struct member_access_expr;
-
-/**
- * @brief Шаблонный алиас для узла AST
- *
- * Тип, которым представлены все узлы AST.
- *
- */
-template <typename T>
-using node = core::arena_ptr<T>;
-
-/**
- * @brief Алгебраический тип выражения AST.
- *
- * Представляет любое выражение как variant всех возможных
- * видов выражений. Указатели на сложные узлы (binary_expr, call_expr, ...)
- * обёрнуты в core::arena_ptr — время жизни узлов управляется ареной.
- *
- * @see make_expr()
- */
-// clang-format off
-using expression =
-    std::variant<node<literal_expr>, node<variable_expr>, 
-                 node<binary_expr>,  node<assignment_expr>,
-                 node<unary_expr>,   node<postfix_expr>, 
-                 node<call_expr>,    node<initializer_list_expr>, 
-                 node<index_expr>,   node<member_access_expr>>;
-// clang-format on
-
-/// Список выражений (аргументы вызова, элементы инициализатора).
-using expr_list = std::pmr::vector<expression>;
 
 /**
  * @brief Литеральное значение: число, строка, true/false.

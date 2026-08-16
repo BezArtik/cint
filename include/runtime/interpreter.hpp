@@ -88,7 +88,7 @@ private:
     execution_result execute_expression_stmt(const ast::expression_stmt& stmt);
 
     /// Создаёт переменную с начальным значением в текущей области видимости.
-    execution_result execute_var_declaration(const ast::var_declaration& stmt);
+    execution_result execute_var_declaration(const ast::var_declaration_stmt& stmt);
 
     /**
      * @brief Выполняет блок инструкций.

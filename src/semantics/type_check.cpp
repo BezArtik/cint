@@ -27,14 +27,14 @@ bool type_checker::check(std::span<const ast::statement> statements) {
 void type_checker::check_statement(const ast::statement& stmt) {
     core::visit(core::overloaded{
             [&](const ast::node<ast::expression_stmt>& s) { check_expression_stmt(*s); },
-            [&](const ast::node<ast::var_declaration>& s) { check_var_declaration(*s); },
+            [&](const ast::node<ast::var_declaration_stmt>& s) { check_var_declaration(*s); },
             [&](const ast::node<ast::block_stmt>& s) { check_block(*s); },
             [&](const ast::node<ast::while_stmt>& s) { check_while(*s); },
             [&](const ast::node<ast::for_stmt>& s) { check_for(*s); },
             [&](const ast::node<ast::if_stmt>& s) { check_if(*s); },
             [&](const ast::node<ast::return_stmt>& s) { check_return_stmt(*s); },
-            [&](const ast::node<ast::func_declaration>& s) { check_func_declaration(*s); },
-            [&](const ast::node<ast::struct_declaration>& s) { check_struct_declaration(*s); }},
+            [&](const ast::node<ast::func_declaration_stmt>& s) { check_func_declaration(*s); },
+            [&](const ast::node<ast::struct_declaration_stmt>& s) { check_struct_declaration(*s); }},
         stmt);
 }
 // clang-format on
@@ -42,7 +42,7 @@ void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
     type_of(stmt.expr_);
 }
 
-void type_checker::check_var_declaration(const ast::var_declaration& stmt) {
+void type_checker::check_var_declaration(const ast::var_declaration_stmt& stmt) {
     auto&& name = stmt.name_.lexeme_;
     auto&& type = stmt.type_;
     auto&& resolved_type = registry_.resolve_type(type);
@@ -163,7 +163,7 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
     if (*curr_return_type_ != return_type) reporter_.error(stmt, err::return_type_mismatch);
 }
 
-void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
+void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt) {
     auto&& name = stmt.name_.lexeme_;
 
     if (symbols_.contains_in_current_scope(name)) {
@@ -183,7 +183,7 @@ void type_checker::check_func_declaration(const ast::func_declaration& stmt) {
     curr_return_type_ = prev_return_type;
 }
 
-void type_checker::check_struct_declaration(const ast::struct_declaration& stmt) {
+void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& stmt) {
     auto&& name = stmt.name_.lexeme_;
 
     auto&& existing = registry_.find(name);
