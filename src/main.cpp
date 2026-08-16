@@ -29,7 +29,6 @@ constexpr std::array flag_table = {
     flag_info{"--trace=tokens", debug::trace_level::tokens},
     flag_info{"--trace=ast", debug::trace_level::ast},     
     flag_info{"--trace=exec", debug::trace_level::execution},
-    flag_info{"--trace=calls", debug::trace_level::calls}, 
     flag_info{"--trace=returns", debug::trace_level::returns},
     flag_info{"--trace=all", debug::trace_level::all},
 };
@@ -51,7 +50,7 @@ options parse_args(int argc, char* argv[]) {
                       << "Options:\n"
                       << "  --debug              Enable all debug output\n"
                       << "  --trace=<level>      Enable specific trace level:\n"
-                      << "                         tokens | ast | exec | calls | returns | all\n"
+                      << "                         tokens | ast | exec | returns | all\n"
                       << "  --help               Show this help\n";
             std::exit(0);
         }
