@@ -117,7 +117,7 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
 
     if (writer_.enabled(debug::trace_level::execution)) {
         auto&& var = values_.get(name);
-        writer_.emit("  " + std::string(name) + " = " + var->to_string() + "\n");
+        writer_.emit("  " + std::string{name} + " = " + var->to_string() + "\n");
     }
     return execution_result::normal();
 }
@@ -257,9 +257,9 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 auto&& arr = obj.as_mut<core::value::array_t>();
 
                 if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
-                    throw core::runtime_error{err::index_out_of_bounds};
+                    reporter_.runtime_error(*e, err::index_out_of_bounds);
 
-                return (*arr)->at(static_cast<size_t>(i));
+                return (**arr)[i];
             },
             [&](const ast::node<ast::member_access_expr>& e) -> core::value& {
                 auto&& obj = evaluate_lvalue(e->object_);

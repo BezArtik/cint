@@ -2,7 +2,6 @@
 
 #include "core/error/error_report.hpp"
 
-#include <cctype>
 #include <iostream>
 #include <string_view>
 
