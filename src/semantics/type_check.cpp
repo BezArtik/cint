@@ -25,17 +25,17 @@ bool type_checker::check(std::span<const ast::statement> statements) {
 }
 // clang-format off
 void type_checker::check_statement(const ast::statement& stmt) {
-    core::visit(core::overloaded{
-            [&](const ast::node<ast::expression_stmt>& s) { check_expression_stmt(*s); },
-            [&](const ast::node<ast::var_declaration_stmt>& s) { check_var_declaration(*s); },
-            [&](const ast::node<ast::block_stmt>& s) { check_block(*s); },
-            [&](const ast::node<ast::while_stmt>& s) { check_while(*s); },
-            [&](const ast::node<ast::for_stmt>& s) { check_for(*s); },
-            [&](const ast::node<ast::if_stmt>& s) { check_if(*s); },
-            [&](const ast::node<ast::return_stmt>& s) { check_return_stmt(*s); },
-            [&](const ast::node<ast::func_declaration_stmt>& s) { check_func_declaration(*s); },
-            [&](const ast::node<ast::struct_declaration_stmt>& s) { check_struct_declaration(*s); }},
-        stmt);
+    stmt.visit(core::overloaded{
+            [&](const ast::expression_stmt& s) { check_expression_stmt(s); },
+            [&](const ast::var_declaration_stmt& s) { check_var_declaration(s); },
+            [&](const ast::block_stmt& s) { check_block(s); },
+            [&](const ast::while_stmt& s) { check_while(s); },
+            [&](const ast::for_stmt& s) { check_for(s); },
+            [&](const ast::if_stmt& s) { check_if(s); },
+            [&](const ast::return_stmt& s) { check_return_stmt(s); },
+            [&](const ast::func_declaration_stmt& s) { check_func_declaration(s); },
+            [&](const ast::struct_declaration_stmt& s) { check_struct_declaration(s); }
+            });
 }
 // clang-format on
 void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
@@ -67,16 +67,15 @@ void type_checker::check_var_declaration(const ast::var_declaration_stmt& stmt) 
         if (init_type.is_unknown()) return;
 
         if (resolved_type.is_struct()) {
-            if (auto&& list = std::get_if<ast::node<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+            if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
                 auto&& fields = resolved_type.struct_fields();
-                auto&& lst = list->get();
-                if (lst->elements_.size() > fields.size()) {
+                if (list->elements_.size() > fields.size()) {
                     reporter_.error(stmt, err::argument_count_mismatch, "initializer", fields.size(),
-                                    lst->elements_.size());
+                                    list->elements_.size());
                     return;
                 }
-                for (size_t i = 0; i < lst->elements_.size(); ++i) {
-                    auto&& elem_type = type_of(lst->elements_[i]);
+                for (size_t i = 0; i < list->elements_.size(); ++i) {
+                    auto&& elem_type = type_of(list->elements_[i]);
                     if (elem_type.is_unknown()) continue;
                     if (fields[i].second != elem_type) {
                         reporter_.error(stmt, err::type_mismatch_initialization, name);
@@ -114,8 +113,8 @@ void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
 }
 
 void type_checker::check_body(const ast::statement& body) {
-    if (auto&& block = std::get_if<ast::node<ast::block_stmt>>(&body))
-        check_block(**block, (*block)->has_declarations_);
+    if (auto&& block = body.get_if<ast::block_stmt>())
+        check_block(*block, block->has_declarations_);
     else
         check_statement(body);
 }
@@ -177,8 +176,8 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
     auto&& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.return_type_;
 
-    auto&& block = std::get<ast::node<ast::block_stmt>>(stmt.block_);
-    for (auto&& s : block->statements_) check_statement(s);
+    auto&& block = stmt.block_.get<ast::block_stmt>();
+    for (auto&& s : block.statements_) check_statement(s);
 
     curr_return_type_ = prev_return_type;
 }
@@ -216,19 +215,19 @@ void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& 
 
 // clang-format off
 t type_checker::type_of(const ast::expression& expr) {
-    return core::visit(
+    return expr.visit(
         core::overloaded{
-            [&](const ast::node<ast::literal_expr>& e) { return type_of_literal(*e); },
-            [&](const ast::node<ast::variable_expr>& e) { return type_of_variable(*e); },
-            [&](const ast::node<ast::binary_expr>& e) { return type_of_binary(*e); },
-            [&](const ast::node<ast::assignment_expr>& e) { return type_of_assignment(*e); },
-            [&](const ast::node<ast::unary_expr>& e) { return type_of_unary(*e); },
-            [&](const ast::node<ast::postfix_expr>& e) { return type_of_postfix(*e); },
-            [&](const ast::node<ast::call_expr>& e) { return type_of_call(*e); },
-            [&](const ast::node<ast::initializer_list_expr>& e) { return type_of_initializer_list(*e); },
-            [&](const ast::node<ast::index_expr>& e) { return type_of_index(*e); },
-            [&](const ast::node<ast::member_access_expr>& e) { return type_of_member_access(*e); }},
-        expr);
+            [&](const ast::literal_expr& e) { return type_of_literal(e); },
+            [&](const ast::variable_expr& e) { return type_of_variable(e); },
+            [&](const ast::binary_expr& e) { return type_of_binary(e); },
+            [&](const ast::assignment_expr& e) { return type_of_assignment(e); },
+            [&](const ast::unary_expr& e) { return type_of_unary(e); },
+            [&](const ast::postfix_expr& e) { return type_of_postfix(e); },
+            [&](const ast::call_expr& e) { return type_of_call(e); },
+            [&](const ast::initializer_list_expr& e) { return type_of_initializer_list(e); },
+            [&](const ast::index_expr& e) { return type_of_index(e); },
+            [&](const ast::member_access_expr& e) { return type_of_member_access(e); }
+            });
 }
 // clang-format on
 t type_checker::type_of_literal(const ast::literal_expr& expr) {
@@ -322,12 +321,12 @@ t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
-    return core::visit(
-        core::overloaded{[](const ast::node<ast::variable_expr>&) { return true; },
-                         [&](const ast::node<ast::index_expr>& idx) { return is_lvalue(idx->object_); },
-                         [&](const ast::node<ast::member_access_expr>& e) { return is_lvalue(e->object_); },
-                         [](const auto&) { return false; }},
-        expr);
+    return expr.visit(
+        core::overloaded{[](const ast::variable_expr&) { return true; },
+                         [&](const ast::index_expr& idx) { return is_lvalue(idx.object_); },
+                         [&](const ast::member_access_expr& e) { return is_lvalue(e.object_); },
+                         [](const auto&) { return false; }
+                         });
 }
 
 t type_checker::type_of_unary(const ast::unary_expr& expr) {

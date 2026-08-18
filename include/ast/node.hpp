@@ -2,30 +2,10 @@
 
 #pragma once
 #include "core/utils/arena.hpp"
-#include <variant>
+#include "ast/variant_wrapper.hpp"
 #include <vector>
 
 namespace ast {
-
-/**
- * @brief Шаблонный алиас для узла AST
- *
- * Тип, которым представлены все узлы AST.
- *
- */
-template <typename T>
-using node = core::arena_ptr<T>;
-
-/**
- * @brief Алгебраический тип узла AST.
- *
- * Представляет из себя std::variant из
- * core::arena_ptr (время жизни узлов управляется 
- * ареной).
- *
- */
-template <typename... Args>
-using variant = std::variant<node<Args>...>;
 
 // Forward declarations expressions
 struct literal_expr;
@@ -55,7 +35,7 @@ struct struct_declaration_stmt;
  *
  * @see make_stmt()
  */
-using statement = variant<expression_stmt, var_declaration_stmt,
+using statement = variant_wrapper<expression_stmt, var_declaration_stmt,
                           block_stmt, while_stmt,
                           for_stmt, if_stmt, return_stmt, 
                           func_declaration_stmt, struct_declaration_stmt>;
@@ -68,7 +48,7 @@ using stmt_list = std::pmr::vector<statement>;
  *
  * @see make_expr()
  */
-using expression = variant<literal_expr, variable_expr, 
+using expression = variant_wrapper<literal_expr, variable_expr, 
                            binary_expr, assignment_expr,
                            unary_expr, postfix_expr, 
                            call_expr, initializer_list_expr, 

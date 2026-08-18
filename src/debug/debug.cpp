@@ -211,8 +211,8 @@ void print_func_declaration_stmt_ast(const debug_writer& writer, const ast::func
     writer.emit(params + "\n");
     writer.emit(indent_str(level + 1) + "Body:\n");
 
-    auto&& block = std::get<ast::node<ast::block_stmt>>(s.block_);
-    for (auto&& inner : block->statements_) print_statement(writer, inner, level + 2);
+    auto&& block = s.block_.get<ast::block_stmt>();
+    for (auto&& inner : block.statements_) print_statement(writer, inner, level + 2);
 }
 
 void print_struct_declaration_stmt_ast(const debug_writer& writer, const ast::struct_declaration_stmt& s,
@@ -231,19 +231,19 @@ void print_expression(const debug_writer& writer, const ast::expression& expr, u
                       const core::value* eval_result) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
 
-    core::visit(
+    expr.visit(
         core::overloaded{
-            [&](const ast::node<ast::literal_expr>& e) { print_literal(writer, *e, level); },
-            [&](const ast::node<ast::variable_expr>& e) { print_variable(writer, *e, level); },
-            [&](const ast::node<ast::binary_expr>& e) { print_binary(writer, *e, level); },
-            [&](const ast::node<ast::assignment_expr>& e) { print_assignment(writer, *e, level); },
-            [&](const ast::node<ast::unary_expr>& e) { print_unary(writer, *e, level); },
-            [&](const ast::node<ast::postfix_expr>& e) { print_postfix(writer, *e, level); },
-            [&](const ast::node<ast::call_expr>& e) { print_call_ast(writer, *e, level); },
-            [&](const ast::node<ast::initializer_list_expr>& e) { print_initializer_list_ast(writer, *e, level); },
-            [&](const ast::node<ast::index_expr>& e) { print_index_ast(writer, *e, level); },
-            [&](const ast::node<ast::member_access_expr>& e) { print_member_access(writer, *e, level); }},
-        expr);
+            [&](const ast::literal_expr& e) { print_literal(writer, e, level); },
+            [&](const ast::variable_expr& e) { print_variable(writer, e, level); },
+            [&](const ast::binary_expr& e) { print_binary(writer, e, level); },
+            [&](const ast::assignment_expr& e) { print_assignment(writer, e, level); },
+            [&](const ast::unary_expr& e) { print_unary(writer, e, level); },
+            [&](const ast::postfix_expr& e) { print_postfix(writer, e, level); },
+            [&](const ast::call_expr& e) { print_call_ast(writer, e, level); },
+            [&](const ast::initializer_list_expr& e) { print_initializer_list_ast(writer, e, level); },
+            [&](const ast::index_expr& e) { print_index_ast(writer, e, level); },
+            [&](const ast::member_access_expr& e) { print_member_access(writer, e, level); }
+            });
 
     if (eval_result && writer.enabled(trace_level::execution)) {
         writer.emit(indent_str(level) + "  → ");
@@ -255,18 +255,18 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                      const core::value* exec_result) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
 
-    core::visit(
+    stmt.visit(
         core::overloaded{
-            [&](const ast::node<ast::expression_stmt>& s) { print_expression_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::var_declaration_stmt>& s) { print_var_declaration_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::block_stmt>& s) { print_block_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::while_stmt>& s) { print_while_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::for_stmt>& s) { print_for_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::if_stmt>& s) { print_if_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::return_stmt>& s) { print_return_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::func_declaration_stmt>& s) { print_func_declaration_stmt_ast(writer, *s, level); },
-            [&](const ast::node<ast::struct_declaration_stmt>& s) { print_struct_declaration_stmt_ast(writer, *s, level); }},
-        stmt);
+            [&](const ast::expression_stmt& s) { print_expression_stmt_ast(writer, s, level); },
+            [&](const ast::var_declaration_stmt& s) { print_var_declaration_stmt_ast(writer, s, level); },
+            [&](const ast::block_stmt& s) { print_block_stmt_ast(writer, s, level); },
+            [&](const ast::while_stmt& s) { print_while_stmt_ast(writer, s, level); },
+            [&](const ast::for_stmt& s) { print_for_stmt_ast(writer, s, level); },
+            [&](const ast::if_stmt& s) { print_if_stmt_ast(writer, s, level); },
+            [&](const ast::return_stmt& s) { print_return_stmt_ast(writer, s, level); },
+            [&](const ast::func_declaration_stmt& s) { print_func_declaration_stmt_ast(writer, s, level); },
+            [&](const ast::struct_declaration_stmt& s) { print_struct_declaration_stmt_ast(writer, s, level); }
+            });
 
     if (exec_result && writer.enabled(trace_level::execution)) {
         writer.emit(indent_str(level) + "  → ");

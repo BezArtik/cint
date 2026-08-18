@@ -299,7 +299,7 @@ ast::statement parser::block_statement() {
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
     auto&& has_decls = std::ranges::any_of(statements, 
-            [](auto&& stmt) { return std::holds_alternative<ast::node<ast::var_declaration_stmt>>(stmt); });
+            [](auto&& stmt) { return stmt.template holds<ast::var_declaration_stmt>(); });
     return ast::make_stmt<ast::block_stmt>(arena_, std::move(statements), has_decls, prev().loc_);
 }
 

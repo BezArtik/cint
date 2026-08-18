@@ -64,24 +64,24 @@ interpreter::interpreter(core::error_reporter& reporter, const core::symbol_regi
 void interpreter::interpret(std::span<const ast::statement> statements) {
     try {
         for (auto&& stmt : statements) {
-            if (!std::holds_alternative<ast::node<ast::func_declaration_stmt>>(stmt)) execute(stmt);
+            if (!stmt.holds<ast::func_declaration_stmt>()) execute(stmt);
         }
     } catch (const core::runtime_error&) {}
 }
 // clang-format off
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) debug::print_statement(writer_, stmt);
-    return core::visit(core::overloaded{
-            [&](const ast::node<ast::expression_stmt>& s) { return execute_expression_stmt(*s); },
-            [&](const ast::node<ast::var_declaration_stmt>& s) { return execute_var_declaration(*s); },
-            [&](const ast::node<ast::block_stmt>& s) { return execute_block(*s); },
-            [&](const ast::node<ast::while_stmt>& s) { return execute_while(*s); },
-            [&](const ast::node<ast::for_stmt>& s) { return execute_for(*s); },
-            [&](const ast::node<ast::if_stmt>& s) { return execute_if(*s); },
-            [&](const ast::node<ast::return_stmt>& s) { return execute_return_stmt(*s); },
-            [](const ast::node<ast::func_declaration_stmt>&) { return execution_result::normal(); },
-            [](const ast::node<ast::struct_declaration_stmt>&) { return execution_result::normal(); }},
-            stmt);
+    return stmt.visit(core::overloaded{
+            [&](const ast::expression_stmt& s) { return execute_expression_stmt(s); },
+            [&](const ast::var_declaration_stmt& s) { return execute_var_declaration(s); },
+            [&](const ast::block_stmt& s) { return execute_block(s); },
+            [&](const ast::while_stmt& s) { return execute_while(s); },
+            [&](const ast::for_stmt& s) { return execute_for(s); },
+            [&](const ast::if_stmt& s) { return execute_if(s); },
+            [&](const ast::return_stmt& s) { return execute_return_stmt(s); },
+            [](const ast::func_declaration_stmt&) { return execution_result::normal(); },
+            [](const ast::struct_declaration_stmt&) { return execution_result::normal(); }
+            });
 }
 // clang-format on
 interpreter::execution_result interpreter::execute_expression_stmt(const ast::expression_stmt& stmt) {
@@ -95,17 +95,17 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
     auto&& init_val = core::value::default_value(type);
 
     if (stmt.initializer_) {
-        if (auto&& list = std::get_if<ast::node<ast::initializer_list_expr>>(&*stmt.initializer_)) {
+        if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
             if (type.is_struct()) {
                 auto&& st = init_val.as_mut<core::value::struct_t>();
                 auto&& fields = st->type_.struct_fields();
-                auto&& elems = list->get()->elements_;
+                auto&& elems = list->elements_;
                 for (size_t i = 0; i < elems.size(); ++i) {
                     auto&& val = evaluate(elems[i]);
                     st->fields_[i] = core::value::convert(std::move(val), fields[i].second);
                 }
             } else {
-                init_val = evaluate_initializer_list(*list->get());
+                init_val = evaluate_initializer_list(*list);
             }
         } else {
             auto&& init = evaluate(*stmt.initializer_);
@@ -133,8 +133,8 @@ interpreter::execution_result interpreter::execute_block(const ast::block_stmt& 
 }
 
 interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
-    if (auto&& block = std::get_if<ast::node<ast::block_stmt>>(&body))
-        return execute_block(**block, (*block)->has_declarations_);
+    if (auto&& block = body.get_if<ast::block_stmt>())
+        return execute_block(*block, block->has_declarations_);
     return execute(body);
 }
 
@@ -185,19 +185,19 @@ interpreter::execution_result interpreter::execute_return_stmt(const ast::return
 
 // clang-format off
 core::value interpreter::evaluate(const ast::expression& expr) {
-    auto&& result = core::visit(
+    auto&& result = expr.visit(
         core::overloaded{
-            [&](const ast::node<ast::literal_expr>& e) { return evaluate_literal(*e); },
-            [&](const ast::node<ast::variable_expr>&) { return evaluate_lvalue(expr); },
-            [&](const ast::node<ast::binary_expr>& e) { return evaluate_binary(*e); },
-            [&](const ast::node<ast::assignment_expr>& e) { return evaluate_assignment(*e); },
-            [&](const ast::node<ast::unary_expr>& e) { return evaluate_unary(*e); },
-            [&](const ast::node<ast::postfix_expr>& e) { return evaluate_postfix(*e); },
-            [&](const ast::node<ast::call_expr>& e) { return evaluate_call(*e); },
-            [&](const ast::node<ast::initializer_list_expr>& e) { return evaluate_initializer_list(*e); },
-            [&](const ast::node<ast::index_expr>&) { return evaluate_lvalue(expr); },
-            [&](const ast::node<ast::member_access_expr>&) { return evaluate_lvalue(expr); }},
-        expr);
+            [&](const ast::literal_expr& e) { return evaluate_literal(e); },
+            [&](const ast::variable_expr&) { return evaluate_lvalue(expr); },
+            [&](const ast::binary_expr& e) { return evaluate_binary(e); },
+            [&](const ast::assignment_expr& e) { return evaluate_assignment(e); },
+            [&](const ast::unary_expr& e) { return evaluate_unary(e); },
+            [&](const ast::postfix_expr& e) { return evaluate_postfix(e); },
+            [&](const ast::call_expr& e) { return evaluate_call(e); },
+            [&](const ast::initializer_list_expr& e) { return evaluate_initializer_list(e); },
+            [&](const ast::index_expr&) { return evaluate_lvalue(expr); },
+            [&](const ast::member_access_expr&) { return evaluate_lvalue(expr); }
+            });
     if (writer_.enabled(debug::trace_level::execution)) debug::print_expression(writer_, expr, 0, &result);
     return result;
 }
@@ -245,32 +245,32 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
 
 
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
-    return core::visit(core::overloaded{
-            [&](const ast::node<ast::variable_expr>& e) -> core::value& {                             
-                auto&& var = values_.get(e->name_.lexeme_);                            
+    return expr.visit(core::overloaded{
+            [&](const ast::variable_expr& e) -> core::value& {                             
+                auto&& var = values_.get(e.name_.lexeme_);                            
                 return *var;
             },
-            [&](const ast::node<ast::index_expr>& e) -> core::value& {
-                auto&& obj = evaluate_lvalue(e->object_);
-                auto&& index_val = evaluate(e->index_);
+            [&](const ast::index_expr& e) -> core::value& {
+                auto&& obj = evaluate_lvalue(e.object_);
+                auto&& index_val = evaluate(e.index_);
                 auto&& i = index_val.to_int();
                 auto&& arr = obj.as_mut<core::value::array_t>();
 
                 if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
-                    reporter_.runtime_error(*e, err::index_out_of_bounds);
+                    reporter_.runtime_error(e, err::index_out_of_bounds);
 
                 return (**arr)[i];
             },
-            [&](const ast::node<ast::member_access_expr>& e) -> core::value& {
-                auto&& obj = evaluate_lvalue(e->object_);
+            [&](const ast::member_access_expr& e) -> core::value& {
+                auto&& obj = evaluate_lvalue(e.object_);
                 auto&& st = obj.as_mut<core::value::struct_t>();
-                auto&& idx = st->type_.field_index(e->member_.lexeme_);
+                auto&& idx = st->type_.field_index(e.member_.lexeme_);
                 return st->fields_[*idx];
             },
             [](const auto&) -> core::value& {
                 throw core::runtime_error{err::type_mismatch_assignment};
             }
-    }, expr);
+    });
 }
 
 core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
@@ -365,8 +365,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
                 values_.define(param.name_.lexeme_, std::move(converted));
             }
-            auto&& block = std::get<ast::node<ast::block_stmt>>(body->block_);
-            for (auto&& s : block->statements_) {
+            auto&& block = body->block_.get<ast::block_stmt>();
+            for (auto&& s : block.statements_) {
                 auto&& result = execute(s);
                 if (result.is_return()) {
                     if (writer_.enabled(debug::trace_level::returns)) 
