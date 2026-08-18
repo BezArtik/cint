@@ -230,7 +230,7 @@ ast::statement parser::statement() {
     auto&& expr = expression();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return ast::make_stmt<ast::expression_stmt>(arena_, std::move(expr), prev().loc_);
+    return ast::make_stmt<ast::expression_stmt>(arena_, std::move(expr));
 }
 
 ast::statement parser::while_statement() {

@@ -7,7 +7,8 @@
 #pragma once
 
 #include "ast/node.hpp"
-#include "ast/expression.hpp"
+#include "core/token/token.hpp"
+#include "core/token/type.hpp"
 #include "core/utils/arena.hpp"
 
 #include <utility>
@@ -24,7 +25,6 @@ namespace ast {
  */
 struct expression_stmt {
     expression expr_;     ///< Выражение для вычисления
-    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**
