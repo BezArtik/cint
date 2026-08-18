@@ -1,7 +1,6 @@
 // ast/node.hpp
 
 #pragma once
-#include "core/utils/arena.hpp"
 #include "ast/variant_wrapper.hpp"
 #include <vector>
 

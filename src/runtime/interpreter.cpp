@@ -256,10 +256,10 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 auto&& i = index_val.to_int();
                 auto&& arr = obj.as_mut<core::value::array_t>();
 
-                if (i < 0 || i >= static_cast<core::value::int_t>((*arr)->size()))
+                if (i < 0 || i >= static_cast<core::value::int_t>(arr->size()))
                     reporter_.runtime_error(e, err::index_out_of_bounds);
 
-                return (**arr)[i];
+                return (*arr)[i];
             },
             [&](const ast::member_access_expr& e) -> core::value& {
                 auto&& obj = evaluate_lvalue(e.object_);

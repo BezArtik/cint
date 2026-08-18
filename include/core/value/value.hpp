@@ -38,12 +38,12 @@ class value {
     /// @endcond
 
 public:
-    using int_t = int64_t;                                ///< Целочисленный тип (64 бита)
-    using double_t = double;                              ///< Тип с плавающей точкой
-    using bool_t = bool;                                  ///< Булев тип
-    using string_t = std::shared_ptr<std::string>;        ///< Строка (разделяемая)
-    using array_t = std::shared_ptr<std::vector<value>>;  ///< Массив значений (разделяемый)
-    using struct_t = struct_data;                         ///< Структура (значение + тип)
+    using int_t = int64_t;               ///< Целочисленный тип (64 бита)
+    using double_t = double;             ///< Тип с плавающей точкой
+    using bool_t = bool;                 ///< Булев тип
+    using string_t = std::string;        ///< Строка (пользовательский тип)
+    using array_t = std::vector<value>;  ///< Массив значений (пользовательский тип)
+    using struct_t = struct_data;        ///< Структура (значение + тип)
 
     /// Создает void-значение
     value() : data_{std::monostate{}} {}
@@ -54,10 +54,10 @@ public:
     value(bool_t v) : data_{v} {}
 
     /// Создаёт строковое значение (размещает строку в shared_ptr).
-    value(std::string v) : data_{std::make_shared<std::string>(std::move(v))} {}
+    value(string_t v) : data_{std::make_shared<string_t>(std::move(v))} {}
 
     /// Создаёт массив (размещает вектор в shared_ptr).
-    value(std::vector<value> v) : data_{std::make_shared<std::vector<value>>(std::move(v))} {}
+    value(array_t v) : data_{std::make_shared<array_t>(std::move(v))} {}
 
     /// Создает структуру
     value(struct_t v) : data_{std::move(v)} {}
@@ -98,7 +98,7 @@ public:
      * @param text      Строковое представление числа
      * @param is_double true — парсить как double, false — как int
      * @return Распарсенное значение.
-     * @throws core::interpret_error если строка не является числом.
+     * @throws core::value_error если строка не является числом.
      */
     static value from_string(std::string_view text, bool is_double);
 
@@ -109,7 +109,7 @@ public:
      * - int → значение как есть
      * - double → отбрасывание дробной части
      * - string → парсинг как int
-     * - остальное → interpret_error
+     * - остальное → value_error
      */
     int_t to_int() const;
 
@@ -120,7 +120,7 @@ public:
      * - int → повышение до double
      * - double → значение как есть
      * - string → парсинг как double
-     * - остальное → interpret_error
+     * - остальное → value_error
      */
     double_t to_double() const;
 
@@ -132,7 +132,7 @@ public:
      * - bool: значение как есть
      * - string: непустая → true
      * - array: непустой → true
-     * - остальное → interpret_error
+     * - остальное → value_error
      */
     bool_t to_bool() const;
 
@@ -158,7 +158,14 @@ public:
      */
     template <typename T>
     const T* as() const noexcept {
-        return std::get_if<T>(&data_);
+        if constexpr (std::is_same_v<T, string_t> || std::is_same_v<T, array_t>) {
+            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) {
+                return ptr->get(); 
+            }
+            return nullptr;
+        } else {
+            return std::get_if<T>(&data_);
+        }
     }
 
     /**
@@ -171,7 +178,12 @@ public:
      */
     template <typename T>
     T* as_mut() noexcept {
-        return std::get_if<T>(&data_);
+        if constexpr (std::is_same_v<T, string_t> || std::is_same_v<T, array_t>) {
+            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) return ptr->get();
+            return nullptr;
+        } else {
+            return std::get_if<T>(&data_);
+        }
     }
 
 private:
@@ -190,7 +202,15 @@ private:
         std::vector<value> fields_;  ///< Значения полей (в порядке объявления)
     };
 
-    std::variant<int_t, double_t, bool_t, string_t, array_t, struct_t, std::monostate> data_;
+    std::variant<
+        int_t, 
+        double_t, 
+        bool_t, 
+        std::shared_ptr<string_t>, 
+        std::shared_ptr<array_t>, 
+        struct_t, 
+        std::monostate
+    > data_;
 
     /// @endcond
 };

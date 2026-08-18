@@ -12,8 +12,8 @@ namespace {
 
 template <typename Op>
 value arithmetic_op(const value& a, const value& b, Op&& op) {
-    if (a.is_int() && b.is_int()) return value{op(*a.as<value::int_t>(), *b.as<value::int_t>())};
-    return op(a.to_double(), b.to_double());
+    if (a.is_int() && b.is_int()) return std::invoke(op, *a.as<value::int_t>(), *b.as<value::int_t>());
+    return std::invoke(op, a.to_double(), b.to_double());
 }
 
 }  // namespace
