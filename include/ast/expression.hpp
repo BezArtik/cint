@@ -2,9 +2,6 @@
  * @file include/ast/expression.hpp
  * @brief Узлы выражений AST.
  * @ingroup AST
- *
- * @defgroup AST Абстрактное синтаксическое дерево
- * @brief Типы данных, представляющие узлы AST — выражения, инструкции, объявления.
  */
 
 #pragma once

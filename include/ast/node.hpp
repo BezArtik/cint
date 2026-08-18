@@ -1,4 +1,11 @@
-// ast/node.hpp
+/**
+ * @file include/ast/node.hpp
+ * @brief Узлы AST.
+ * @ingroup AST
+ *
+ * @defgroup AST Абстрактное синтаксическое дерево
+ * @brief Типы данных, представляющие узлы AST — выражения, инструкции, объявления.
+ */
 
 #pragma once
 #include "ast/variant_wrapper.hpp"
