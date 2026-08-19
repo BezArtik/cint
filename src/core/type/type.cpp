@@ -1,6 +1,6 @@
-// core/token/type.cpp
+// core/type/type.cpp
 
-#include "core/token/type.hpp"
+#include "core/type/type.hpp"
 
 #include <algorithm>
 #include <iterator>

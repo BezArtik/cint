@@ -1,8 +1,8 @@
 // main.cpp
 
 #include "core/error/error_report.hpp"
-#include "core/utils/arena.hpp"
-#include "core/utils/symbol_registry.hpp"
+#include "core/memory/arena.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "debug/debug.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"

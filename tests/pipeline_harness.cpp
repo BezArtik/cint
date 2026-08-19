@@ -2,8 +2,7 @@
 
 #include "pipeline_harness.hpp"
 
-#include "ast/statement.hpp"
-#include "core/utils/symbol_registry.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
 #include "semantics/type_check.hpp"

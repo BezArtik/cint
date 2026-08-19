@@ -1,6 +1,6 @@
-// core/utils/builtins.cpp
+// core/builtins/builtins.cpp
 
-#include "core/utils/builtins.hpp"
+#include "core/builtins/builtins.hpp"
 
 #include "core/value/value.hpp"
 

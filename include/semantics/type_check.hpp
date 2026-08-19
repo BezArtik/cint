@@ -11,8 +11,8 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "core/utils/scoped_map.hpp"
-#include "core/utils/symbol_registry.hpp"
 
 #include <optional>
 #include <span>
@@ -127,8 +127,8 @@ private:
      */
     bool is_lvalue(const ast::expression& expr);
 
-    core::error_reporter& reporter_;         ///< Обработчик ошибок
-    const core::symbol_registry& registry_;  ///< Реестр объявленных символов
-    core::scoped_map<core::type> symbols_;  ///< Таблица типов переменных в текущей области видимости
+    core::error_reporter& reporter_;              ///< Обработчик ошибок
+    const core::symbol_registry& registry_;       ///< Реестр объявленных символов
+    core::scoped_map<core::type> symbols_;        ///< Таблица типов переменных в текущей области видимости
     std::optional<core::type> curr_return_type_;  ///< Ожидаемый тип возврата (внутри функции)
 };

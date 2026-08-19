@@ -9,8 +9,8 @@
 #include "core/value/value.hpp"
 
 #include <cstdint>
-#include <string>
 #include <format>
+#include <string>
 
 namespace debug {
 
@@ -35,8 +35,6 @@ std::string type_name(const core::type& t) {
 std::string location_str(core::location loc) {
     return " [line " + std::to_string(loc.line_) + ":" + std::to_string(loc.column_) + "]";
 }
-
-
 
 void print_literal(const debug_writer& writer, const ast::literal_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
@@ -92,8 +90,7 @@ void print_call_ast(const debug_writer& writer, const ast::call_expr& e, uint32_
     }
 }
 
-void print_initializer_list_ast(const debug_writer& writer, const ast::initializer_list_expr& e,
-                                uint32_t level) {
+void print_initializer_list_ast(const debug_writer& writer, const ast::initializer_list_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
     writer.emit(indent_str(level) + "InitializerList: [" + std::to_string(e.elements_.size()) + " elements]" +
                 location_str(e.loc_) + "\n");
@@ -118,8 +115,6 @@ void print_member_access(const debug_writer& writer, const ast::member_access_ex
     writer.emit(indent_str(level + 1) + "Object:\n");
     print_expression(writer, e.object_, level + 2);
 }
-
-
 
 void print_expression_stmt_ast(const debug_writer& writer, const ast::expression_stmt& s, uint32_t level) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
@@ -205,8 +200,7 @@ void print_func_declaration_stmt_ast(const debug_writer& writer, const ast::func
     if (s.params_.empty()) {
         params += "(none)";
     } else {
-        for (auto&& p : s.params_)
-            params += std::string{p.name_.lexeme_} + " : " + type_name(p.type_) + " ";
+        for (auto&& p : s.params_) params += std::string{p.name_.lexeme_} + " : " + type_name(p.type_) + " ";
     }
     writer.emit(params + "\n");
     writer.emit(indent_str(level + 1) + "Body:\n");
@@ -232,18 +226,16 @@ void print_expression(const debug_writer& writer, const ast::expression& expr, u
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
 
     expr.visit(
-        core::overloaded{
-            [&](const ast::literal_expr& e) { print_literal(writer, e, level); },
-            [&](const ast::variable_expr& e) { print_variable(writer, e, level); },
-            [&](const ast::binary_expr& e) { print_binary(writer, e, level); },
-            [&](const ast::assignment_expr& e) { print_assignment(writer, e, level); },
-            [&](const ast::unary_expr& e) { print_unary(writer, e, level); },
-            [&](const ast::postfix_expr& e) { print_postfix(writer, e, level); },
-            [&](const ast::call_expr& e) { print_call_ast(writer, e, level); },
-            [&](const ast::initializer_list_expr& e) { print_initializer_list_ast(writer, e, level); },
-            [&](const ast::index_expr& e) { print_index_ast(writer, e, level); },
-            [&](const ast::member_access_expr& e) { print_member_access(writer, e, level); }
-            });
+        core::overloaded{[&](const ast::literal_expr& e) { print_literal(writer, e, level); },
+                         [&](const ast::variable_expr& e) { print_variable(writer, e, level); },
+                         [&](const ast::binary_expr& e) { print_binary(writer, e, level); },
+                         [&](const ast::assignment_expr& e) { print_assignment(writer, e, level); },
+                         [&](const ast::unary_expr& e) { print_unary(writer, e, level); },
+                         [&](const ast::postfix_expr& e) { print_postfix(writer, e, level); },
+                         [&](const ast::call_expr& e) { print_call_ast(writer, e, level); },
+                         [&](const ast::initializer_list_expr& e) { print_initializer_list_ast(writer, e, level); },
+                         [&](const ast::index_expr& e) { print_index_ast(writer, e, level); },
+                         [&](const ast::member_access_expr& e) { print_member_access(writer, e, level); }});
 
     if (eval_result && writer.enabled(trace_level::execution)) {
         writer.emit(indent_str(level) + "  → ");
@@ -255,18 +247,16 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
                      const core::value* exec_result) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
 
-    stmt.visit(
-        core::overloaded{
-            [&](const ast::expression_stmt& s) { print_expression_stmt_ast(writer, s, level); },
-            [&](const ast::var_declaration_stmt& s) { print_var_declaration_stmt_ast(writer, s, level); },
-            [&](const ast::block_stmt& s) { print_block_stmt_ast(writer, s, level); },
-            [&](const ast::while_stmt& s) { print_while_stmt_ast(writer, s, level); },
-            [&](const ast::for_stmt& s) { print_for_stmt_ast(writer, s, level); },
-            [&](const ast::if_stmt& s) { print_if_stmt_ast(writer, s, level); },
-            [&](const ast::return_stmt& s) { print_return_stmt_ast(writer, s, level); },
-            [&](const ast::func_declaration_stmt& s) { print_func_declaration_stmt_ast(writer, s, level); },
-            [&](const ast::struct_declaration_stmt& s) { print_struct_declaration_stmt_ast(writer, s, level); }
-            });
+    stmt.visit(core::overloaded{
+        [&](const ast::expression_stmt& s) { print_expression_stmt_ast(writer, s, level); },
+        [&](const ast::var_declaration_stmt& s) { print_var_declaration_stmt_ast(writer, s, level); },
+        [&](const ast::block_stmt& s) { print_block_stmt_ast(writer, s, level); },
+        [&](const ast::while_stmt& s) { print_while_stmt_ast(writer, s, level); },
+        [&](const ast::for_stmt& s) { print_for_stmt_ast(writer, s, level); },
+        [&](const ast::if_stmt& s) { print_if_stmt_ast(writer, s, level); },
+        [&](const ast::return_stmt& s) { print_return_stmt_ast(writer, s, level); },
+        [&](const ast::func_declaration_stmt& s) { print_func_declaration_stmt_ast(writer, s, level); },
+        [&](const ast::struct_declaration_stmt& s) { print_struct_declaration_stmt_ast(writer, s, level); }});
 
     if (exec_result && writer.enabled(trace_level::execution)) {
         writer.emit(indent_str(level) + "  → ");
@@ -294,8 +284,8 @@ void print_tokens(const debug_writer& writer, std::span<const core::token> token
 
     for (auto&& tok : tokens) {
         auto&& lexeme = tok.lexeme_.empty() ? "(empty)" : tok.lexeme_;
-        writer.emit(std::format("{:<20}{:<25}{}:{}\n", core::token_type_names[static_cast<size_t>(tok.type_)],
-                    lexeme, tok.loc_.line_, tok.loc_.column_));
+        writer.emit(std::format("{:<20}{:<25}{}:{}\n", core::token_type_names[static_cast<size_t>(tok.type_)], lexeme,
+                                tok.loc_.line_, tok.loc_.column_));
     }
     writer.emit("\n");
 }

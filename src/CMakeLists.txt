@@ -6,10 +6,10 @@ target_sources(interpreter-lib PRIVATE
     lexer/lexer.cpp
     parser/parser.cpp
     core/error/error_report.cpp
-    core/utils/builtins.cpp
-    core/utils/symbol_registry.cpp
-    core/utils/arena.cpp
-    core/token/type.cpp
+    core/builtins/builtins.cpp
+    core/symbol/symbol_registry.cpp
+    core/memory/arena.cpp
+    core/type/type.cpp
     core/value/value.cpp
     core/value/operations.cpp
     semantics/type_check.cpp

@@ -1,5 +1,5 @@
 /**
- * @file include/core/utils/arena.hpp
+ * @file include/core/memory/arena.hpp
  * @brief Арена-аллокатор и адаптер для std::pmr.
  * @ingroup Core
  *

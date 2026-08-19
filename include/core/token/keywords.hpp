@@ -6,7 +6,7 @@
 
 #pragma once
 #include "core/token/token_types.hpp"
-#include "core/token/type.hpp"
+#include "core/type/type.hpp"
 
 #include <algorithm>
 #include <array>

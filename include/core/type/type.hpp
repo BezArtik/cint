@@ -1,5 +1,5 @@
 /**
- * @file include/core/token/type.hpp
+ * @file include/core/type/type.hpp
  * @brief Система статических типов языка.
  * @ingroup Core
  *
@@ -30,7 +30,6 @@ namespace core {
  */
 class type {
 public:
-
     /// @brief Поле структуры: имя + тип.
     using field_t = std::pair<std::string_view, type>;
 
@@ -136,7 +135,7 @@ public:
     /**
      * @brief Сравнение типов.
      *
-     * - Примитивные: - 
+     * - Примитивные: -
      * - Функции: по возвращаемому типу и параметрам
      * - Массивы: по размеру и типу элементов
      * - Структуры: по имени
@@ -171,17 +170,9 @@ private:
     template <typename Info>
     type(Info info) : data_(std::move(info)) {}
 
-    std::variant<
-        int_t,
-        double_t,
-        bool_t,
-        string_t,
-        void_t,
-        std::shared_ptr<function_t>,
-        std::shared_ptr<array_t>,
-        std::shared_ptr<struct_t>,
-        unknown_t
-    > data_;
+    std::variant<int_t, double_t, bool_t, string_t, void_t, std::shared_ptr<function_t>, std::shared_ptr<array_t>,
+                 std::shared_ptr<struct_t>, unknown_t>
+        data_;
 
     /// @endcond
 };

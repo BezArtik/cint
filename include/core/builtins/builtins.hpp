@@ -1,11 +1,11 @@
 /**
- * @file include/core/utils/builtins.hpp
+ * @file include/core/builtins/builtins.hpp
  * @brief Встроенные функции интерпретатора (standard library).
  * @ingroup CoreUtils
  */
 
 #pragma once
-#include "core/token/type.hpp"
+#include "core/type/type.hpp"
 
 #include <span>
 #include <string_view>
@@ -63,8 +63,8 @@ namespace builtin_impl {
 /// @name Ввод/вывод
 /// @{
 
-value print_int(std::span<const value> args);  ///< Выводит целое число в stdout.
-value print_dbl(std::span<const value> args);  ///< Выводит число с плавающей точкой в stdout.
+value print_int(std::span<const value> args);   ///< Выводит целое число в stdout.
+value print_dbl(std::span<const value> args);   ///< Выводит число с плавающей точкой в stdout.
 value print_bool(std::span<const value> args);  ///< Выводит булево значение в stdout.
 value print_str(std::span<const value> args);   ///< Выводит строку в stdout.
 value input(std::span<const value> args);       ///< Читает строку из stdin.

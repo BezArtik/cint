@@ -9,8 +9,8 @@
 
 #pragma once
 #include "core/error/error_report.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/utils/arena.hpp"
 
 #include <string_view>
 #include <vector>

@@ -33,79 +33,79 @@ namespace core {
  * - **Служебные**: END_OF_FILE, UNKNOWN
  */
 
-#define TOKEN_TYPES(X)                                \
-    /* Разделители */                      \
-    X(LEFT_PAREN)                                     \
-    X(RIGHT_PAREN)                                    \
-    X(LEFT_BRACE)                                     \
-    X(RIGHT_BRACE)                                    \
-    X(LEFT_BRACKET)                                   \
-    X(RIGHT_BRACKET)                                  \
-    X(COMMA)                                          \
-    X(DOT)                                            \
-    X(SEMICOLON)                                      \
-    /* Арифметика */                        \
-    X(PLUS)                                           \
-    X(MINUS)                                          \
-    X(STAR)                                           \
-    X(SLASH)                                          \
-    X(PERCENT)                                        \
-    /* Унарные */                              \
-    X(BANG)                                           \
-    /* Присваивание */                    \
-    X(EQUAL)                                          \
-    X(BANG_EQUAL)                                     \
-    X(EQUAL_EQUAL)                                    \
-    /* Сравнения */                          \
-    X(GREATER)                                        \
-    X(GREATER_EQUAL)                                  \
-    X(LESS)                                           \
-    X(LESS_EQUAL)                                     \
-    /* Инкремент/декремент */       \
-    X(INCREMENT)                                      \
-    X(DECREMENT)                                      \
+#define TOKEN_TYPES(X)           \
+    /* Разделители */            \
+    X(LEFT_PAREN)                \
+    X(RIGHT_PAREN)               \
+    X(LEFT_BRACE)                \
+    X(RIGHT_BRACE)               \
+    X(LEFT_BRACKET)              \
+    X(RIGHT_BRACKET)             \
+    X(COMMA)                     \
+    X(DOT)                       \
+    X(SEMICOLON)                 \
+    /* Арифметика */             \
+    X(PLUS)                      \
+    X(MINUS)                     \
+    X(STAR)                      \
+    X(SLASH)                     \
+    X(PERCENT)                   \
+    /* Унарные */                \
+    X(BANG)                      \
+    /* Присваивание */           \
+    X(EQUAL)                     \
+    X(BANG_EQUAL)                \
+    X(EQUAL_EQUAL)               \
+    /* Сравнения */              \
+    X(GREATER)                   \
+    X(GREATER_EQUAL)             \
+    X(LESS)                      \
+    X(LESS_EQUAL)                \
+    /* Инкремент/декремент */    \
+    X(INCREMENT)                 \
+    X(DECREMENT)                 \
     /* Составные присваивания */ \
-    X(PLUS_EQUAL)                                     \
-    X(MINUS_EQUAL)                                    \
-    X(STAR_EQUAL)                                     \
-    X(SLASH_EQUAL)                                    \
-    X(PERCENT_EQUAL)                                  \
-    /* Битовые */                              \
-    X(BIT_AND)                                        \
-    X(BIT_OR)                                         \
-    X(XOR)                                            \
-    X(BIT_NOT)                                        \
-    X(SHL)                                            \
-    X(SHR)                                            \
-    X(BIT_AND_EQUAL)                                  \
-    X(BIT_OR_EQUAL)                                   \
-    X(XOR_EQUAL)                                      \
-    X(BIT_NOT_EQUAL)                                  \
-    X(SHL_EQUAL)                                      \
-    X(SHR_EQUAL)                                      \
-    /* Логические */                        \
-    X(LOGICAL_AND)                                    \
-    X(LOGICAL_OR)                                     \
-    /* Литералы */                            \
-    X(IDENTIFIER)                                     \
-    X(STRING)                                         \
-    X(NUMBER)                                         \
-    /* Ключевые слова */                 \
-    X(KW_IF)                                          \
-    X(KW_ELSE)                                        \
-    X(KW_WHILE)                                       \
-    X(KW_FOR)                                         \
-    X(KW_RETURN)                                      \
-    X(KW_TRUE)                                        \
-    X(KW_FALSE)                                       \
-    X(KW_INT)                                         \
-    X(KW_DOUBLE)                                      \
-    X(KW_BOOL)                                        \
-    X(KW_STRING)                                      \
-    X(KW_STRUCT)                                      \
-    X(KW_VOID)                                        \
-    /* Служебные */                          \
-    X(END_OF_FILE)                                    \
+    X(PLUS_EQUAL)                \
+    X(MINUS_EQUAL)               \
+    X(STAR_EQUAL)                \
+    X(SLASH_EQUAL)               \
+    X(PERCENT_EQUAL)             \
+    /* Битовые */                \
+    X(BIT_AND)                   \
+    X(BIT_OR)                    \
+    X(XOR)                       \
+    X(BIT_NOT)                   \
+    X(SHL)                       \
+    X(SHR)                       \
+    X(BIT_AND_EQUAL)             \
+    X(BIT_OR_EQUAL)              \
+    X(XOR_EQUAL)                 \
+    X(BIT_NOT_EQUAL)             \
+    X(SHL_EQUAL)                 \
+    X(SHR_EQUAL)                 \
+    /* Логические */             \
+    X(LOGICAL_AND)               \
+    X(LOGICAL_OR)                \
+    /* Литералы */               \
+    X(IDENTIFIER)                \
+    X(STRING)                    \
+    X(NUMBER)                    \
+    /* Ключевые слова */         \
+    X(KW_IF)                     \
+    X(KW_ELSE)                   \
+    X(KW_WHILE)                  \
+    X(KW_FOR)                    \
+    X(KW_RETURN)                 \
+    X(KW_TRUE)                   \
+    X(KW_FALSE)                  \
+    X(KW_INT)                    \
+    X(KW_DOUBLE)                 \
+    X(KW_BOOL)                   \
+    X(KW_STRING)                 \
+    X(KW_STRUCT)                 \
+    X(KW_VOID)                   \
+    /* Служебные */              \
+    X(END_OF_FILE)               \
     X(UNKNOWN)
 
 /**

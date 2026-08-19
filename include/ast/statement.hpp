@@ -7,13 +7,13 @@
 #pragma once
 
 #include "ast/node.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/token/type.hpp"
-#include "core/utils/arena.hpp"
+#include "core/type/type.hpp"
 
+#include <optional>
 #include <utility>
 #include <vector>
-#include <optional>
 
 namespace ast {
 
@@ -24,7 +24,7 @@ namespace ast {
  * Примеры: вызов функции, присваивание.
  */
 struct expression_stmt {
-    expression expr_;     ///< Выражение для вычисления
+    expression expr_;  ///< Выражение для вычисления
 };
 
 /**
@@ -76,11 +76,11 @@ struct while_stmt {
  * 5. переход к п.2
  */
 struct for_stmt {
-    std::optional<statement> initializer_; ///< Инициализатор
-    std::optional<expression> condition_;  ///< Условие продолжения
-    std::optional<expression> increment_;  ///< Выражение инкремента
-    statement block_;                      ///< Тело цикла
-    core::location loc_;                   ///< Позиция в исходном коде
+    std::optional<statement> initializer_;  ///< Инициализатор
+    std::optional<expression> condition_;   ///< Условие продолжения
+    std::optional<expression> increment_;   ///< Выражение инкремента
+    statement block_;                       ///< Тело цикла
+    core::location loc_;                    ///< Позиция в исходном коде
 };
 
 /**

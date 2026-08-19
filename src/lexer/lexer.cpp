@@ -4,10 +4,10 @@
 
 #include "core/error/error_codes.hpp"
 #include "core/error/error_report.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
 
 #include <cctype>
 #include <string_view>

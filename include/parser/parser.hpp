@@ -10,8 +10,8 @@
 #pragma once
 #include "ast/statement.hpp"
 #include "core/error/error_report.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/utils/arena.hpp"
 
 #include <memory_resource>
 #include <span>
@@ -383,6 +383,6 @@ private:
     size_t current_ = 0;                   ///< Индекс текущего токена
     core::arena& arena_;                   ///< Арена для размещения узлов AST
     core::arena_memory_resource& mr_;      ///< Memory resource для списков
-    std::pmr::memory_resource* temp_mr_;  ///< Промежуточный memory_resource для хранения списков,
-                                          ///  которые не пойдут в AST
+    std::pmr::memory_resource* temp_mr_;   ///< Промежуточный memory_resource для хранения списков,
+                                           ///  которые не пойдут в AST
 };

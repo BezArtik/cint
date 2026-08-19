@@ -4,12 +4,12 @@
 
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
+#include "core/builtins/builtins.hpp"
 #include "core/error/error_codes.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
-#include "core/utils/symbol_registry.hpp"
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug.hpp"
@@ -133,8 +133,7 @@ interpreter::execution_result interpreter::execute_block(const ast::block_stmt& 
 }
 
 interpreter::execution_result interpreter::execute_body(const ast::statement& body) {
-    if (auto&& block = body.get_if<ast::block_stmt>())
-        return execute_block(*block, block->has_declarations_);
+    if (auto&& block = body.get_if<ast::block_stmt>()) return execute_block(*block, block->has_declarations_);
     return execute(body);
 }
 

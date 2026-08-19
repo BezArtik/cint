@@ -10,11 +10,11 @@
 namespace core {
 
 core::value value::default_value(const core::type& t) {
-    if (t.is_int())    return int_t{};
+    if (t.is_int()) return int_t{};
     if (t.is_double()) return double_t{};
-    if (t.is_bool())   return bool_t{};
+    if (t.is_bool()) return bool_t{};
     if (t.is_string()) return string_t{};
-    if (t.is_void())   return {};
+    if (t.is_void()) return {};
     if (t.is_unknown()) return {};
 
     if (t.is_array()) {

@@ -9,6 +9,7 @@
 
 #pragma once
 #include "ast/variant_wrapper.hpp"
+
 #include <vector>
 
 namespace ast {
@@ -41,10 +42,8 @@ struct struct_declaration_stmt;
  *
  * @see make_stmt()
  */
-using statement = variant_wrapper<expression_stmt, var_declaration_stmt,
-                          block_stmt, while_stmt,
-                          for_stmt, if_stmt, return_stmt, 
-                          func_declaration_stmt, struct_declaration_stmt>;
+using statement = variant_wrapper<expression_stmt, var_declaration_stmt, block_stmt, while_stmt, for_stmt, if_stmt,
+                                  return_stmt, func_declaration_stmt, struct_declaration_stmt>;
 
 /// Список инструкций.
 using stmt_list = std::pmr::vector<statement>;
@@ -54,13 +53,10 @@ using stmt_list = std::pmr::vector<statement>;
  *
  * @see make_expr()
  */
-using expression = variant_wrapper<literal_expr, variable_expr, 
-                           binary_expr, assignment_expr,
-                           unary_expr, postfix_expr, 
-                           call_expr, initializer_list_expr, 
-                           index_expr, member_access_expr>;
+using expression = variant_wrapper<literal_expr, variable_expr, binary_expr, assignment_expr, unary_expr, postfix_expr,
+                                   call_expr, initializer_list_expr, index_expr, member_access_expr>;
 
 /// Список выражений.
 using expr_list = std::pmr::vector<expression>;
 
-} // namespace ast
+}  // namespace ast

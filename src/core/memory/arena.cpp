@@ -1,6 +1,6 @@
-// core/utils/arena.cpp
+// core/memory/arena.cpp
 
-#include "core/utils/arena.hpp"
+#include "core/memory/arena.hpp"
 
 #include <cstddef>
 #include <cstdint>

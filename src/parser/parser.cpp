@@ -5,9 +5,9 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/arena.hpp"
 
 #include <algorithm>
 #include <array>
@@ -174,8 +174,8 @@ ast::statement parser::func_declaration(core::type return_type, const core::toke
 
     auto&& body = block_statement();
 
-    return ast::make_stmt<ast::func_declaration_stmt>(arena_, std::move(return_type), name, std::move(params), 
-                                                 std::move(body), name.loc_);
+    return ast::make_stmt<ast::func_declaration_stmt>(arena_, std::move(return_type), name, std::move(params),
+                                                      std::move(body), name.loc_);
 }
 
 ast::statement parser::struct_declaration(const core::token& name) {
@@ -263,7 +263,7 @@ ast::statement parser::for_statement() {
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
     auto&& body = statement();
-    return ast::make_stmt<ast::for_stmt>(arena_, std::move(initializer), std::move(condition), std::move(increment), 
+    return ast::make_stmt<ast::for_stmt>(arena_, std::move(initializer), std::move(condition), std::move(increment),
                                          std::move(body), prev().loc_);
 }
 
@@ -277,7 +277,7 @@ ast::statement parser::if_statement() {
 
     if (match({tt::KW_ELSE})) else_branch = statement();
 
-    return ast::make_stmt<ast::if_stmt>(arena_, std::move(condition), std::move(then_branch), std::move(else_branch), 
+    return ast::make_stmt<ast::if_stmt>(arena_, std::move(condition), std::move(then_branch), std::move(else_branch),
                                         prev().loc_);
 }
 
@@ -298,8 +298,8 @@ ast::statement parser::block_statement() {
         if (stmt) statements.push_back(std::move(*stmt));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    auto&& has_decls = std::ranges::any_of(statements, 
-            [](auto&& stmt) { return stmt.template holds<ast::var_declaration_stmt>(); });
+    auto&& has_decls =
+        std::ranges::any_of(statements, [](auto&& stmt) { return stmt.template holds<ast::var_declaration_stmt>(); });
     return ast::make_stmt<ast::block_stmt>(arena_, std::move(statements), has_decls, prev().loc_);
 }
 

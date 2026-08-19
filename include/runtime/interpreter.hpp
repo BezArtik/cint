@@ -10,10 +10,10 @@
 #pragma once
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
+#include "core/builtins/builtins.hpp"
 #include "core/error/error_report.hpp"
-#include "core/utils/builtins.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "core/utils/scoped_map.hpp"
-#include "core/utils/symbol_registry.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
 
@@ -155,8 +155,8 @@ private:
     core::error_reporter& reporter_;         ///< Обработчик ошибок
     const core::symbol_registry& registry_;  ///< Реестр функций
     const debug::debug_writer writer_;       ///< Отладочный вывод
-    core::scoped_map<core::value> values_;  ///< Таблица переменных (стек областей видимости)
-    uint32_t recursion_depth_ = 0;  ///< Текущая глубина рекурсии
+    core::scoped_map<core::value> values_;   ///< Таблица переменных (стек областей видимости)
+    uint32_t recursion_depth_ = 0;           ///< Текущая глубина рекурсии
 
     /// Максимально допустимая глубина рекурсивных вызовов.
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;

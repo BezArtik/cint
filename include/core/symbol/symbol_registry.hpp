@@ -1,5 +1,5 @@
 /**
- * @file include/core/utils/symbol_registry.hpp
+ * @file include/core/symbol/symbol_registry.hpp
  * @brief Реестр символов — функции, builtin-функции, структуры.
  * @ingroup CoreUtils
  */
@@ -7,8 +7,8 @@
 #pragma once
 
 #include "ast/statement.hpp"
-#include "core/token/type.hpp"
-#include "core/utils/builtins.hpp"
+#include "core/builtins/builtins.hpp"
+#include "core/type/type.hpp"
 
 #include <span>
 #include <string_view>
@@ -57,7 +57,7 @@ public:
      */
     struct entry {
         std::string_view name_;  ///< Имя символа
-        type type_;  ///< Тип символа (сигнатура функции или структурный тип)
+        type type_;              ///< Тип символа (сигнатура функции или структурный тип)
         std::variant<func_ptr, builtin_fn_ptr, struct_ptr> info_;  ///< Информация о реализации
     };
 

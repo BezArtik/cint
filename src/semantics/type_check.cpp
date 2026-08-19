@@ -5,10 +5,10 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
+#include "core/symbol/symbol_registry.hpp"
 #include "core/token/token_types.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
-#include "core/utils/symbol_registry.hpp"
 
 #include <unordered_set>
 
@@ -321,12 +321,10 @@ t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
 }
 
 bool type_checker::is_lvalue(const ast::expression& expr) {
-    return expr.visit(
-        core::overloaded{[](const ast::variable_expr&) { return true; },
-                         [&](const ast::index_expr& idx) { return is_lvalue(idx.object_); },
-                         [&](const ast::member_access_expr& e) { return is_lvalue(e.object_); },
-                         [](const auto&) { return false; }
-                         });
+    return expr.visit(core::overloaded{[](const ast::variable_expr&) { return true; },
+                                       [&](const ast::index_expr& idx) { return is_lvalue(idx.object_); },
+                                       [&](const ast::member_access_expr& e) { return is_lvalue(e.object_); },
+                                       [](const auto&) { return false; }});
 }
 
 t type_checker::type_of_unary(const ast::unary_expr& expr) {

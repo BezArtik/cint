@@ -8,7 +8,7 @@
  */
 
 #pragma once
-#include "core/token/type.hpp"
+#include "core/type/type.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -26,7 +26,7 @@ namespace core {
  * Представляет любое значение, с которым работает интерпретатор:
  * числа, строки, булевы значения, массивы, структуры, void.
  *
- * Реализовано как **type-erased обёртка** над std::variant. 
+ * Реализовано как **type-erased обёртка** над std::variant.
  *
  * @invariant Значение всегда содержит один из допустимых альтернативных типов.
  *            Конструктор по умолчанию создаёт void-значение (monostate).
@@ -159,9 +159,7 @@ public:
     template <typename T>
     const T* as() const noexcept {
         if constexpr (std::is_same_v<T, string_t> || std::is_same_v<T, array_t>) {
-            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) {
-                return ptr->get(); 
-            }
+            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) return ptr->get();
             return nullptr;
         } else {
             return std::get_if<T>(&data_);
@@ -202,15 +200,8 @@ private:
         std::vector<value> fields_;  ///< Значения полей (в порядке объявления)
     };
 
-    std::variant<
-        int_t, 
-        double_t, 
-        bool_t, 
-        std::shared_ptr<string_t>, 
-        std::shared_ptr<array_t>, 
-        struct_t, 
-        std::monostate
-    > data_;
+    std::variant<int_t, double_t, bool_t, std::shared_ptr<string_t>, std::shared_ptr<array_t>, struct_t, std::monostate>
+        data_;
 
     /// @endcond
 };

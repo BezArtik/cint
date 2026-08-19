@@ -1,8 +1,8 @@
-// core/utils/symbol_registry.cpp
-#include "core/utils/symbol_registry.hpp"
+// core/symbol/symbol_registry.cpp
+#include "core/symbol/symbol_registry.hpp"
 
 #include "ast/statement.hpp"
-#include "core/utils/builtins.hpp"
+#include "core/builtins/builtins.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>

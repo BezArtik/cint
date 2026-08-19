@@ -7,8 +7,8 @@
 #pragma once
 
 #include "ast/node.hpp"
+#include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/utils/arena.hpp"
 #include "core/value/value.hpp"
 
 namespace ast {
