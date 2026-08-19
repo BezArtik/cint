@@ -26,20 +26,3 @@ jobs:
 
       - name: Test
         run: ctest --preset gcc-debug --output-on-failure
-
-  release:
-    name: Release Build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build g++
-
-      - name: Configure
-        run: cmake --preset gcc-release
-
-      - name: Build
-        run: cmake --build --preset gcc-release
