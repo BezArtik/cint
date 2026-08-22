@@ -186,6 +186,7 @@ ast::statement parser::struct_declaration(const core::token& name) {
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& field_type = parse_type();
         auto&& field_name = consume(tt::IDENTIFIER, err::expected_identifier);
+        field_type = parse_array_dimensions(field_type);
         consume(tt::SEMICOLON, err::expected_semicolon);
         fields.emplace_back(field_name.lexeme_, std::move(field_type));
     }
@@ -311,7 +312,7 @@ ast::expression parser::assignment() {
     auto&& left = parse_expression(0);
 
     if (match({tt::EQUAL, tt::PLUS_EQUAL, tt::MINUS_EQUAL, tt::STAR_EQUAL, tt::SLASH_EQUAL, tt::PERCENT_EQUAL,
-               tt::BIT_AND_EQUAL, tt::BIT_OR_EQUAL, tt::XOR_EQUAL, tt::SHL_EQUAL, tt::SHR_EQUAL})) {
+               tt::BIT_AND_EQUAL, tt::BIT_OR_EQUAL, tt::BIT_NOT_EQUAL, tt::XOR_EQUAL, tt::SHL_EQUAL, tt::SHR_EQUAL})) {
         auto&& op = prev();
         auto&& right = assignment();
         return ast::make_expr<ast::assignment_expr>(arena_, std::move(left), op, std::move(right), op.loc_);
@@ -338,7 +339,7 @@ ast::expression parser::parse_expression(int8_t precedence) {
 }
 
 ast::expression parser::unary() {
-    if (match({tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT})) {
+    if (match({tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT, tt::BIT_NOT})) {
         auto&& op = prev();
         auto&& operand = unary();
         return ast::make_expr<ast::unary_expr>(arena_, op, std::move(operand), op.loc_);
