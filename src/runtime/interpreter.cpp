@@ -98,22 +98,17 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
         if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
             if (type.is_struct()) {
                 auto&& st = init_val.as_mut<core::value::struct_t>();
-                auto&& fields = st->type_.struct_fields();
-                auto&& elems = list->elements_;
-                for (size_t i = 0; i < elems.size(); ++i) {
-                    auto&& val = evaluate(elems[i]);
-                    st->fields_[i] = core::value::convert(std::move(val), fields[i].second);
-                }
+                std::ranges::transform(list->elements_, st->fields_.begin(),
+                                       [&](auto&& elem) { return evaluate(elem); });
             } else {
                 init_val = evaluate_initializer_list(*list);
             }
         } else {
-            auto&& init = evaluate(*stmt.initializer_);
-            init_val = core::value::convert(std::move(init), type);
+            init_val = evaluate(*stmt.initializer_);
         }
     }
 
-    values_.define(name, std::move(init_val));
+    values_.define(name, init_val);
 
     if (writer_.enabled(debug::trace_level::execution)) {
         auto&& var = values_.get(name);
@@ -278,7 +273,7 @@ core::value interpreter::evaluate_assignment(const ast::assignment_expr& expr) {
     auto&& target = evaluate_lvalue(expr.target_);
 
     if (op == tt::EQUAL) {
-        target = core::value::convert(std::move(right), target.type());
+        target = std::move(right);
         return target;
     }
 
@@ -359,11 +354,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         },
         [&](core::symbol_registry::func_ptr body) -> core::value {
             core::scope_guard guard{values_};
-            for (size_t i = 0; i < body->params_.size(); ++i) {
-                auto&& param = body->params_[i];
-                auto&& converted = core::value::convert(std::move(args_vec[i]), registry_.resolve_type(param.type_));
-                values_.define(param.name_.lexeme_, std::move(converted));
-            }
+            auto&& params = body->params_;
+            for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].name_.lexeme_, args_vec[i]);
             auto&& block = body->block_.get<ast::block_stmt>();
             for (auto&& s : block.statements_) {
                 auto&& result = execute(s);
@@ -390,9 +382,6 @@ core::value interpreter::evaluate_initializer_list(const ast::initializer_list_e
     std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
 
     if (elements.empty()) return std::vector<core::value>{};
-
-    auto&& elem_type = elements[0].type();
-    for (auto&& e : elements) e = core::value::convert(std::move(e), elem_type);
 
     return elements;
 }

@@ -234,19 +234,6 @@ TEST(value_test, struct_nested_default_value) {
     EXPECT_TRUE(r->fields_[1].is_struct());
 }
 
-TEST(value_test, convert_int_to_double) {
-    v val{v::int_t{42}};
-    auto&& converted = v::convert(val, t::double_type());
-    EXPECT_TRUE(converted.is_double());
-    EXPECT_DOUBLE_EQ(converted.to_double(), 42.0);
-}
-
-TEST(value_test, convert_same_type) {
-    v val{v::int_t{42}};
-    auto&& converted = v::convert(val, t::int_type());
-    EXPECT_EQ(converted.to_int(), 42);
-}
-
 TEST(value_test, from_string_int) {
     auto val = v::from_string("42", false);
     EXPECT_TRUE(val.is_int());

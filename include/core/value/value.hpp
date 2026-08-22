@@ -78,19 +78,6 @@ public:
     static value default_value(const core::type& t);
 
     /**
-     * @brief Преобразует значение к целевому типу.
-     *
-     * Поддерживаемые преобразования:
-     * - int → double
-     * - Тождественное (если типы уже совпадают)
-     *
-     * @param val    Исходное значение
-     * @param target Целевой тип
-     * @return Преобразованное значение.
-     */
-    static value convert(core::value val, const core::type& target);
-
-    /**
      * @brief Парсит строковое представление числа.
      *
      * Использует std::from_chars для эффективного парсинга без аллокаций.
@@ -138,9 +125,6 @@ public:
 
     /// Преобразует значение в строковое представление.
     std::string to_string() const;
-
-    /// Возвращает тип значения как core::type.
-    core::type type() const;
 
     bool is_int() const noexcept;
     bool is_double() const noexcept;

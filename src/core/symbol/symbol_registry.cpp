@@ -45,7 +45,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt) {
                         it->info_ = &func;
                     }
                 } else {
-                    entries_.emplace_back(func.name_.lexeme_, std::move(type), &func);
+                    entries_.emplace_back(func.name_.lexeme_, type, &func);
                 }
             },
             [&](const ast::struct_declaration_stmt& strct) {

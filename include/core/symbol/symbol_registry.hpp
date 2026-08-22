@@ -69,7 +69,6 @@ public:
      * 2. Обходятся объявления верхнего уровня AST
      *
      * @param ast      Список объявлений верхнего уровня
-     * @param builtins Список встроенных функций (core::builtins)
      * @return Готовый реестр символов.
      */
     static symbol_registry build(std::span<const ast::statement> ast);

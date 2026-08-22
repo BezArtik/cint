@@ -34,14 +34,6 @@ core::value value::default_value(const core::type& t) {
     return {};
 }
 
-core::value value::convert(core::value val, const core::type& target) {
-    if (val.type() == target) return val;
-
-    if (target.is_int() && val.is_double()) return val.to_int();
-    if (target.is_double() && val.is_int()) return val.to_double();
-    return val;
-}
-
 value::int_t value::parse_int(std::string_view text) {
     int_t result{};
     auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
@@ -62,22 +54,6 @@ value value::from_string(std::string_view text, bool is_double) {
 }
 
 // clang-format off
-core::type value::type() const {
-    return visit(
-        overloaded{
-            [](int_t) { return type::int_type(); },
-            [](double_t) { return type::double_type(); },
-            [](bool_t) { return type::bool_type(); },
-            [](std::shared_ptr<string_t>) { return type::string_type(); },
-            [](const std::shared_ptr<array_t>& a) {
-                return a->empty() ? type::array_type(type::unknown_type()) 
-                                  : type::array_type(a->front().type(), a->size());
-            },
-            [](const struct_t& s) { return s.type_; },
-            [](std::monostate) { return type::void_type(); }
-        },
-        data_);
-}
 
 value::int_t value::to_int() const {
     return visit(
@@ -107,8 +83,8 @@ value::bool_t value::to_bool() const {
             [](int_t v) { return v != 0; },
             [](double_t v) { return v != 0.0; },
             [](bool_t v) { return v; },
-            [](const std::shared_ptr<string_t> s) { return !s->empty(); },
-            [](std::shared_ptr<array_t> a) { return !a->empty(); },
+            [](const std::shared_ptr<string_t>& s) { return !s->empty(); },
+            [](const std::shared_ptr<array_t>& a) { return !a->empty(); },
             [](const auto&) -> bool_t { throw core::value_error{error_code::invalid_conversion}; }
         },
         data_);
@@ -130,8 +106,8 @@ std::string value::to_string() const {
             [](int_t v) { return std::to_string(v); },
             [](double_t v) { return std::to_string(v); },
             [](bool_t v) { return std::string{v ? "true" : "false"}; },
-            [](std::shared_ptr<string_t> s) { return *s; },
-            [&](std::shared_ptr<array_t> a) { return to_string_range(*a); },
+            [](const std::shared_ptr<string_t>& s) { return *s; },
+            [&](const std::shared_ptr<array_t>& a) { return to_string_range(*a); },
             [&](const struct_t& s) { return to_string_range(s.fields_); },
             [](std::monostate) { return std::string{"void"}; }
         },
