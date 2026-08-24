@@ -185,18 +185,10 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
 void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& stmt) {
     auto&& name = stmt.name_.lexeme_;
 
-    auto&& existing = registry_.find(name);
-    if (existing) {
-        bool is_duplicate = core::visit(core::overloaded{
-                                            [&](core::symbol_registry::struct_ptr other) { return other != &stmt; },
-                                            [](auto&&) { return true; },
-                                        },
-                                        existing->info_);
-
-        if (is_duplicate) {
-            reporter_.error(stmt, err::redeclaration, name);
-            return;
-        }
+    auto&& existing = registry_.get<core::symbol_registry::struct_ptr>(name);
+    if (existing != &stmt) {
+        reporter_.error(stmt, err::redeclaration, name);
+        return;
     }
 
     auto&& fields = stmt.type_.struct_fields();
@@ -392,7 +384,7 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
     auto&& func = registry_.find(name);
-    if (!func) {
+    if (func == registry_.end()) {
         reporter_.error(expr, err::undefined_function, name);
         return t::unknown_type();
     }

@@ -342,7 +342,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
 
     return core::visit(
         core::overloaded{
-        [&](core::builtin_fn_ptr builtin) -> core::value {
+        [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
             try {
                 auto&& r = builtin(args);
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);

@@ -26,25 +26,14 @@ namespace core {
  * - **Builtin-функции** (встроенные в интерпретатор)
  * - **Структуры** (struct_declaration)
  *
- * Каждая запись хранит:
- * - Имя символа
- * - Тип (для функций — сигнатура, для структур — структурный тип)
- * - Указатель на реализацию (AST-узел или указатель на builtin-функцию)
- *
- * Строится **один раз** перед семантическим анализом статическим методом
- * build(). После построения реестр не изменяется.
- *
- *
- * Особенности:
- * - **Builtin-функции** можно переопределить пользовательской функцией
- *   (запись о builtin заменяется записью о пользовательской функции)
- * - **Структуры** разрешаются рекурсивно: resolve_type() заменяет
- *   упоминания структур их полным определением
- * - **Порядок объявлений** не важен: структуры могут ссылаться друг на друга,
- *   так как resolve_type() вызывается после построения реестра
- *
  */
 class symbol_registry {
+    struct entry;
+    /// Тип списка записей.
+    using entries_t = std::vector<entry>;
+    /// Итератор на запись внутри списка.
+    using const_iterator = typename entries_t::const_iterator;
+
 public:
     /// Указатель на узел пользовательской функции в AST.
     using func_ptr = const ast::func_declaration_stmt*;
@@ -52,36 +41,48 @@ public:
     /// Указатель на узел структуры в AST.
     using struct_ptr = const ast::struct_declaration_stmt*;
 
-    /**
-     * @brief Запись реестра: имя, тип, информация о реализации.
-     */
-    struct entry {
-        std::string_view name_;  ///< Имя символа
-        type type_;              ///< Тип символа (сигнатура функции или структурный тип)
-        std::variant<func_ptr, builtin_fn_ptr, struct_ptr> info_;  ///< Информация о реализации
-    };
+    /// Указатель на builtin-функцию.
+    using builtin_func_ptr = core::builtin_fn_ptr;
 
     /**
-     * @brief Строит реестр из AST и списка builtin-функций (фиксирован, используется неявно).
+     * @brief Строит реестр из AST и списка builtin-функций.
      *
      * Порядок построения:
      * 1. Добавляются все builtin-функции (могут быть переопределены)
      * 2. Обходятся объявления верхнего уровня AST
      *
-     * @param ast      Список объявлений верхнего уровня
+     * @param ast Список объявлений верхнего уровня
      * @return Готовый реестр символов.
      */
     static symbol_registry build(std::span<const ast::statement> ast);
 
+    /// @name Итераторы
+    /// @{
+
+    auto begin() const noexcept { return entries_.begin(); }
+    auto end() const noexcept { return entries_.end(); }
+
+    /// @}
+
     /**
-     * @brief Ищет символ по имени.
-     *
-     * Поиск по вектору записей.
-     *
+     * @brief Находит запись по имени.
      * @param name Имя символа
-     * @return Указатель на запись или nullptr, если символ не найден.
+     * @return Итератор на запись или end(), если не найдена.
      */
-    const entry* find(std::string_view name) const noexcept;
+    const_iterator find(std::string_view name) const noexcept;
+
+    /**
+     * @brief Шаблонный метод для получения символа конкретного типа.
+     * @tparam T Ожидаемый тип (func_ptr, struct_ptr, builtin_fn_ptr)
+     * @param name Имя символа
+     * @return Указатель на символ или nullptr.
+     */
+    template <typename T>
+    T get(std::string_view name) const noexcept {
+        auto it = find(name);
+        if (it != end() && std::holds_alternative<T>(it->info_)) return std::get<T>(it->info_);
+        return nullptr;
+    }
 
     /**
      * @brief Разрешает тип, заменяя упоминания структур их определениями.
@@ -90,28 +91,29 @@ public:
      * его полное определение в реестре. Если определение не найдено —
      * возвращает unknown_type.
      *
-     * Пример:
-     * - Тип `struct Point` без полей → полный тип `Point {x: int, y: int}`
-     * - Тип `Point[]` → `Point {x: int, y: int}[]`
-     *
      * @param t Тип для разрешения (может содержать неполные struct-типы)
      * @return Полный тип с разрешёнными структурами или unknown_type при ошибке.
      */
     type resolve_type(const type& t) const;
 
 private:
+    /**
+     * @brief Запись реестра: имя, тип, информация о реализации.
+     */
+    struct entry {
+        std::string_view name_;                                    ///< Имя символа
+        type type_;                                                ///< Тип символа
+        std::variant<func_ptr, builtin_fn_ptr, struct_ptr> info_;  ///< Информация о реализации
+    };
+
     symbol_registry() = default;
 
     /**
      * @brief Добавляет AST-объявление в реестр.
-     *
-     * Для функций: если builtin с таким именем уже существует — заменяет его.
-     * Для структур: добавляет новую запись.
-     * Другие типы объявлений игнорируются.
      */
     void add_ast_entry(const ast::statement& stmt);
 
-    std::vector<entry> entries_;  ///< Список записей
+    entries_t entries_;
 };
 
 }  // namespace core

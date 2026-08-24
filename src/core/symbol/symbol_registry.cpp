@@ -26,26 +26,24 @@ symbol_registry symbol_registry::build(std::span<const ast::statement> ast) {
 
     return registry;
 }
-
 // clang-format off
 void symbol_registry::add_ast_entry(const ast::statement& stmt) {
     stmt.visit(overloaded{
-            [&](const ast::func_declaration_stmt& func) {            
+            [&](const ast::func_declaration_stmt& func) {
                 std::vector<type> param_types;
                 param_types.reserve(func.params_.size());
-                std::ranges::transform(func.params_, std::back_inserter(param_types),
-                        [](auto&& p) { return p.type_; });
+                std::ranges::transform(func.params_, std::back_inserter(param_types), [](auto&& p) { return p.type_; });
 
                 auto&& type = type::function_type(func.return_type_, std::move(param_types));
 
                 auto&& it = std::ranges::find(entries_, func.name_.lexeme_, &entry::name_);
                 if (it != entries_.end()) {
-                    if (std::holds_alternative<builtin_fn_ptr>(it->info_)) {
+                    if (std::holds_alternative<builtin_func_ptr>(it->info_)) {
                         it->type_ = std::move(type);
                         it->info_ = &func;
                     }
                 } else {
-                    entries_.emplace_back(func.name_.lexeme_, type, &func);
+                    entries_.emplace_back(func.name_.lexeme_, std::move(type), &func);
                 }
             },
             [&](const ast::struct_declaration_stmt& strct) {
@@ -57,9 +55,9 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt) {
     });
 }
 // clang-format on
-const symbol_registry::entry* symbol_registry::find(std::string_view name) const noexcept {
-    auto&& it = std::ranges::lower_bound(entries_, name, {}, &entry::name_);
-    return it != entries_.end() && it->name_ == name ? &*it : nullptr;
+
+symbol_registry::const_iterator symbol_registry::find(std::string_view name) const noexcept {
+    return std::ranges::lower_bound(entries_, name, {}, &entry::name_);
 }
 
 type symbol_registry::resolve_type(const type& t) const {
@@ -72,9 +70,10 @@ type symbol_registry::resolve_type(const type& t) const {
                 resolved_fields.emplace_back(name, resolve_type(field_type));
             return type::struct_type(t.struct_name(), std::move(resolved_fields));
         }
-        auto&& entry = find(t.struct_name());
-        return (entry && std::holds_alternative<struct_ptr>(entry->info_)) ? resolve_type(entry->type_)
-                                                                           : type::unknown_type();
+        auto&& entry_it = find(t.struct_name());
+        return (entry_it != end() && std::holds_alternative<struct_ptr>(entry_it->info_))
+                   ? resolve_type(entry_it->type_)
+                   : type::unknown_type();
     }
     if (t.is_array()) return type::array_type(resolve_type(t.element_type()), t.array_size());
     return t;
