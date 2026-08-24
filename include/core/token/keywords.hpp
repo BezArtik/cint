@@ -8,7 +8,6 @@
 #include "core/token/token_types.hpp"
 #include "core/type/type.hpp"
 
-#include <algorithm>
 #include <array>
 #include <string_view>
 
@@ -40,7 +39,7 @@ struct keyword_info {
  *
  * Порядок в таблице не важен (поиск линейный, слов мало).
  */
-inline const std::array keyword_table{
+inline const std::array keywords{
     // Управляющие конструкции
     keyword_info{"if", token_type::KW_IF, type::void_type(), true},
     keyword_info{"else", token_type::KW_ELSE, type::void_type(), false},
@@ -62,49 +61,5 @@ inline const std::array keyword_table{
     keyword_info{"true", token_type::KW_TRUE, type::bool_type(), false},
     keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false},
 };
-
-/**
- * @brief Ищет ключевое слово по лексеме.
- *
- * Вызывается лексером после чтения идентификатора.
- * Если лексема не является ключевым словом — возвращает IDENTIFIER.
- *
- * @param lexeme Текст идентификатора
- * @return Тип токена (KW_* или IDENTIFIER)
- */
-inline token_type lookup_keyword(std::string_view lexeme) {
-    auto&& it = std::ranges::find(keyword_table, lexeme, &keyword_info::lexeme_);
-    return it != keyword_table.end() ? it->type_ : token_type::IDENTIFIER;
-}
-
-/**
- * @brief Возвращает информацию о ключевом слове по типу токена.
- *
- * Используется парсером для получения семантического типа
- * при разборе спецификаторов типа (int → type::int_type()).
- *
- * @param t Тип токена (должен быть ключевым словом)
- * @return Информация о ключевом слове.
- * @pre t — одно из KW_* значений.
- */
-inline const keyword_info* get_keyword_info(token_type t) noexcept {
-    auto&& it = std::ranges::find(keyword_table, t, &keyword_info::type_);
-    return it != keyword_table.end() ? &*it : nullptr;
-}
-
-/**
- * @brief Проверяет, может ли токен начинать инструкцию.
- *
- * Используется в parser::synchronize() для определения точек
- * восстановления после синтаксической ошибки.
- *
- * @param type Тип токена
- * @return true, если токен может начинать новую инструкцию.
- */
-inline bool is_statement_start(token_type type) {
-    if (type == token_type::LEFT_BRACE) return true;
-    auto&& it = std::ranges::find(keyword_table, type, &keyword_info::type_);
-    return it != keyword_table.end() && it->can_start_statement_;
-}
 
 }  // namespace core

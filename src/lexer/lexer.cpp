@@ -118,7 +118,9 @@ void lexer::scan_token() {
 void lexer::consume_identifier_or_keyword(core::location start_loc) {
     while (std::isalnum(peek()) || peek() == '_') advance();
 
-    auto&& type = core::lookup_keyword(source_.substr(start_, current_ - start_));
+    auto&& it =
+        std::ranges::find(core::keywords, source_.substr(start_, current_ - start_), &core::keyword_info::lexeme_);
+    auto&& type = it != core::keywords.end() ? it->type_ : tt::IDENTIFIER;
     add_token(type, start_loc);
 }
 

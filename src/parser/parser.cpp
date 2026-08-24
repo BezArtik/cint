@@ -207,8 +207,10 @@ core::type parser::parse_type() {
 
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
         auto&& kw = prev();
-        if (auto&& info = core::get_keyword_info(kw.type_)) return info->semantic_type_;
-        reporter_.parse_error(kw, err::expected_type);
+
+        auto&& it = std::ranges::find(core::keywords, kw.type_, &core::keyword_info::type_);
+        if (it == core::keywords.end()) reporter_.parse_error(kw, err::expected_type);
+        return it->semantic_type_;
     }
 
     reporter_.parse_error(peek(), err::expected_type);
@@ -492,8 +494,9 @@ void parser::synchronize() {
         }
 
         if (brace_depth == 0) {
-            if (prev().type_ == tt::SEMICOLON) return;
-            if (core::is_statement_start(type) && prev().type_ == tt::RIGHT_BRACE) return;
+            if (prev().type_ == tt::SEMICOLON || type == tt::LEFT_BRACE) return;
+            auto&& it = std::ranges::find(core::keywords, type, &core::keyword_info::type_);
+            if (it != core::keywords.end() && it->can_start_statement_ && prev().type_ == tt::RIGHT_BRACE) return;
         }
 
         advance();
