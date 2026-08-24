@@ -44,22 +44,13 @@ bool type::operator==(const type& other) const noexcept {
     if (data_.index() != other.data_.index()) return false;
 
     if (is_function()) {
-        auto&& lhs = *std::get<std::shared_ptr<function_t>>(data_);
-        auto&& rhs = *std::get<std::shared_ptr<function_t>>(other.data_);
-        if (*lhs.return_type_ != *rhs.return_type_) return false;
-        return lhs.param_types_.size() == rhs.param_types_.size() &&
-               std::ranges::equal(lhs.param_types_, rhs.param_types_);
+        if (return_type() != other.return_type()) return false;
+        return param_types().size() == other.param_types().size() &&
+               std::ranges::equal(param_types(), other.param_types());
     }
-    if (is_array()) {
-        auto&& lhs = *std::get<std::shared_ptr<array_t>>(data_);
-        auto&& rhs = *std::get<std::shared_ptr<array_t>>(other.data_);
-        return lhs.size_ == rhs.size_ && *lhs.element_type_ == *rhs.element_type_;
-    }
-    if (is_struct()) {
-        auto&& lhs = *std::get<std::shared_ptr<struct_t>>(data_);
-        auto&& rhs = *std::get<std::shared_ptr<struct_t>>(other.data_);
-        return lhs.name_ == rhs.name_;
-    }
+    if (is_array()) return array_size() == other.array_size() && element_type() == other.element_type();
+    if (is_struct()) return struct_name() == other.struct_name();
+    
     return true;
 }
 
