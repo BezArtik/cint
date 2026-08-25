@@ -164,7 +164,7 @@ ast::statement parser::var_declaration(core::type type, const core::token& name)
 }
 
 ast::statement parser::func_declaration(core::type return_type, const core::token& name) {
-    std::pmr::vector<ast::func_param> params{&mr_};
+    std::pmr::vector<core::type::param_t> params{temp_mr_};
     if (!check(tt::RIGHT_PAREN)) {
         do { params.push_back(parse_param()); } while (match({tt::COMMA}));
     }
@@ -173,9 +173,9 @@ ast::statement parser::func_declaration(core::type return_type, const core::toke
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
     auto&& body = block_statement();
+    auto&& func_type = core::type::function_type(name.lexeme_, return_type, {params.begin(), params.end()});
 
-    return ast::make_stmt<ast::func_declaration_stmt>(arena_, std::move(return_type), name, std::move(params),
-                                                      std::move(body), name.loc_);
+    return ast::make_stmt<ast::func_declaration_stmt>(arena_, std::move(func_type), std::move(body), name.loc_);
 }
 
 ast::statement parser::struct_declaration(const core::token& name) {
@@ -196,7 +196,7 @@ ast::statement parser::struct_declaration(const core::token& name) {
 
     auto&& struct_type = core::type::struct_type(name.lexeme_, {fields.begin(), fields.end()});
 
-    return ast::make_stmt<ast::struct_declaration_stmt>(arena_, std::move(struct_type), name, name.loc_);
+    return ast::make_stmt<ast::struct_declaration_stmt>(arena_, std::move(struct_type), name.loc_);
 }
 
 core::type parser::parse_type() {
@@ -216,11 +216,11 @@ core::type parser::parse_type() {
     reporter_.parse_error(peek(), err::expected_type);
 }
 
-ast::func_param parser::parse_param() {
+core::type::param_t parser::parse_param() {
     auto&& type = parse_type();
     auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
     type = parse_array_dimensions(type);
-    return {type, name};
+    return {name.lexeme_, type};
 }
 
 ast::statement parser::statement() {

@@ -15,10 +15,7 @@ symbol_registry symbol_registry::build(std::span<const ast::statement> ast) {
     symbol_registry registry;
     registry.entries_.reserve(core::builtins.size() + ast.size());
 
-    for (auto&& b : core::builtins) {
-        auto&& type = type::function_type(b.return_type_, b.param_types_);
-        registry.entries_.emplace_back(b.name_, std::move(type), b.impl_);
-    }
+    for (auto&& b : core::builtins) registry.entries_.emplace_back(b.type_.function_name(), b.type_, b.impl_);
 
     for (auto&& stmt : ast) registry.add_ast_entry(stmt);
 
@@ -30,24 +27,21 @@ symbol_registry symbol_registry::build(std::span<const ast::statement> ast) {
 void symbol_registry::add_ast_entry(const ast::statement& stmt) {
     stmt.visit(overloaded{
             [&](const ast::func_declaration_stmt& func) {
-                std::vector<type> param_types;
-                param_types.reserve(func.params_.size());
-                std::ranges::transform(func.params_, std::back_inserter(param_types), [](auto&& p) { return p.type_; });
+                auto&& name = func.type_.function_name();
+                auto&& type = func.type_;
 
-                auto&& type = type::function_type(func.return_type_, std::move(param_types));
-
-                auto&& it = std::ranges::find(entries_, func.name_.lexeme_, &entry::name_);
+                auto&& it = std::ranges::find(entries_, name, &entry::name_);
                 if (it != entries_.end()) {
                     if (std::holds_alternative<builtin_func_ptr>(it->info_)) {
                         it->type_ = std::move(type);
                         it->info_ = &func;
                     }
                 } else {
-                    entries_.emplace_back(func.name_.lexeme_, std::move(type), &func);
+                    entries_.emplace_back(name, std::move(type), &func);
                 }
             },
             [&](const ast::struct_declaration_stmt& strct) {
-                auto&& name = strct.name_.lexeme_;
+                auto&& name = strct.type_.struct_name();
                 auto&& it = std::ranges::find(entries_, name, &entry::name_);
                 if (it == entries_.end()) entries_.emplace_back(name, strct.type_, &strct);
             },

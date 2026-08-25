@@ -163,7 +163,7 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt) {
-    auto&& name = stmt.name_.lexeme_;
+    auto&& name = stmt.type_.function_name();
 
     if (symbols_.contains_in_current_scope(name)) {
         reporter_.error(stmt, err::redeclaration, name);
@@ -171,10 +171,10 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
     }
 
     core::scope_guard guard{symbols_};
-    for (auto&& param : stmt.params_) symbols_.define(param.name_.lexeme_, param.type_);
+    for (auto&& [name, type] : stmt.type_.param_infos()) symbols_.define(name, type);
 
     auto&& prev_return_type = curr_return_type_;
-    curr_return_type_ = stmt.return_type_;
+    curr_return_type_ = stmt.type_.return_type();
 
     auto&& block = stmt.block_.get<ast::block_stmt>();
     for (auto&& s : block.statements_) check_statement(s);
@@ -183,7 +183,7 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
 }
 
 void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& stmt) {
-    auto&& name = stmt.name_.lexeme_;
+    auto&& name = stmt.type_.struct_name();
 
     auto&& existing = registry_.get<core::symbol_registry::struct_ptr>(name);
     if (existing != &stmt) {
@@ -384,21 +384,17 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
     auto&& func = registry_.find(name);
-    if (func == registry_.end()) {
-        reporter_.error(expr, err::undefined_function, name);
-        return t::unknown_type();
-    }
 
-    auto&& param_types = func->type_.param_types();
-    if (expr.args_.size() != param_types.size()) {
-        reporter_.error(expr, err::argument_count_mismatch, name, param_types.size(), expr.args_.size());
+    auto&& params = func->type_.param_infos();
+    if (expr.args_.size() != params.size()) {
+        reporter_.error(expr, err::argument_count_mismatch, name, params.size(), expr.args_.size());
         return t::unknown_type();
     }
 
     for (size_t i = 0; i < expr.args_.size(); ++i) {
         auto&& arg_type = type_of(expr.args_[i]);
         if (arg_type.is_unknown()) return t::unknown_type();
-        if (param_types[i] != arg_type) {
+        if (params[i].second != arg_type) {
             reporter_.error(expr, err::argument_type_mismatch, i + 1, name);
             return t::unknown_type();
         }

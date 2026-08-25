@@ -6,7 +6,6 @@
 
 #include <gtest/gtest.h>
 #include <string_view>
-#include <vector>
 
 namespace tests {
 
@@ -232,9 +231,10 @@ TEST_P(func_decl_test, parsed) {
 
     auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
     ASSERT_TRUE(func);
-    EXPECT_EQ(func->name_.lexeme_, tc.name_);
-    EXPECT_EQ(func->return_type_, tc.return_type_);
-    EXPECT_EQ(func->params_.size(), tc.param_count_);
+    auto&& type = func->type_;
+    EXPECT_EQ(type.function_name(), tc.name_);
+    EXPECT_EQ(type.return_type(), tc.return_type_);
+    EXPECT_EQ(type.param_infos().size(), tc.param_count_);
 }
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
@@ -464,10 +464,11 @@ TEST(parser_test, struct_declaration_empty) {
 
     auto&& decl = h.ast()[0].get_if<ast::struct_declaration_stmt>();
     ASSERT_TRUE(decl);
-    EXPECT_EQ(decl->name_.lexeme_, "Point");
-    EXPECT_EQ(decl->type_.struct_fields().size(), 2);
-    EXPECT_EQ(decl->type_.struct_fields()[0].first, "x");
-    EXPECT_EQ(decl->type_.struct_fields()[1].first, "y");
+    auto&& type = decl->type_;
+    EXPECT_EQ(type.struct_name(), "Point");
+    EXPECT_EQ(type.struct_fields().size(), 2);
+    EXPECT_EQ(type.struct_fields()[0].first, "x");
+    EXPECT_EQ(type.struct_fields()[1].first, "y");
     EXPECT_FALSE(h.had_error());
 }
 
@@ -481,8 +482,9 @@ TEST(parser_test, struct_declaration_nested) {
 
     auto&& rect = h.ast()[1].get_if<ast::struct_declaration_stmt>();
     ASSERT_TRUE(rect);
-    EXPECT_EQ(rect->name_.lexeme_, "Rect");
-    EXPECT_EQ(rect->type_.struct_fields().size(), 2);
+    auto&& type = rect->type_;
+    EXPECT_EQ(type.struct_name(), "Rect");
+    EXPECT_EQ(type.struct_fields().size(), 2);
     EXPECT_FALSE(h.had_error());
 }
 

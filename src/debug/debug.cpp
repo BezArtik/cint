@@ -193,16 +193,17 @@ void print_return_stmt_ast(const debug_writer& writer, const ast::return_stmt& s
 
 void print_func_declaration_stmt_ast(const debug_writer& writer, const ast::func_declaration_stmt& s, uint32_t level) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
-    writer.emit(indent_str(level) + "[EXEC] FuncDeclaration: " + std::string{s.name_.lexeme_} + " -> " +
-                type_name(s.return_type_) + "\n");
+    writer.emit(indent_str(level) + "[EXEC] FuncDeclaration: " + std::string{s.type_.function_name()} + " -> " +
+                type_name(s.type_) + "\n");
 
-    auto&& params = indent_str(level + 1) + "Params: ";
-    if (s.params_.empty()) {
-        params += "(none)";
+    auto&& params_str = indent_str(level + 1) + "Params: ";
+    auto&& params = s.type_.param_infos();
+    if (params.empty()) {
+        params_str += "(none)";
     } else {
-        for (auto&& p : s.params_) params += std::string{p.name_.lexeme_} + " : " + type_name(p.type_) + " ";
+        for (auto&& [name, type] : params) params_str += std::string{name} + " : " + type_name(type) + " ";
     }
-    writer.emit(params + "\n");
+    writer.emit(params_str + "\n");
     writer.emit(indent_str(level + 1) + "Body:\n");
 
     auto&& block = s.block_.get<ast::block_stmt>();
@@ -212,7 +213,7 @@ void print_func_declaration_stmt_ast(const debug_writer& writer, const ast::func
 void print_struct_declaration_stmt_ast(const debug_writer& writer, const ast::struct_declaration_stmt& s,
                                        uint32_t level) {
     if (!writer.enabled(trace_level::ast) && !writer.enabled(trace_level::execution)) return;
-    writer.emit(indent_str(level) + "[EXEC] StructDeclaration: " + std::string{s.name_.lexeme_} + "\n");
+    writer.emit(indent_str(level) + "[EXEC] StructDeclaration: " + std::string{s.type_.struct_name()} + "\n");
     writer.emit(indent_str(level + 1) + "Fields:\n");
     for (auto&& [field_name, field_type] : s.type_.struct_fields()) {
         writer.emit(indent_str(level + 2) + std::string{field_name} + " : " + type_name(field_type) + "\n");

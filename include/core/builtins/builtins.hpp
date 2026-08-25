@@ -33,10 +33,8 @@ using builtin_fn_ptr = value (*)(std::span<const value>);
  * определяет имя, сигнатуру и реализацию встроенной функции.
  */
 struct builtin_def {
-    std::string_view name_;          ///< Имя функции
-    type return_type_;               ///< Тип возвращаемого значения
-    std::vector<type> param_types_;  ///< Типы параметров (порядок важен)
-    builtin_fn_ptr impl_;            ///< Указатель на реализацию
+    type type_;            ///< function_type с именем возвратом и параметрами
+    builtin_fn_ptr impl_;  ///< Указатель на реализацию
 };
 
 /**
@@ -132,28 +130,35 @@ value srand(std::span<const value> args);
  */
 inline const std::array builtins = {
     // Ввод/вывод
-    builtin_def{"print_int", type::void_type(), {type::int_type()}, builtin_impl::print_int},
-    builtin_def{"print_dbl", type::void_type(), {type::double_type()}, builtin_impl::print_dbl},
-    builtin_def{"print_bool", type::void_type(), {type::bool_type()}, builtin_impl::print_bool},
-    builtin_def{"print_str", type::void_type(), {type::string_type()}, builtin_impl::print_str},
+    builtin_def{type::function_type("print_int", type::void_type(), {{"x", type::int_type()}}),
+                builtin_impl::print_int},
+    builtin_def{type::function_type("print_dbl", type::void_type(), {{"x", type::double_type()}}),
+                builtin_impl::print_dbl},
+    builtin_def{type::function_type("print_bool", type::void_type(), {{"x", type::bool_type()}}),
+                builtin_impl::print_bool},
+    builtin_def{type::function_type("print_str", type::void_type(), {{"x", type::string_type()}}),
+                builtin_impl::print_str},
 
-    builtin_def{"input", type::string_type(), {}, builtin_impl::input},
+    builtin_def{type::function_type("input", type::string_type(), {}), builtin_impl::input},
 
     // Математика
-    builtin_def{"sqrt", type::double_type(), {type::double_type()}, builtin_impl::sqrt},
-    builtin_def{"sin", type::double_type(), {type::double_type()}, builtin_impl::sin},
-    builtin_def{"exp", type::double_type(), {type::double_type()}, builtin_impl::exp},
+    builtin_def{type::function_type("sqrt", type::double_type(), {{"x", type::double_type()}}), builtin_impl::sqrt},
+    builtin_def{type::function_type("sin", type::double_type(), {{"x", type::double_type()}}), builtin_impl::sin},
+    builtin_def{type::function_type("exp", type::double_type(), {{"x", type::double_type()}}), builtin_impl::exp},
 
     // Преобразования
-    builtin_def{"dtoi", type::int_type(), {type::double_type()}, builtin_impl::dtoi},
-    builtin_def{"stoi", type::int_type(), {type::string_type()}, builtin_impl::stoi},
-
-    builtin_def{"itod", type::double_type(), {type::int_type()}, builtin_impl::itod},
-    builtin_def{"stod", type::double_type(), {type::string_type()}, builtin_impl::stod},
+    builtin_def{type::function_type("dtoi", type::int_type(), {{"x", type::double_type()}}), builtin_impl::dtoi},
+    builtin_def{type::function_type("stoi", type::int_type(), {{"s", type::string_type()}}), builtin_impl::stoi},
+    builtin_def{type::function_type("itod", type::double_type(), {{"x", type::int_type()}}), builtin_impl::itod},
+    builtin_def{type::function_type("stod", type::double_type(), {{"s", type::string_type()}}), builtin_impl::stod},
 
     // Случайные числа
-    builtin_def{"rand_int", type::int_type(), {type::int_type(), type::int_type()}, builtin_impl::rand_int},
-    builtin_def{"rand_dbl", type::double_type(), {type::double_type(), type::double_type()}, builtin_impl::rand_dbl},
-    builtin_def{"srand", type::void_type(), {type::int_type()}, builtin_impl::srand}};
+    builtin_def{
+        type::function_type("rand_int", type::int_type(), {{"min", type::int_type()}, {"max", type::int_type()}}),
+        builtin_impl::rand_int},
+    builtin_def{type::function_type("rand_dbl", type::double_type(),
+                                    {{"min", type::double_type()}, {"max", type::double_type()}}),
+                builtin_impl::rand_dbl},
+    builtin_def{type::function_type("srand", type::void_type(), {{"seed", type::int_type()}}), builtin_impl::srand}};
 
 }  // namespace core

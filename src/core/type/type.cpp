@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -19,8 +20,8 @@ type type::bool_type() { return type(bool_t{}); }
 type type::string_type() { return type(string_t{}); }
 type type::void_type() { return type(void_t{}); }
 type type::unknown_type() { return type(unknown_t{}); }
-type type::function_type(type return_type, std::vector<type> param_types) {
-    return std::make_shared<function_t>(std::make_unique<type>(std::move(return_type)), std::move(param_types));
+type type::function_type(std::string_view name, type return_type, std::vector<param_t> params) {
+    return std::make_shared<function_t>(name, std::make_unique<type>(std::move(return_type)), std::move(params));
 }
 type type::array_type(type element_type, size_t size) {
     return std::make_shared<array_t>(std::make_unique<type>(std::move(element_type)), size);
@@ -45,8 +46,8 @@ bool type::operator==(const type& other) const noexcept {
 
     if (is_function()) {
         if (return_type() != other.return_type()) return false;
-        return param_types().size() == other.param_types().size() &&
-               std::ranges::equal(param_types(), other.param_types());
+        return param_infos().size() == other.param_infos().size() &&
+               std::ranges::equal(param_infos(), other.param_infos());
     }
     if (is_array()) return array_size() == other.array_size() && element_type() == other.element_type();
     if (is_struct()) return struct_name() == other.struct_name();
@@ -56,8 +57,9 @@ bool type::operator==(const type& other) const noexcept {
 
 bool type::operator!=(const type& other) const noexcept { return !(*this == other); }
 
+std::string_view type::function_name() const { return std::get<std::shared_ptr<function_t>>(data_)->name_; }
 const type& type::return_type() const { return *std::get<std::shared_ptr<function_t>>(data_)->return_type_; }
-std::span<const type> type::param_types() const { return std::get<std::shared_ptr<function_t>>(data_)->param_types_; }
+std::span<const type::param_t> type::param_infos() const { return std::get<std::shared_ptr<function_t>>(data_)->params_; }
 
 const type& type::element_type() const { return *std::get<std::shared_ptr<array_t>>(data_)->element_type_; }
 size_t type::array_size() const { return std::get<std::shared_ptr<array_t>>(data_)->size_; }

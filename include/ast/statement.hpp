@@ -13,7 +13,6 @@
 
 #include <optional>
 #include <utility>
-#include <vector>
 
 namespace ast {
 
@@ -108,25 +107,15 @@ struct return_stmt {
 };
 
 /**
- * @brief Параметр функции: `type name`.
- */
-struct func_param {
-    core::type type_;   ///< Тип параметра
-    core::token name_;  ///< Токен имени параметра
-};
-
-/**
  * @brief Объявление функции: `return_type name(params) { body }`.
  *
- * Содержит полную сигнатуру и тело. Параметры образуют новую область
+ * Содержит полную сигнатуру в типе и тело. Параметры образуют новую область
  * видимости. Функция может быть вызвана рекурсивно (в пределах MAX_RECURSION_DEPTH).
  */
 struct func_declaration_stmt {
-    core::type return_type_;               ///< Тип возвращаемого значения
-    core::token name_;                     ///< Токен имени функции
-    std::pmr::vector<func_param> params_;  ///< Список параметров
-    statement block_;                      ///< Тело функции
-    core::location loc_;                   ///< Позиция в исходном коде
+    core::type type_;     ///< Тип функции (имя, тип возврата, информация о параметрах)
+    statement block_;     ///< Тело функции
+    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**
@@ -137,7 +126,6 @@ struct func_declaration_stmt {
  */
 struct struct_declaration_stmt {
     core::type type_;     ///< Тип структуры (с полной информацией о полях)
-    core::token name_;    ///< Токен имени структуры
     core::location loc_;  ///< Позиция в исходном коде
 };
 

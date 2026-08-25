@@ -354,8 +354,8 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         },
         [&](core::symbol_registry::func_ptr body) -> core::value {
             core::scope_guard guard{values_};
-            auto&& params = body->params_;
-            for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].name_.lexeme_, args_vec[i]);
+            auto&& params = body->type_.param_infos();
+            for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].first, args_vec[i]);
             auto&& block = body->block_.get<ast::block_stmt>();
             for (auto&& s : block.statements_) {
                 auto&& result = execute(s);
@@ -365,7 +365,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                     return result.value_; 
                 }
             }
-            auto&& r = core::value::default_value(body->return_type_);
+            auto&& r = core::value::default_value(body->type_.return_type());
             if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
             return r;
         },

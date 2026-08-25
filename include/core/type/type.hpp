@@ -30,6 +30,8 @@ namespace core {
  */
 class type {
 public:
+    /// @brief Параметр функции: имя + тип.
+    using param_t = std::pair<std::string_view, type>;
     /// @brief Поле структуры: имя + тип.
     using field_t = std::pair<std::string_view, type>;
 
@@ -53,11 +55,12 @@ public:
     /**
      * @brief Создаёт функциональный тип.
      *
+     * @param name        Имя функции
      * @param return_type Тип возвращаемого значения
-     * @param param_types Типы параметров (порядок важен)
+     * @param params      Типы параметров (порядок важен)
      * @return Функциональный тип.
      */
-    static type function_type(type return_type, std::vector<type> param_types);
+    static type function_type(std::string_view name, type return_type, std::vector<param_t> params);
 
     /**
      * @brief Создаёт тип массива.
@@ -100,11 +103,14 @@ public:
     /// @name Доступ к параметрам составных типов
     /// @{
 
+    /// Имя функции. @pre is_function()
+    std::string_view function_name() const;
+
     /// Возвращаемый тип функции. @pre is_function()
     const type& return_type() const;
 
-    /// Типы параметров функции. @pre is_function()
-    std::span<const type> param_types() const;
+    /// Параметры функции. @pre is_function()
+    std::span<const param_t> param_infos() const;
 
     /// Тип элемента массива. @pre is_array()
     const type& element_type() const;
@@ -155,8 +161,9 @@ private:
     struct void_t {};
     struct unknown_t {};
     struct function_t {
+        std::string_view name_;
         std::unique_ptr<type> return_type_;
-        std::vector<type> param_types_;
+        std::vector<param_t> params_;
     };
     struct array_t {
         std::unique_ptr<type> element_type_;
@@ -168,7 +175,7 @@ private:
     };
 
     template <typename Info>
-    type(Info info) : data_(std::move(info)) {}
+    type(Info info) : data_{std::move(info)} {}
 
     std::variant<int_t, double_t, bool_t, string_t, void_t, std::shared_ptr<function_t>, std::shared_ptr<array_t>,
                  std::shared_ptr<struct_t>, unknown_t>

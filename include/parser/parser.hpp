@@ -8,10 +8,11 @@
  */
 
 #pragma once
-#include "ast/statement.hpp"
+#include "ast/node.hpp"
 #include "core/error/error_report.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
+#include "core/type/type.hpp"
 
 #include <memory_resource>
 #include <span>
@@ -335,9 +336,9 @@ private:
      *
      * Синтаксис: `type identifier`
      *
-     * @return Структура func_param с типом и именем параметра.
+     * @return Пара из типа и имени параметра.
      */
-    ast::func_param parse_param();
+    core::type::param_t parse_param();
 
     /**
      * @brief Разбирает спецификатор типа.
