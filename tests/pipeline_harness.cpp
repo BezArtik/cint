@@ -18,7 +18,7 @@ bool pipeline_harness::lex() {
 bool pipeline_harness::parse() {
     parser p{tokens_, reporter_, arena_, mr_};
     ast_ = p.parse();
-    if (!reporter_.has_error()) registry_.emplace(core::symbol_registry::build(ast_));
+    if (!reporter_.has_error()) registry_.emplace(core::symbol_registry::build(ast_, reporter_));
     return !reporter_.has_error();
 }
 

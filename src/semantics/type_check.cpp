@@ -163,13 +163,6 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
 }
 
 void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt) {
-    auto&& name = stmt.type_.function_name();
-
-    if (symbols_.contains_in_current_scope(name)) {
-        reporter_.error(stmt, err::redeclaration, name);
-        return;
-    }
-
     core::scope_guard guard{symbols_};
     for (auto&& [name, type] : stmt.type_.param_infos()) symbols_.define(name, type);
 
@@ -183,24 +176,15 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
 }
 
 void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& stmt) {
-    auto&& name = stmt.type_.struct_name();
-
-    auto&& existing = registry_.get<core::symbol_registry::struct_ptr>(name);
-    if (existing != &stmt) {
-        reporter_.error(stmt, err::redeclaration, name);
-        return;
-    }
-
-    auto&& fields = stmt.type_.struct_fields();
     std::unordered_set<std::string_view> seen;
-    for (auto&& [field_name, field_type] : fields) {
-        if (!seen.insert(field_name).second) {
-            reporter_.error(stmt, err::redeclaration, field_name);
+    for (auto&& [name, type] : stmt.type_.struct_fields()) {
+        if (!seen.insert(name).second) {
+            reporter_.error(stmt, err::redeclaration, name);
             return;
         }
-        auto&& resolved = registry_.resolve_type(field_type);
-        if (resolved.is_unknown() && field_type.is_struct()) {
-            reporter_.error(stmt, err::undefined_type, field_type.struct_name());
+        auto&& resolved = registry_.resolve_type(type);
+        if (resolved.is_unknown() && type.is_struct()) {
+            reporter_.error(stmt, err::undefined_type, type.struct_name());
         }
     }
 }

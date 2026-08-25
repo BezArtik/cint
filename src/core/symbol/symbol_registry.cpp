@@ -3,6 +3,8 @@
 
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
+#include "core/error/error_codes.hpp"
+#include "core/error/error_report.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>
@@ -11,39 +13,38 @@
 
 namespace core {
 
-symbol_registry symbol_registry::build(std::span<const ast::statement> ast) {
+symbol_registry symbol_registry::build(std::span<const ast::statement> ast, error_reporter& reporter) {
     symbol_registry registry;
     registry.entries_.reserve(core::builtins.size() + ast.size());
 
     for (auto&& b : core::builtins) registry.entries_.emplace_back(b.type_.function_name(), b.type_, b.impl_);
 
-    for (auto&& stmt : ast) registry.add_ast_entry(stmt);
+    for (auto&& stmt : ast) registry.add_ast_entry(stmt, reporter);
 
     std::ranges::sort(registry.entries_, {}, &entry::name_);
 
     return registry;
 }
 // clang-format off
-void symbol_registry::add_ast_entry(const ast::statement& stmt) {
+void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& reporter) {
     stmt.visit(overloaded{
             [&](const ast::func_declaration_stmt& func) {
                 auto&& name = func.type_.function_name();
-                auto&& type = func.type_;
-
                 auto&& it = std::ranges::find(entries_, name, &entry::name_);
-                if (it != entries_.end()) {
-                    if (std::holds_alternative<builtin_func_ptr>(it->info_)) {
-                        it->type_ = std::move(type);
-                        it->info_ = &func;
-                    }
-                } else {
-                    entries_.emplace_back(name, std::move(type), &func);
+                if (it != end()) {
+                    reporter.error(func.loc_, error_code::redeclaration, name);
+                    return;
                 }
+                entries_.emplace_back(name, func.type_, &func);
             },
             [&](const ast::struct_declaration_stmt& strct) {
                 auto&& name = strct.type_.struct_name();
                 auto&& it = std::ranges::find(entries_, name, &entry::name_);
-                if (it == entries_.end()) entries_.emplace_back(name, strct.type_, &strct);
+                if (it != end()) {
+                    reporter.error(strct.loc_, error_code::redeclaration, name);
+                    return;
+                }
+                entries_.emplace_back(name, strct.type_, &strct);
             },
             [](const auto&) {}
     });

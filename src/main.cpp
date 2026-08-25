@@ -95,7 +95,7 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    auto&& registry = core::symbol_registry::build(ast);
+    auto&& registry = core::symbol_registry::build(ast, reporter);
 
     type_checker checker{reporter, registry};
     if (!checker.check(ast)) {

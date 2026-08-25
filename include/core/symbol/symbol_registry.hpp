@@ -8,6 +8,7 @@
 
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
+#include "core/error/error_report.hpp"
 #include "core/type/type.hpp"
 
 #include <span>
@@ -48,13 +49,14 @@ public:
      * @brief Строит реестр из AST и списка builtin-функций.
      *
      * Порядок построения:
-     * 1. Добавляются все builtin-функции (могут быть переопределены)
-     * 2. Обходятся объявления верхнего уровня AST
+     * 1. Добавляются все builtin-функции.
+     * 2. Обходятся объявления верхнего уровня AST.
      *
-     * @param ast Список объявлений верхнего уровня
+     * @param ast      Список объявлений верхнего уровня
+     * @param reporter Обработчик ошибок
      * @return Готовый реестр символов.
      */
-    static symbol_registry build(std::span<const ast::statement> ast);
+    static symbol_registry build(std::span<const ast::statement> ast, error_reporter& reporter);
 
     /// @name Итераторы
     /// @{
@@ -70,19 +72,6 @@ public:
      * @return Итератор на запись или end(), если не найдена.
      */
     const_iterator find(std::string_view name) const noexcept;
-
-    /**
-     * @brief Шаблонный метод для получения символа конкретного типа.
-     * @tparam T Ожидаемый тип (func_ptr, struct_ptr, builtin_fn_ptr)
-     * @param name Имя символа
-     * @return Указатель на символ или nullptr.
-     */
-    template <typename T>
-    T get(std::string_view name) const noexcept {
-        auto it = find(name);
-        if (it != end() && std::holds_alternative<T>(it->info_)) return std::get<T>(it->info_);
-        return nullptr;
-    }
 
     /**
      * @brief Разрешает тип, заменяя упоминания структур их определениями.
@@ -101,9 +90,9 @@ private:
      * @brief Запись реестра: имя, тип, информация о реализации.
      */
     struct entry {
-        std::string_view name_;                                    ///< Имя символа
-        type type_;                                                ///< Тип символа
-        std::variant<func_ptr, builtin_fn_ptr, struct_ptr> info_;  ///< Информация о реализации
+        std::string_view name_;                                      ///< Имя символа
+        type type_;                                                  ///< Тип символа
+        std::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;  ///< Информация о реализации
     };
 
     symbol_registry() = default;
@@ -111,7 +100,7 @@ private:
     /**
      * @brief Добавляет AST-объявление в реестр.
      */
-    void add_ast_entry(const ast::statement& stmt);
+    void add_ast_entry(const ast::statement& stmt, error_reporter& reporter);
 
     entries_t entries_;
 };
