@@ -14,7 +14,6 @@
 #include "core/token/token.hpp"
 #include "core/type/type.hpp"
 
-#include <memory_resource>
 #include <span>
 
 /**
@@ -35,7 +34,8 @@ public:
      *       Вызывающий код должен гарантировать время жизни списка токенов.
      */
     parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
-           core::arena_memory_resource& mr);
+           core::arena_memory_resource& mr)
+        : tokens_{tokens}, reporter_{reporter}, arena_{arena}, mr_{mr} {}
 
     /**
      * @brief Выполняет синтаксический разбор программы.
@@ -232,15 +232,6 @@ private:
     ast::expression parse_expression(int8_t precedence);
 
     /**
-     * @brief Точка входа в разбор выражений.
-     *
-     * Эквивалент parse_expression(0).
-     *
-     * @return Разобранное выражение.
-     */
-    ast::expression expression();
-
-    /**
      * @brief Разбирает присваивание или выражение.
      *
      * Проверяет, является ли следующий оператор оператором присваивания
@@ -332,15 +323,6 @@ private:
     ast::expression finish_index(ast::expression object);
 
     /**
-     * @brief Разбирает параметр функции.
-     *
-     * Синтаксис: `type identifier`
-     *
-     * @return Пара из типа и имени параметра.
-     */
-    core::type::param_t parse_param();
-
-    /**
      * @brief Разбирает спецификатор типа.
      *
      * Обрабатывает:
@@ -384,6 +366,4 @@ private:
     size_t current_ = 0;                   ///< Индекс текущего токена
     core::arena& arena_;                   ///< Арена для размещения узлов AST
     core::arena_memory_resource& mr_;      ///< Memory resource для списков
-    std::pmr::memory_resource* temp_mr_;   ///< Промежуточный memory_resource для хранения списков,
-                                           ///  которые не пойдут в AST
 };
