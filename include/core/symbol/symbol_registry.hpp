@@ -13,6 +13,7 @@
 
 #include <span>
 #include <string_view>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -101,6 +102,7 @@ private:
      * @brief Добавляет AST-объявление в реестр.
      */
     void add_ast_entry(const ast::statement& stmt, error_reporter& reporter);
+    type resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const;
 
     entries_t entries_;
 };

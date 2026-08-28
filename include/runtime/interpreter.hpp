@@ -58,7 +58,7 @@ public:
      *                 Если не указан — трассировка отключена.
      */
     interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
-                const debug::debug_writer& writer)
+                const debug::debug_writer& writer = {})
         : reporter_{reporter}, registry_{registry}, writer_{writer} {}
     /**
      * @brief Выполняет программу.

@@ -8,7 +8,10 @@
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>
+#include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace core {
@@ -56,21 +59,47 @@ symbol_registry::const_iterator symbol_registry::find(std::string_view name) con
 }
 
 type symbol_registry::resolve_type(const type& t) const {
-    if (t.is_struct()) {
-        if (!t.struct_fields().empty()) {
-            std::vector<type::field_t> resolved_fields;
-            resolved_fields.reserve(t.struct_fields().size());
+    std::unordered_set<std::string_view> resolving;
+    return resolve_type_impl(t, resolving);
+}
 
-            for (auto&& [name, field_type] : t.struct_fields())
-                resolved_fields.emplace_back(name, resolve_type(field_type));
-            return type::struct_type(t.struct_name(), std::move(resolved_fields));
+type symbol_registry::resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const {
+    if (t.is_struct()) {
+        auto&& struct_name = t.struct_name();
+        auto&& fields = t.struct_fields();
+
+        if (!fields.empty()) {
+            if (resolving.contains(struct_name)) return type::unknown_type();
+            resolving.insert(struct_name);
+
+            std::vector<type::field_t> resolved_fields;
+            resolved_fields.reserve(fields.size());
+
+            for (auto&& [name, field_type] : fields) {
+                auto&& resolved_field = resolve_type_impl(field_type, resolving);
+                if (resolved_field.is_unknown() && field_type.is_struct()) {
+                    resolving.erase(struct_name);
+                    return type::unknown_type();
+                }
+                resolved_fields.emplace_back(name, resolved_field);
+            }
+
+            resolving.erase(struct_name);
+            return type::struct_type(struct_name, std::move(resolved_fields));
         }
-        auto&& entry_it = find(t.struct_name());
-        return (entry_it != end() && std::holds_alternative<struct_ptr>(entry_it->info_))
-                   ? resolve_type(entry_it->type_)
+
+        auto&& entry_it = find(struct_name);
+        return entry_it != end() && std::holds_alternative<struct_ptr>(entry_it->info_)
+                   ? resolve_type_impl(entry_it->type_, resolving)
                    : type::unknown_type();
     }
-    if (t.is_array()) return type::array_type(resolve_type(t.element_type()), t.array_size());
+
+    if (t.is_array()) {
+        auto&& elem_type = resolve_type_impl(t.element_type(), resolving);
+        if (elem_type.is_unknown() && t.element_type().is_struct()) return type::unknown_type();
+        return type::array_type(elem_type, t.array_size());
+    }
+
     return t;
 }
 
