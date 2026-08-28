@@ -10,7 +10,6 @@
 #pragma once
 
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -55,7 +54,7 @@ public:
     /// @}
 
     /// Вызывает reset() для очистки всех ресурсов.
-    ~arena();
+    ~arena() { reset(); }
 
     /**
      * @brief Размещает объект типа T в арене.
@@ -71,10 +70,11 @@ public:
      */
     template <typename T, typename... Args>
     T* allocate(Args&&... args) {
-        auto* ptr = allocate_raw(sizeof(T), alignof(T));
-        auto* obj = ::new (ptr) T(std::forward<Args>(args)...);
+        auto&& ptr = allocate_raw(sizeof(T), alignof(T));
+        auto&& obj = ::new (ptr) T(std::forward<Args>(args)...);
 
-        if constexpr (!std::is_trivially_destructible_v<T>) destructors_.push_back([obj] { obj->~T(); });
+        if constexpr (!std::is_trivially_destructible_v<T>)
+            destructors_.emplace_back(obj, [](void* p) { static_cast<T*>(p)->~T(); });
 
         return obj;
     }
@@ -105,13 +105,21 @@ public:
 
 private:
     void allocate_block();
-    static char* align_ptr(char* ptr, size_t alignment) noexcept;
+    static std::byte* align_ptr(std::byte* ptr, size_t alignment) noexcept;
+
+    /**
+     * @brief Запись реестра деструкторов.
+     */
+    struct destructor_entry {
+        void* obj_;               /// указатель на объект
+        void (*destroy_)(void*);  /// указатель на функцию (деструктор)
+    };
 
     // Данные
-    std::vector<std::unique_ptr<char[]>> blocks_;     ///< Выделенные блоки памяти
-    std::vector<std::function<void()>> destructors_;  ///< Зарегистрированные деструкторы
-    char* current_ = nullptr;                         ///< Текущая позиция в активном блоке
-    char* end_ = nullptr;                             ///< Конец активного блока
+    std::vector<std::unique_ptr<std::byte[]>> blocks_;  ///< Выделенные блоки памяти
+    std::vector<destructor_entry> destructors_;         ///< Зарегистрированные деструкторы
+    std::byte* current_ = nullptr;                      ///< Текущая позиция в активном блоке
+    std::byte* end_ = nullptr;                          ///< Конец активного блока
 };
 
 /**
@@ -130,12 +138,12 @@ public:
      * @brief Конструктор.
      * @param arena Арена, в которой будет выделяться память.
      */
-    arena_memory_resource(arena& arena) noexcept;
+    arena_memory_resource(arena& arena) noexcept : arena_{arena} {}
 
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override;
+    void* do_allocate(size_t bytes, size_t alignment) override { return arena_.allocate_raw(bytes, alignment); }
     void do_deallocate(void*, size_t, size_t) noexcept override {}
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override;
+    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
 
     arena& arena_;
 };
