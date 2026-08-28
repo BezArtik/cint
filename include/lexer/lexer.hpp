@@ -31,7 +31,7 @@ public:
     /**
      * @brief Конструктор лексического анализатора.
      *
-     * @param src      Исходный код программы (не должен быть пустым)
+     * @param source   Исходный код программы (не должен быть пустым)
      * @param reporter Обработчик ошибок (должен существовать всё время жизни лексера)
      * @param mr       Memory resource для размещения токенов
      *
@@ -39,8 +39,8 @@ public:
      *       string_view. Вызывающий код должен гарантировать,
      *       что строка существует всё время сканирования.
      */
-    lexer(std::string_view src, core::error_reporter& reporter, core::arena_memory_resource& mr);
-
+    lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
+        : source_{source}, reporter_{reporter}, mr_{mr}, tokens_{&mr_} {}
     /**
      * @brief Выполняет полный проход по исходному тексту.
      *
@@ -152,7 +152,7 @@ private:
     core::arena_memory_resource& mr_;  ///< Memory resource для токенов
     token_list tokens_;                ///< Результирующий список токенов
 
-    size_t start_ = 0;          ///< Начало текущей лексемы
-    size_t current_ = 0;        ///< Текущая позиция в тексте
+    uint32_t start_ = 0;        ///< Начало текущей лексемы
+    uint32_t current_ = 0;      ///< Текущая позиция в тексте
     core::location loc_{1, 1};  ///< Текущая позиция (строка:колонка)};
 };

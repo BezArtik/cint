@@ -4,7 +4,6 @@
 
 #include "core/error/error_codes.hpp"
 #include "core/error/error_report.hpp"
-#include "core/memory/arena.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token.hpp"
 #include "core/token/token_types.hpp"
@@ -14,9 +13,6 @@
 
 using tt = core::token_type;
 using err = core::error_code;
-
-lexer::lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
-    : source_{source}, reporter_{reporter}, mr_{mr}, tokens_{&mr_} {}
 
 lexer::token_list lexer::scan_tokens() {
     start_ = 0;
