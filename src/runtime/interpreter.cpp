@@ -32,7 +32,7 @@ namespace op = core::ops;
 namespace {
 
 core::value apply_increment(core::value& val, core::token_type op, bool return_old) {
-    auto&& old_val = val;
+    auto old_val = val;
 
     if (val.is_int()) {
         val = (op == tt::INCREMENT ? val.to_int() + 1 : val.to_int() - 1);
@@ -56,10 +56,6 @@ struct interpreter::execution_result {
 
     bool is_return() const noexcept { return kind_ == kind::return_; }
 };
-
-interpreter::interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
-                         const debug::debug_writer& writer)
-    : reporter_{reporter}, registry_{registry}, writer_{writer} {}
 
 void interpreter::interpret(std::span<const ast::statement> statements) {
     try {
@@ -332,10 +328,9 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     std::array<std::byte, 4096> args_buf;
     std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
     std::pmr::vector<core::value> args_vec(&args_mr);
-    try {
-        std::ranges::transform(expr.args_, std::back_inserter(args_vec),
-                               [&](auto&& arg) { return evaluate(arg); });
-    } catch (const core::runtime_error&) { return {}; }
+
+    std::ranges::transform(expr.args_, std::back_inserter(args_vec),
+            [&](auto&& arg) { return evaluate(arg); });
 
     auto&& func = registry_.find(name);
     std::span<const core::value> args{args_vec.data(), expr.args_.size()};
