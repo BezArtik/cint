@@ -23,34 +23,33 @@ namespace {
 struct infix_rule {
     tt type_;
     int8_t precedence_;
-    bool right_assoc_;
 };
 
 // clang-format off
 constexpr std::array infix_table = {
-    infix_rule{tt::LOGICAL_OR, 2, false},  
-    infix_rule{tt::LOGICAL_AND, 3, false},
+    infix_rule{tt::LOGICAL_OR, 2},  
+    infix_rule{tt::LOGICAL_AND, 3},
 
-    infix_rule{tt::BIT_OR, 4, false},      
-    infix_rule{tt::XOR, 5, false},
-    infix_rule{tt::BIT_AND, 6, false},
+    infix_rule{tt::BIT_OR, 4},      
+    infix_rule{tt::XOR, 5},
+    infix_rule{tt::BIT_AND, 6},
 
-    infix_rule{tt::EQUAL_EQUAL, 7, false}, 
-    infix_rule{tt::BANG_EQUAL, 7, false},
-    infix_rule{tt::LESS, 8, false},        
-    infix_rule{tt::LESS_EQUAL, 8, false},
-    infix_rule{tt::GREATER, 8, false},     
-    infix_rule{tt::GREATER_EQUAL, 8, false},
+    infix_rule{tt::EQUAL_EQUAL, 7}, 
+    infix_rule{tt::BANG_EQUAL, 7},
+    infix_rule{tt::LESS, 8},        
+    infix_rule{tt::LESS_EQUAL, 8},
+    infix_rule{tt::GREATER, 8},     
+    infix_rule{tt::GREATER_EQUAL, 8},
 
-    infix_rule{tt::SHL, 9, false},        
-    infix_rule{tt::SHR, 9, false},
+    infix_rule{tt::SHL, 9},        
+    infix_rule{tt::SHR, 9},
 
-    infix_rule{tt::PLUS, 10, false},       
-    infix_rule{tt::MINUS, 10, false},
+    infix_rule{tt::PLUS, 10},       
+    infix_rule{tt::MINUS, 10},
 
-    infix_rule{tt::STAR, 11, false},      
-    infix_rule{tt::SLASH, 11, false},
-    infix_rule{tt::PERCENT, 11, false},
+    infix_rule{tt::STAR, 11},      
+    infix_rule{tt::SLASH, 11},
+    infix_rule{tt::PERCENT, 11},
 };
 // clang-format on
 
@@ -288,13 +287,15 @@ ast::statement parser::return_statement() {
 
 ast::statement parser::block_statement() {
     ast::stmt_list statements{&mr_};
+    auto&& has_decls = false;
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& stmt = declaration();
-        if (stmt) statements.push_back(std::move(*stmt));
+        if (stmt) {
+            if (stmt->holds<ast::var_declaration_stmt>()) has_decls = true;
+            statements.push_back(std::move(*stmt));
+        }
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
-    auto&& has_decls =
-        std::ranges::any_of(statements, [](auto&& stmt) { return stmt.template holds<ast::var_declaration_stmt>(); });
     return ast::make_stmt<ast::block_stmt>(arena_, std::move(statements), has_decls, prev().loc_);
 }
 
@@ -320,8 +321,7 @@ ast::expression parser::parse_expression(int8_t precedence) {
         if (it == infix_table.end() || it->precedence_ < precedence) break;
 
         auto&& op = advance();
-        auto&& next_prec = it->right_assoc_ ? it->precedence_ : it->precedence_ + 1;
-        auto&& right = parse_expression(next_prec);
+        auto&& right = parse_expression(it->precedence_ + 1);
         left = ast::make_expr<ast::binary_expr>(arena_, std::move(left), op, std::move(right), op.loc_);
     }
 
@@ -361,7 +361,7 @@ ast::expression parser::initializer_list() {
 
     if (!check(tt::RIGHT_BRACE)) {
         do {
-            match({tt::LEFT_BRACE}) ? elements.push_back(initializer_list()) : elements.push_back(assignment());
+            elements.push_back(match({tt::LEFT_BRACE}) ? initializer_list() : assignment());
         } while (match({tt::COMMA}));
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
