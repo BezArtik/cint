@@ -48,7 +48,8 @@ public:
      * @note registry должен содержать информацию о всех функциях и структурах
      *       верхнего уровня, включая builtin-функции.
      */
-    type_checker(core::error_reporter& reporter, const core::symbol_registry& registry);
+    type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
+        : reporter_{reporter}, registry_{registry} {}
 
     /**
      * @brief Выполняет полную проверку программы.

@@ -16,9 +16,6 @@ using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
 
-type_checker::type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
-    : reporter_{reporter}, registry_{registry} {}
-
 bool type_checker::check(std::span<const ast::statement> statements) {
     for (auto&& stmt : statements) check_statement(stmt);
     return !reporter_.has_error();
@@ -368,6 +365,11 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
     auto&& func = registry_.find(name);
+
+    if (func == registry_.end()) {
+        reporter_.error(expr, err::undefined_function, name);
+        return t::unknown_type();
+    }
 
     auto&& params = func->type_.param_infos();
     if (expr.args_.size() != params.size()) {
