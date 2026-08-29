@@ -31,8 +31,7 @@ struct literal_expr {
  * переменной с указанным именем.
  */
 struct variable_expr {
-    core::token name_;    ///< Токен имени переменной
-    core::location loc_;  ///< Позиция в исходном коде
+    core::token name_;  ///< Токен имени переменной
 };
 
 /**
@@ -42,10 +41,9 @@ struct variable_expr {
  * Порядок вычисления операндов: слева направо (кроме && и || с коротким замыканием).
  */
 struct binary_expr {
-    expression left_;     ///< Левый операнд
-    core::token op_;      ///< Токен оператора
-    expression right_;    ///< Правый операнд
-    core::location loc_;  ///< Позиция в исходном коде
+    expression left_;   ///< Левый операнд
+    core::token op_;    ///< Токен оператора
+    expression right_;  ///< Правый операнд
 };
 
 /**
@@ -56,10 +54,9 @@ struct binary_expr {
  * Левая часть должна быть lvalue-выражением.
  */
 struct assignment_expr {
-    expression target_;   ///< Lvalue-цель присваивания
-    core::token op_;      ///< Токен оператора присваивания
-    expression value_;    ///< Присваиваемое значение
-    core::location loc_;  ///< Позиция в исходном коде
+    expression target_;  ///< Lvalue-цель присваивания
+    core::token op_;     ///< Токен оператора присваивания
+    expression value_;   ///< Присваиваемое значение
 };
 
 /**
@@ -71,7 +68,6 @@ struct assignment_expr {
 struct unary_expr {
     core::token op_;      ///< Токен унарного оператора
     expression operand_;  ///< Операнд
-    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**
@@ -83,7 +79,6 @@ struct unary_expr {
 struct postfix_expr {
     expression operand_;  ///< Операнд (должен быть lvalue)
     core::token op_;      ///< Токен оператора (INCREMENT или DECREMENT)
-    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**
@@ -96,7 +91,6 @@ struct postfix_expr {
 struct call_expr {
     core::token callee_;  ///< Токен имени функции
     expr_list args_;      ///< Список аргументов
-    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**
@@ -131,7 +125,6 @@ struct index_expr {
 struct member_access_expr {
     expression object_;   ///< Выражение-структура
     core::token member_;  ///< Токен имени поля
-    core::location loc_;  ///< Позиция в исходном коде
 };
 
 /**

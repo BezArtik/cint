@@ -228,9 +228,9 @@ core::value interpreter::evaluate_binary(const ast::binary_expr& expr) {
             case tt::XOR:           return op::bit_xor(left, right);
             case tt::SHL:           return op::shl(left, right);
             case tt::SHR:           return op::shr(left, right);
-            default: reporter_.runtime_error(expr, err::unsupported_binary_operator, expr.op_.lexeme_);
+            default: reporter_.runtime_error(expr.op_.loc_, err::unsupported_binary_operator, expr.op_.lexeme_);
         }
-    } catch (const core::value_error& e) { reporter_.runtime_error(expr, e.code_, expr.op_.lexeme_); }
+    } catch (const core::value_error& e) { reporter_.runtime_error(expr.op_.loc_, e.code_, expr.op_.lexeme_); }
 }
 
 
@@ -247,7 +247,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 auto&& arr = obj.as_mut<core::value::array_t>();
 
                 if (i < 0 || i >= static_cast<core::value::int_t>(arr->size()))
-                    reporter_.runtime_error(e, err::index_out_of_bounds);
+                    reporter_.runtime_error(e.loc_, err::index_out_of_bounds);
 
                 return (*arr)[i];
             },
@@ -306,7 +306,7 @@ core::value interpreter::evaluate_unary(const ast::unary_expr& expr) {
         case tt::DECREMENT:
             return apply_increment(evaluate_lvalue(expr.operand_), op, false);
         default:
-            reporter_.runtime_error(expr, err::unsupported_unary_operator, expr.op_.lexeme_);
+            reporter_.runtime_error(expr.op_.loc_, err::unsupported_unary_operator, expr.op_.lexeme_);
     }
 }
 
@@ -317,7 +317,7 @@ core::value interpreter::evaluate_postfix(const ast::postfix_expr& expr) {
 core::value interpreter::evaluate_call(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
-    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.runtime_error(expr, err::stack_overflow);
+    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.runtime_error(expr.callee_.loc_, err::stack_overflow);
     recursion_depth_++;
 
     struct depth_guard {
@@ -343,7 +343,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
             } catch (const core::value_error& e) {
-                reporter_.runtime_error(expr, e.code_, name);
+                reporter_.runtime_error(expr.callee_.loc_, e.code_, name);
                 return {};
             }
         },
@@ -365,7 +365,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             return r;
         },
         [&](core::symbol_registry::struct_ptr) -> core::value {
-            reporter_.runtime_error(expr, err::not_a_function, name);
+            reporter_.runtime_error(expr.callee_.loc_, err::not_a_function, name);
             return {};
         }},
         func->info_);

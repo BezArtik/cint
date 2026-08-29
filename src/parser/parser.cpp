@@ -77,7 +77,7 @@ bool parser::match(std::initializer_list<tt> types) noexcept {
 
 const core::token& parser::consume(tt type, err code) {
     if (check(type)) return advance();
-    reporter_.parse_error(peek(), code);
+    reporter_.parse_error(peek().loc_, code);
 }
 
 bool parser::check(tt type) const noexcept {
@@ -132,8 +132,8 @@ core::type parser::parse_array_dimensions(core::type base_type) {
             try {
                 auto&& val = core::value::from_string(size_token.lexeme_, false);
                 dim_size = val.to_int();
-            } catch (const core::value_error&) { reporter_.parse_error(size_token, err::unexpected_token); }
-            if (dim_size == 0) reporter_.parse_error(size_token, err::unexpected_token);
+            } catch (const core::value_error&) { reporter_.parse_error(size_token.loc_, err::unexpected_token); }
+            if (dim_size == 0) reporter_.parse_error(size_token.loc_, err::unexpected_token);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
         dimensions.push_back(dim_size);
@@ -151,7 +151,7 @@ ast::statement parser::var_declaration(core::type type, const core::token& name)
     std::optional<ast::expression> initializer;
     if (match({tt::EQUAL})) initializer = match({tt::LEFT_BRACE}) ? initializer_list() : assignment();
     consume(tt::SEMICOLON, err::expected_semicolon);
-    return ast::make_stmt<ast::var_declaration_stmt>(arena_, std::move(type), name, std::move(initializer), name.loc_);
+    return ast::make_stmt<ast::var_declaration_stmt>(arena_, std::move(type), name, std::move(initializer));
 }
 
 ast::statement parser::func_declaration(core::type return_type, const core::token& name) {
@@ -207,11 +207,11 @@ core::type parser::parse_type() {
         auto&& kw = prev();
 
         auto&& it = std::ranges::find(core::keywords, kw.type_, &core::keyword_info::type_);
-        if (it == core::keywords.end()) reporter_.parse_error(kw, err::expected_type);
+        if (it == core::keywords.end()) reporter_.parse_error(kw.loc_, err::expected_type);
         return it->semantic_type_;
     }
 
-    reporter_.parse_error(peek(), err::expected_type);
+    reporter_.parse_error(peek().loc_, err::expected_type);
 }
 
 ast::statement parser::statement() {
@@ -276,13 +276,11 @@ ast::statement parser::if_statement() {
 }
 
 ast::statement parser::return_statement() {
-    auto&& keyword = prev();
-
     std::optional<ast::expression> value;
     if (!check(tt::SEMICOLON)) value = assignment();
     consume(tt::SEMICOLON, err::expected_semicolon);
 
-    return ast::make_stmt<ast::return_stmt>(arena_, keyword, std::move(value), keyword.loc_);
+    return ast::make_stmt<ast::return_stmt>(arena_, std::move(value), prev().loc_);
 }
 
 ast::statement parser::block_statement() {
@@ -306,7 +304,7 @@ ast::expression parser::assignment() {
                tt::BIT_AND_EQUAL, tt::BIT_OR_EQUAL, tt::BIT_NOT_EQUAL, tt::XOR_EQUAL, tt::SHL_EQUAL, tt::SHR_EQUAL})) {
         auto&& op = prev();
         auto&& right = assignment();
-        return ast::make_expr<ast::assignment_expr>(arena_, std::move(left), op, std::move(right), op.loc_);
+        return ast::make_expr<ast::assignment_expr>(arena_, std::move(left), op, std::move(right));
     }
 
     return left;
@@ -322,7 +320,7 @@ ast::expression parser::parse_expression(int8_t precedence) {
 
         auto&& op = advance();
         auto&& right = parse_expression(it->precedence_ + 1);
-        left = ast::make_expr<ast::binary_expr>(arena_, std::move(left), op, std::move(right), op.loc_);
+        left = ast::make_expr<ast::binary_expr>(arena_, std::move(left), op, std::move(right));
     }
 
     return left;
@@ -332,7 +330,7 @@ ast::expression parser::unary() {
     if (match({tt::BANG, tt::MINUS, tt::INCREMENT, tt::DECREMENT, tt::BIT_NOT})) {
         auto&& op = prev();
         auto&& operand = unary();
-        return ast::make_expr<ast::unary_expr>(arena_, op, std::move(operand), op.loc_);
+        return ast::make_expr<ast::unary_expr>(arena_, op, std::move(operand));
     }
     return postfix();
 }
@@ -345,9 +343,9 @@ ast::expression parser::postfix() {
             expr = finish_index(std::move(expr));
         } else if (match({tt::DOT})) {
             auto&& member = consume(tt::IDENTIFIER, err::expected_identifier);
-            expr = ast::make_expr<ast::member_access_expr>(arena_, std::move(expr), member, member.loc_);
+            expr = ast::make_expr<ast::member_access_expr>(arena_, std::move(expr), member);
         } else if (match({tt::INCREMENT, tt::DECREMENT})) {
-            expr = ast::make_expr<ast::postfix_expr>(arena_, std::move(expr), prev(), prev().loc_);
+            expr = ast::make_expr<ast::postfix_expr>(arena_, std::move(expr), prev());
         } else {
             break;
         }
@@ -424,8 +422,7 @@ ast::expression parser::primary() {
 
     if (match({tt::IDENTIFIER})) {
         auto&& name = prev();
-        return match({tt::LEFT_PAREN}) ? finish_call(name)
-                                       : ast::make_expr<ast::variable_expr>(arena_, name, name.loc_);
+        return match({tt::LEFT_PAREN}) ? finish_call(name) : ast::make_expr<ast::variable_expr>(arena_, name);
     }
 
     if (match({tt::LEFT_PAREN})) {
@@ -436,7 +433,7 @@ ast::expression parser::primary() {
 
     if (match({tt::LEFT_BRACE})) return initializer_list();
 
-    reporter_.parse_error(peek(), err::expected_expression);
+    reporter_.parse_error(peek().loc_, err::expected_expression);
 }
 
 ast::expression parser::finish_call(const core::token& callee) {
@@ -448,7 +445,7 @@ ast::expression parser::finish_call(const core::token& callee) {
 
     consume(tt::RIGHT_PAREN, err::expected_right_paren);
 
-    return ast::make_expr<ast::call_expr>(arena_, callee, std::move(args), callee.loc_);
+    return ast::make_expr<ast::call_expr>(arena_, callee, std::move(args));
 }
 
 ast::expression parser::finish_index(ast::expression object) {

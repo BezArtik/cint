@@ -43,12 +43,12 @@ void print_literal(const debug_writer& writer, const ast::literal_expr& e, uint3
 
 void print_variable(const debug_writer& writer, const ast::variable_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Variable: " + std::string{e.name_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Variable: " + std::string{e.name_.lexeme_} + location_str(e.name_.loc_) + "\n");
 }
 
 void print_binary(const debug_writer& writer, const ast::binary_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Binary: " + std::string{e.op_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Binary: " + std::string{e.op_.lexeme_} + location_str(e.op_.loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Left:\n");
     print_expression(writer, e.left_, level + 2);
     writer.emit(indent_str(level + 1) + "Right:\n");
@@ -57,7 +57,7 @@ void print_binary(const debug_writer& writer, const ast::binary_expr& e, uint32_
 
 void print_assignment(const debug_writer& writer, const ast::assignment_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Assignment: " + std::string{e.op_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Assignment: " + std::string{e.op_.lexeme_} + location_str(e.op_.loc_) + "\n");
     writer.emit(indent_str(level + 1) + "Target:\n");
     print_expression(writer, e.target_, level + 2);
     writer.emit(indent_str(level + 1) + "Value:\n");
@@ -66,19 +66,19 @@ void print_assignment(const debug_writer& writer, const ast::assignment_expr& e,
 
 void print_unary(const debug_writer& writer, const ast::unary_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Unary: " + std::string{e.op_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Unary: " + std::string{e.op_.lexeme_} + location_str(e.op_.loc_) + "\n");
     print_expression(writer, e.operand_, level + 1);
 }
 
 void print_postfix(const debug_writer& writer, const ast::postfix_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "Postfix: " + std::string{e.op_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "Postfix: " + std::string{e.op_.lexeme_} + location_str(e.op_.loc_) + "\n");
     print_expression(writer, e.operand_, level + 1);
 }
 
 void print_call_ast(const debug_writer& writer, const ast::call_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    auto&& msg = indent_str(level) + "Call: " + std::string{e.callee_.lexeme_} + location_str(e.loc_);
+    auto&& msg = indent_str(level) + "Call: " + std::string{e.callee_.lexeme_} + location_str(e.callee_.loc_);
     if (e.args_.empty()) {
         writer.emit(msg + " (no args)\n");
         return;
@@ -111,7 +111,8 @@ void print_index_ast(const debug_writer& writer, const ast::index_expr& e, uint3
 
 void print_member_access(const debug_writer& writer, const ast::member_access_expr& e, uint32_t level) {
     if (!writer.enabled(trace_level::ast)) return;
-    writer.emit(indent_str(level) + "MemberAccess: ." + std::string{e.member_.lexeme_} + location_str(e.loc_) + "\n");
+    writer.emit(indent_str(level) + "MemberAccess: ." + std::string{e.member_.lexeme_} + location_str(e.member_.loc_) +
+                "\n");
     writer.emit(indent_str(level + 1) + "Object:\n");
     print_expression(writer, e.object_, level + 2);
 }

@@ -36,7 +36,6 @@ struct var_declaration_stmt {
     core::type type_;                        ///< Тип переменной
     core::token name_;                       ///< Токен имени
     std::optional<expression> initializer_;  ///< Инициализатор
-    core::location loc_;                     ///< Позиция в исходном коде
 };
 
 /**
@@ -101,7 +100,6 @@ struct if_stmt {
  * Проверка соответствия типов выполняется на этапе type checking.
  */
 struct return_stmt {
-    core::token keyword_;              ///< Токен ключевого слова return
     std::optional<expression> value_;  ///< Возвращаемое значение
     core::location loc_;               ///< Позиция в исходном коде
 };

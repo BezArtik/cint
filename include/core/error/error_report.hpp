@@ -57,9 +57,9 @@ public:
      * @brief Сообщает об ошибке с указанием позиции.
      *
      * @tparam Args Типы аргументов для форматирования
-     * @param loc  Позиция в исходном коде
-     * @param code Код ошибки
-     * @param args Аргументы для подстановки в сообщение (плейсхолдеры {})
+     * @param  loc  Позиция, где обнаружена ошибка
+     * @param  code Код ошибки
+     * @param  args Аргументы для подстановки в сообщение (плейсхолдеры {})
      *
      * @note Не прерывает выполнение — ошибка добавляется в список,
      *       выполнение продолжается для обнаружения других ошибок.
@@ -71,37 +71,20 @@ public:
     }
 
     /**
-     * @brief Сообщает об ошибке, беря позицию из токена.
-     *
-     * Удобная перегрузка, когда позиция ошибки привязана к конкретному токену.
-     *
-     * @tparam T    Тип, имеющий поле loc_ (token, expression, statement)
-     * @tparam Args Типы аргументов для форматирования
-     * @param t    Объект с позицией (токен, узел AST)
-     * @param code Код ошибки
-     * @param args Аргументы для форматирования
-     */
-    template <typename T, typename... Args>
-    void error(const T& t, error_code code, Args&&... args) {
-        error(t.loc_, code, std::forward<Args>(args)...);
-    }
-
-    /**
      * @brief Сообщает о фатальной ошибке значения.
      *
      * Выводит сообщение и выбрасывает core::value_error.
      * Используется операциями над значениями и builtin-функциями.
      *
-     * @tparam T    Тип с полем loc_
-     * @tparam Args Типы аргументов для форматирования
-     * @param t    Объект с позицией
-     * @param code Код ошибки
-     * @param args Аргументы для форматирования
+     * @tparam Args  Типы аргументов для форматирования
+     * @param  loc   Позиция, где обнаружена ошибка
+     * @param  code  Код ошибки
+     * @param  args  Аргументы для форматирования
      * @throws core::value_error Всегда.
      */
-    template <typename T, typename... Args>
-    [[noreturn]] void value_error(const T& t, error_code code, Args&&... args) {
-        error(t.loc_, code, std::forward<Args>(args)...);
+    template <typename... Args>
+    [[noreturn]] void value_error(location loc, error_code code, Args&&... args) {
+        error(loc, code, std::forward<Args>(args)...);
         throw core::value_error{code};
     }
 
@@ -110,16 +93,15 @@ public:
      *
      * Используется интерпретатором при невозможности продолжить выполнение.
      *
-     * @tparam T    Тип с полем loc_
      * @tparam Args Типы аргументов для форматирования
-     * @param t    Объект с позицией
-     * @param code Код ошибки
-     * @param args Аргументы для форматирования
+     * @param loc   Позиция, где обнаружена ошибка
+     * @param code  Код ошибки
+     * @param args  Аргументы для форматирования
      * @throws core::runtime_error Всегда.
      */
-    template <typename T, typename... Args>
-    [[noreturn]] void runtime_error(const T& t, error_code code, Args&&... args) {
-        error(t.loc_, code, std::forward<Args>(args)...);
+    template <typename... Args>
+    [[noreturn]] void runtime_error(location loc, error_code code, Args&&... args) {
+        error(loc, code, std::forward<Args>(args)...);
         throw core::runtime_error{code};
     }
 
@@ -129,12 +111,12 @@ public:
      * Выводит сообщение и выбрасывает core::parse_error.
      * Используется парсером при невозможности восстановления.
      *
-     * @param token Токен, на котором обнаружена ошибка
+     * @param loc   Позиция, где обнаружена ошибка
      * @param code  Код ошибки
      * @throws core::parse_error Всегда.
      */
-    [[noreturn]] void parse_error(const token& token, error_code code) {
-        error(token.loc_, code);
+    [[noreturn]] void parse_error(location loc, error_code code) {
+        error(loc, code);
         throw core::parse_error{};
     }
 
