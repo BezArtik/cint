@@ -14,17 +14,33 @@
 namespace core {
 // clang-format off
 
-type type::int_type() { return type(int_t{}); }
-type type::double_type() { return type(double_t{}); }
-type type::bool_type() { return type(bool_t{}); }
-type type::string_type() { return type(string_t{}); }
-type type::void_type() { return type(void_t{}); }
-type type::unknown_type() { return type(unknown_t{}); }
+struct type::function_t {
+    std::string_view name_;
+    type return_type_;
+    std::vector<param_t> params_;
+};
+
+struct type::array_t {
+    type element_type_;
+    size_t size_;
+};
+
+struct type::struct_t {
+    std::string_view name_;
+    std::vector<field_t> fields_;
+};
+
+type type::int_type() { return int_t{}; }
+type type::double_type() { return double_t{}; }
+type type::bool_type() { return bool_t{}; }
+type type::string_type() { return string_t{}; }
+type type::void_type() { return void_t{}; }
+type type::unknown_type() { return unknown_t{}; }
 type type::function_type(std::string_view name, type return_type, std::vector<param_t> params) {
-    return std::make_shared<function_t>(name, std::make_unique<type>(std::move(return_type)), std::move(params));
+    return std::make_shared<function_t>(name, std::move(return_type), std::move(params));
 }
 type type::array_type(type element_type, size_t size) {
-    return std::make_shared<array_t>(std::make_unique<type>(std::move(element_type)), size);
+    return std::make_shared<array_t>(std::move(element_type), size);
 }
 type type::struct_type(std::string_view name, std::vector<field_t> fields) {
     return std::make_shared<struct_t>(name, std::move(fields));
@@ -58,10 +74,10 @@ bool type::operator==(const type& other) const noexcept {
 bool type::operator!=(const type& other) const noexcept { return !(*this == other); }
 
 std::string_view type::function_name() const { return std::get<std::shared_ptr<function_t>>(data_)->name_; }
-const type& type::return_type() const { return *std::get<std::shared_ptr<function_t>>(data_)->return_type_; }
+const type& type::return_type() const { return std::get<std::shared_ptr<function_t>>(data_)->return_type_; }
 std::span<const type::param_t> type::param_infos() const { return std::get<std::shared_ptr<function_t>>(data_)->params_; }
 
-const type& type::element_type() const { return *std::get<std::shared_ptr<array_t>>(data_)->element_type_; }
+const type& type::element_type() const { return std::get<std::shared_ptr<array_t>>(data_)->element_type_; }
 size_t type::array_size() const { return std::get<std::shared_ptr<array_t>>(data_)->size_; }
 
 std::string_view type::struct_name() const { return std::get<std::shared_ptr<struct_t>>(data_)->name_; }

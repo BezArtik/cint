@@ -160,19 +160,9 @@ private:
     struct string_t {};
     struct void_t {};
     struct unknown_t {};
-    struct function_t {
-        std::string_view name_;
-        std::unique_ptr<type> return_type_;
-        std::vector<param_t> params_;
-    };
-    struct array_t {
-        std::unique_ptr<type> element_type_;
-        size_t size_;
-    };
-    struct struct_t {
-        std::string_view name_;
-        std::vector<field_t> fields_;
-    };
+    struct function_t;
+    struct array_t;
+    struct struct_t;
 
     template <typename Info>
     type(Info info) : data_{std::move(info)} {}
