@@ -40,14 +40,12 @@ namespace detail {
 
 /// Вспомогательный шаблон для извлечения типов из std::variant.
 template <typename T>
-struct variant_types_impl;
+struct variant_types;
 
 template <typename... Ts>
-struct variant_types_impl<std::variant<Ts...>> {
+struct variant_types<std::variant<Ts...>> {
     static consteval std::type_identity<std::variant<Ts...>> check() { return {}; }
 };
-
-}  // namespace detail
 
 /**
  * @brief Концепт: visitor обрабатывает все типы variant'а.
@@ -63,7 +61,9 @@ struct variant_types_impl<std::variant<Ts...>> {
 template <typename Visitor, typename Variant>
 concept exhaustive_visitor = []<typename... Types>(std::type_identity<std::variant<Types...>>) {
     return (std::invocable<Visitor, Types> && ...);
-}(detail::variant_types_impl<std::remove_cvref_t<Variant>>::check());
+}(variant_types<std::remove_cvref_t<Variant>>::check());
+
+}  // namespace detail
 
 /**
  * @brief std::visit с проверкой полноты обработки variant.
@@ -81,7 +81,7 @@ concept exhaustive_visitor = []<typename... Types>(std::type_identity<std::varia
  *
  */
 template <typename Variant, typename Visitor>
-    requires exhaustive_visitor<Visitor, Variant>
+    requires detail::exhaustive_visitor<Visitor, Variant>
 decltype(auto) visit(Visitor&& vis, Variant&& var) {
     return std::visit(std::forward<Visitor>(vis), std::forward<Variant>(var));
 }

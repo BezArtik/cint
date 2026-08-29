@@ -405,8 +405,8 @@ t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr)
     auto&& first_type = type_of(expr.elements_[0]);
     if (first_type.is_unknown()) return t::unknown_type();
 
-    for (size_t i = 1; i < expr.elements_.size(); ++i) {
-        auto&& el_type = type_of(expr.elements_[i]);
+    for (auto&& elem : expr.elements_) {
+        auto&& el_type = type_of(elem);
         if (el_type.is_unknown()) return t::unknown_type();
         if (first_type != el_type) {
             reporter_.error(expr.loc_, err::initializer_list_inconsistent_types);

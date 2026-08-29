@@ -154,7 +154,7 @@ ast::statement parser::var_declaration(core::type type, const core::token& name)
     return ast::make_stmt<ast::var_declaration_stmt>(arena_, std::move(type), name, std::move(initializer));
 }
 
-ast::statement parser::func_declaration(core::type return_type, const core::token& name) {
+ast::statement parser::func_declaration(const core::type& return_type, const core::token& name) {
     std::vector<core::type::param_t> params;
     params.reserve(4);
     if (!check(tt::RIGHT_PAREN)) {

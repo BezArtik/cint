@@ -33,7 +33,7 @@ using builtin_fn_ptr = value (*)(std::span<const value>);
  * определяет имя, сигнатуру и реализацию встроенной функции.
  */
 struct builtin_def {
-    type type_;            ///< function_type с именем возвратом и параметрами
+    type type_;            ///< function_type с именем, возвратом и параметрами
     builtin_fn_ptr impl_;  ///< Указатель на реализацию
 };
 

@@ -163,7 +163,7 @@ private:
      * @param name        Токен имени функции (уже потреблён)
      * @return Узел func_declaration.
      */
-    ast::statement func_declaration(core::type return_type, const core::token& name);
+    ast::statement func_declaration(const core::type& return_type, const core::token& name);
 
     /**
      * @brief Разбирает объявление структуры.

@@ -9,7 +9,9 @@
 #include "core/memory/arena.hpp"
 #include "core/utils/overloaded.hpp"
 
+#include <functional>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace ast {
@@ -28,6 +30,9 @@ struct is_one_of : std::disjunction<std::is_same<T, Types>...> {};
 template <typename T, typename... Types>
 inline constexpr bool is_one_of_v = is_one_of<T, Types...>::value;
 
+#define IS_ONE_OF(Type, Types) \
+    static_assert(is_one_of_v<Type, Types...>, "T must be one og the variant_wrapper's types")
+
 /**
  * @brief Обертка над std::variant, автоматически разыменовывающая arena_ptr.
  * @ingroup AST
@@ -40,23 +45,29 @@ inline constexpr bool is_one_of_v = is_one_of<T, Types...>::value;
  */
 template <typename... Types>
 class variant_wrapper {
+    /**
+     * Тип, которым обернуты альтернативы Types.
+     */
+    template <typename T>
+    using wrap = core::arena_ptr<T>;
+
 public:
     static_assert(sizeof...(Types) > 0, "variant_wrapper must have at least one type");
+
     /// @name Конструкторы
     /// @{
 
     /**
-     * @brief Конструирует обертку из core::arena_ptr.
+     * @brief Конструирует обертку из wrap.
      * @tparam T Тип узла (должен быть одним из Types...)
      * @param ptr Указатель на узел в арене
      */
     template <typename T>
-    variant_wrapper(core::arena_ptr<T> ptr) : data_{std::move(ptr)} {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
+    variant_wrapper(wrap<T> ptr) : data_{std::move(ptr)} {
+        IS_ONE_OF(T, Types);
     }
 
     /// @}
-
     /// @name Проверка типа
     /// @{
 
@@ -67,8 +78,8 @@ public:
      */
     template <typename T>
     bool holds() const {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
-        return std::holds_alternative<core::arena_ptr<T>>(data_);
+        IS_ONE_OF(T, Types);
+        return std::holds_alternative<wrap<T>>(data_);
     }
 
     /// @}
@@ -85,8 +96,8 @@ public:
      */
     template <typename T>
     T& get() {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
-        return *std::get<core::arena_ptr<T>>(data_);
+        IS_ONE_OF(T, Types);
+        return *std::get<wrap<T>>(data_);
     }
 
     /**
@@ -94,8 +105,8 @@ public:
      */
     template <typename T>
     const T& get() const {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
-        return *std::get<core::arena_ptr<T>>(data_);
+        IS_ONE_OF(T, Types);
+        return *std::get<wrap<T>>(data_);
     }
 
     /**
@@ -105,8 +116,8 @@ public:
      */
     template <typename T>
     T* get_if() {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
-        if (auto&& ptr = std::get_if<core::arena_ptr<T>>(&data_)) return ptr->get();
+        IS_ONE_OF(T, Types);
+        if (auto&& ptr = std::get_if<wrap<T>>(&data_)) return ptr->get();
         return nullptr;
     }
 
@@ -115,8 +126,8 @@ public:
      */
     template <typename T>
     const T* get_if() const {
-        static_assert(is_one_of_v<T, Types...>, "T must be one of the variant_wrapper's types");
-        if (auto&& ptr = std::get_if<core::arena_ptr<T>>(&data_)) return ptr->get();
+        IS_ONE_OF(T, Types);
+        if (auto&& ptr = std::get_if<wrap<T>>(&data_)) return ptr->get();
         return nullptr;
     }
 
@@ -136,7 +147,8 @@ public:
      */
     template <typename Visitor>
     decltype(auto) visit(Visitor&& visitor) {
-        return core::visit([&](auto& ptr) -> decltype(auto) { return std::forward<Visitor>(visitor)(*ptr); }, data_);
+        return core::visit(
+            [&](auto& ptr) -> decltype(auto) { return std::invoke(std::forward<Visitor>(visitor), *ptr); }, data_);
     }
 
     /**
@@ -144,13 +156,16 @@ public:
      */
     template <typename Visitor>
     decltype(auto) visit(Visitor&& visitor) const {
-        return core::visit([&](const auto& ptr) -> decltype(auto) { return std::forward<Visitor>(visitor)(*ptr); },
-                           data_);
+        return core::visit(
+            [&](const auto& ptr) -> decltype(auto) { return std::invoke(std::forward<Visitor>(visitor), *ptr); },
+            data_);
     }
 
     /// @}
 private:
-    std::variant<core::arena_ptr<Types>...> data_;
+    std::variant<wrap<Types>...> data_;
 };
+
+#undef IS_ONE_OF
 
 }  // namespace ast
