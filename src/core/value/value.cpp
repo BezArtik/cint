@@ -90,9 +90,9 @@ value::bool_t value::to_bool() const {
         data_);
 }
 
-std::string value::to_string() const {
+value::string_t value::to_string() const {
     auto&& to_string_range = [&](auto&& cnt) {
-        std::string res{"{"};
+        string_t res{"{"};
         res.reserve(cnt.size() * 16);
         for(size_t i = 0; i < cnt.size(); ++i) {
             if (i > 0) res += ", ";
@@ -105,11 +105,47 @@ std::string value::to_string() const {
         overloaded{
             [](int_t v) { return std::to_string(v); },
             [](double_t v) { return std::to_string(v); },
-            [](bool_t v) { return std::string{v ? "true" : "false"}; },
+            [](bool_t v) { return string_t{v ? "true" : "false"}; },
             [](const std::shared_ptr<string_t>& s) { return *s; },
             [&](const std::shared_ptr<array_t>& a) { return to_string_range(*a); },
             [&](const struct_t& s) { return to_string_range(s.fields_); },
-            [](std::monostate) { return std::string{"void"}; }
+            [](std::monostate) { return string_t{"void"}; }
+        },
+        data_);
+}
+
+const value::array_t& value::to_array() const {
+    return visit(
+        overloaded{
+            [](const std::shared_ptr<array_t>& arr) -> const array_t& { return *arr; },
+            [](const auto&) -> const array_t& { throw core::value_error{error_code::invalid_conversion}; }
+        },
+        data_);
+}
+
+value::array_t& value::to_array() {
+    return visit(
+        overloaded{
+            [](std::shared_ptr<array_t>& arr) -> array_t& { return *arr; },
+            [](auto&) -> array_t& { throw core::value_error{error_code::invalid_conversion}; }
+        },
+        data_);
+}
+
+const value::struct_t& value::to_struct() const {
+    return visit(
+        overloaded{
+            [](const struct_t& st) -> const struct_t& { return st; },
+            [](const auto&) -> const struct_t& { throw core::value_error{error_code::invalid_conversion}; }
+        },
+        data_);
+}
+
+value::struct_t& value::to_struct() {
+    return visit(
+        overloaded{
+            [](struct_t& st) -> struct_t& { return st; },
+            [](auto&) -> struct_t& { throw core::value_error{error_code::invalid_conversion}; }
         },
         data_);
 }

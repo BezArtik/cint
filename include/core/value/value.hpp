@@ -53,10 +53,10 @@ public:
     value(double_t v) : data_{v} {}
     value(bool_t v) : data_{v} {}
 
-    /// Создаёт строковое значение (размещает строку в shared_ptr).
+    /// Создаёт строковое значение.
     value(string_t v) : data_{std::make_shared<string_t>(std::move(v))} {}
 
-    /// Создаёт массив (размещает вектор в shared_ptr).
+    /// Создаёт массив.
     value(array_t v) : data_{std::make_shared<array_t>(std::move(v))} {}
 
     /// Создает структуру
@@ -80,51 +80,68 @@ public:
     /**
      * @brief Парсит строковое представление числа.
      *
-     * Использует std::from_chars для эффективного парсинга без аллокаций.
      *
      * @param text      Строковое представление числа
      * @param is_double true — парсить как double, false — как int
      * @return Распарсенное значение.
-     * @throws core::value_error если строка не является числом.
+     * @throws core::value_error, если строка не является числом.
      */
     static value from_string(std::string_view text, bool is_double);
 
+    /// @name Преобразования к примитивным типам
+    /// @{
+
     /**
-     * @brief Преобразует значение к int.
-     *
-     * Правила:
-     * - int → значение как есть
-     * - double → отбрасывание дробной части
-     * - string → парсинг как int
-     * - остальное → value_error
+     * @brief Преобразует значение к value::int_t.
+     * @throws core::value_error, если преобразование невозможно.
      */
     int_t to_int() const;
 
     /**
-     * @brief Преобразует значение к double.
-     *
-     * Правила:
-     * - int → повышение до double
-     * - double → значение как есть
-     * - string → парсинг как double
-     * - остальное → value_error
+     * @brief Преобразует значение к value::double_t.
+     * @throws core::value_error, если преобразование невозможно.
      */
     double_t to_double() const;
 
     /**
-     * @brief Преобразует значение к bool.
-     *
-     * Правила:
-     * - int/double: != 0 → true
-     * - bool: значение как есть
-     * - string: непустая → true
-     * - array: непустой → true
-     * - остальное → value_error
+     * @brief Преобразует значение к value::bool_t.
+     * @throws core::value_error, если преобразование невозможно.
      */
     bool_t to_bool() const;
 
-    /// Преобразует значение в строковое представление.
-    std::string to_string() const;
+    /**
+     * @brief Преобразует значение к value::string_t.
+     * @throws core::value_error, если преобразование невозможно.
+     */
+    string_t to_string() const;
+
+    /// @}
+
+    /// @name Доступ к составным типам
+    /// @{
+
+    /**
+     * @brief Получить ссылку на массив.
+     *
+     * @return Ссылка на вектор значений.
+     * @throws core::value_error, если значение не является массивом.
+     */
+    const array_t& to_array() const;
+    array_t& to_array();
+
+    /**
+     * @brief Получить ссылку на структуру.
+     *
+     * @return Ссылка на данные структуры.
+     * @throws core::value_error, если значение не является структурой.
+     */
+    const struct_t& to_struct() const;
+    struct_t& to_struct();
+
+    /// @}
+
+    /// @name Проверка на существование значения.
+    /// @{
 
     bool is_int() const noexcept;
     bool is_double() const noexcept;
@@ -134,39 +151,7 @@ public:
     bool is_struct() const noexcept;
     bool is_void() const noexcept;
 
-    /**
-     * @brief Получить значение конкретного типа (константный доступ).
-     *
-     * @tparam T Ожидаемый тип (int_t, double_t, string_t, array_t, struct_t)
-     * @return Указатель на значение или nullptr, если тип не совпадает.
-     */
-    template <typename T>
-    const T* as() const noexcept {
-        if constexpr (std::is_same_v<T, string_t> || std::is_same_v<T, array_t>) {
-            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) return ptr->get();
-            return nullptr;
-        } else {
-            return std::get_if<T>(&data_);
-        }
-    }
-
-    /**
-     * @brief Получить значение конкретного типа (изменяемый доступ).
-     *
-     * Используется для модификации значений на месте (инкремент, присваивание в массив).
-     *
-     * @tparam T Ожидаемый тип
-     * @return Указатель на значение или nullptr, если тип не совпадает.
-     */
-    template <typename T>
-    T* as_mut() noexcept {
-        if constexpr (std::is_same_v<T, string_t> || std::is_same_v<T, array_t>) {
-            if (auto&& ptr = std::get_if<std::shared_ptr<T>>(&data_)) return ptr->get();
-            return nullptr;
-        } else {
-            return std::get_if<T>(&data_);
-        }
-    }
+    /// @}
 
 private:
     /// @cond INTERNAL

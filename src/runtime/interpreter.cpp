@@ -93,8 +93,8 @@ interpreter::execution_result interpreter::execute_var_declaration(const ast::va
     if (stmt.initializer_) {
         if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
             if (type.is_struct()) {
-                auto&& st = init_val.as_mut<core::value::struct_t>();
-                std::ranges::transform(list->elements_, st->fields_.begin(),
+                auto&& st = init_val.to_struct();
+                std::ranges::transform(list->elements_, st.fields_.begin(),
                                        [&](auto&& elem) { return evaluate(elem); });
             } else {
                 init_val = evaluate_initializer_list(*list);
@@ -244,18 +244,18 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
                 auto&& obj = evaluate_lvalue(e.object_);
                 auto&& index_val = evaluate(e.index_);
                 auto&& i = index_val.to_int();
-                auto&& arr = obj.as_mut<core::value::array_t>();
+                auto&& arr = obj.to_array();
 
-                if (i < 0 || i >= static_cast<core::value::int_t>(arr->size()))
+                if (i < 0 || i >= static_cast<core::value::int_t>(arr.size()))
                     reporter_.runtime_error(e.loc_, err::index_out_of_bounds);
 
-                return (*arr)[i];
+                return arr[i];
             },
             [&](const ast::member_access_expr& e) -> core::value& {
                 auto&& obj = evaluate_lvalue(e.object_);
-                auto&& st = obj.as_mut<core::value::struct_t>();
-                auto&& idx = st->type_.field_index(e.member_.lexeme_);
-                return st->fields_[*idx];
+                auto&& st = obj.to_struct();
+                auto&& idx = st.type_.field_index(e.member_.lexeme_);
+                return st.fields_[*idx];
             },
             [](const auto&) -> core::value& {
                 throw core::runtime_error{err::type_mismatch_assignment};
@@ -333,13 +333,11 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
             [&](auto&& arg) { return evaluate(arg); });
 
     auto&& func = registry_.find(name);
-    std::span<const core::value> args{args_vec.data(), expr.args_.size()};
-
     return core::visit(
         core::overloaded{
         [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
             try {
-                auto&& r = builtin(args);
+                auto&& r = builtin({args_vec.data(), args_vec.size()});
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
             } catch (const core::value_error& e) {

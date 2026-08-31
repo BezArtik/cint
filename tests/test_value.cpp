@@ -201,12 +201,11 @@ TEST(value_test, struct_default_value) {
     auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
     auto&& val = v::default_value(st);
     EXPECT_TRUE(val.is_struct());
-    auto&& s = val.as<v::struct_t>();
-    ASSERT_NE(s, nullptr);
-    EXPECT_EQ(s->fields_.size(), 2);
-    EXPECT_EQ(s->fields_[0].to_int(), 0);
-    EXPECT_EQ(s->fields_[1].to_int(), 0);
-    EXPECT_EQ(s->type_.struct_name(), "Point");
+    auto&& s = val.to_struct();
+    EXPECT_EQ(s.fields_.size(), 2);
+    EXPECT_EQ(s.fields_[0].to_int(), 0);
+    EXPECT_EQ(s.fields_[1].to_int(), 0);
+    EXPECT_EQ(s.type_.struct_name(), "Point");
 }
 
 TEST(value_test, struct_to_string) {
@@ -228,10 +227,10 @@ TEST(value_test, struct_nested_default_value) {
     auto&& rect_t = t::struct_type("Rect", {{"tl", point_t}, {"br", point_t}});
     auto&& val = v::default_value(rect_t);
     EXPECT_TRUE(val.is_struct());
-    auto&& r = val.as<v::struct_t>();
-    EXPECT_EQ(r->fields_.size(), 2);
-    EXPECT_TRUE(r->fields_[0].is_struct());
-    EXPECT_TRUE(r->fields_[1].is_struct());
+    auto&& r = val.to_struct();
+    EXPECT_EQ(r.fields_.size(), 2);
+    EXPECT_TRUE(r.fields_[0].is_struct());
+    EXPECT_TRUE(r.fields_[1].is_struct());
 }
 
 TEST(value_test, from_string_int) {
