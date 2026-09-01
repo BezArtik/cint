@@ -378,7 +378,9 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
         return t::unknown_type();
     }
 
-    auto&& params = func->type_.param_infos();
+    auto&& func_type = registry_.get_type(func);
+    auto&& params = func_type.param_infos();
+
     if (expr.args_.size() != params.size()) {
         reporter_.error(loc, err::argument_count_mismatch, name, params.size(), expr.args_.size());
         return t::unknown_type();
@@ -393,7 +395,7 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
         }
     }
 
-    return func->type_.return_type();
+    return func_type.return_type();
 }
 
 t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr) {

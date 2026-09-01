@@ -15,12 +15,20 @@
 #include <vector>
 
 namespace core {
-
+// clang-format off
+type symbol_registry::get_type(const_iterator it) const {
+    return visit(overloaded{
+            [](func_ptr f) { return f->type_; }, 
+            [](builtin_func_ptr b) { return b->type_; },
+            [](struct_ptr s) { return s->type_; }},
+            it->info_);
+}
+// clang-format on
 symbol_registry symbol_registry::build(std::span<const ast::statement> ast, error_reporter& reporter) {
     symbol_registry registry;
     registry.entries_.reserve(core::builtins.size() + ast.size());
 
-    for (auto&& b : core::builtins) registry.entries_.emplace_back(b.type_.function_name(), b.type_, b.impl_);
+    for (auto&& b : core::builtins) registry.entries_.emplace_back(b.type_.function_name(), &b);
 
     for (auto&& stmt : ast) registry.add_ast_entry(stmt, reporter);
 
@@ -38,7 +46,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& 
                     reporter.error(func.loc_, error_code::redeclaration, name);
                     return;
                 }
-                entries_.emplace_back(name, func.type_, &func);
+                entries_.emplace_back(name, &func);
             },
             [&](const ast::struct_declaration_stmt& strct) {
                 auto&& name = strct.type_.struct_name();
@@ -47,7 +55,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& 
                     reporter.error(strct.loc_, error_code::redeclaration, name);
                     return;
                 }
-                entries_.emplace_back(name, strct.type_, &strct);
+                entries_.emplace_back(name, &strct);
             },
             [](const auto&) {}
     });
@@ -90,7 +98,7 @@ type symbol_registry::resolve_type_impl(const type& t, std::unordered_set<std::s
 
         auto&& entry_it = find(struct_name);
         return entry_it != end() && std::holds_alternative<struct_ptr>(entry_it->info_)
-                   ? resolve_type_impl(entry_it->type_, resolving)
+                   ? resolve_type_impl(get_type(entry_it), resolving)
                    : type::unknown_type();
     }
 

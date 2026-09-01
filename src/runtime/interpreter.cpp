@@ -337,7 +337,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         core::overloaded{
         [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
             try {
-                auto&& r = builtin({args_vec.data(), args_vec.size()});
+                auto&& r = builtin->impl_({args_vec.data(), args_vec.size()});
                 if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
                 return r;
             } catch (const core::value_error& e) {

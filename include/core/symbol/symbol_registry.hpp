@@ -43,8 +43,8 @@ public:
     /// Указатель на узел структуры в AST.
     using struct_ptr = const ast::struct_declaration_stmt*;
 
-    /// Указатель на builtin-функцию.
-    using builtin_func_ptr = core::builtin_fn_ptr;
+    /// Указатель на builtin-def.
+    using builtin_func_ptr = const core::builtin_def*;
 
     /**
      * @brief Строит реестр из AST и списка builtin-функций.
@@ -86,13 +86,20 @@ public:
      */
     type resolve_type(const type& t) const;
 
+    /*
+     * @brief Получить тип символа по итератору.
+     *
+     * @param it Итератор на запись.
+     * @return Тип символа.
+     */
+    type get_type(const_iterator it) const;
+
 private:
     /**
      * @brief Запись реестра: имя, тип, информация о реализации.
      */
     struct entry {
         std::string_view name_;                                      ///< Имя символа
-        type type_;                                                  ///< Тип символа
         std::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;  ///< Информация о реализации
     };
 
@@ -102,6 +109,7 @@ private:
      * @brief Добавляет AST-объявление в реестр.
      */
     void add_ast_entry(const ast::statement& stmt, error_reporter& reporter);
+
     type resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const;
 
     entries_t entries_;
