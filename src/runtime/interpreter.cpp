@@ -325,7 +325,7 @@ core::value interpreter::evaluate_call(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    std::array<std::byte, 4096> args_buf;
+    std::array<std::byte, 512> args_buf;
     std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
     std::pmr::vector<core::value> args_vec(&args_mr);
 

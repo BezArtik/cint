@@ -12,7 +12,6 @@
 #include <chrono>
 #include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -132,9 +131,7 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        auto&& source = buffer.str();
+        std::string source{std::istreambuf_iterator(file), {}};
 
         debug::debug_writer writer{
             opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : [](std::string_view) {}, opts.trace_mask_};

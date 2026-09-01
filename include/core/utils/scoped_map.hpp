@@ -7,7 +7,9 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
+#include <memory_resource>
 #include <string_view>
 #include <vector>
 
@@ -36,7 +38,7 @@ namespace core {
 template <typename T>
 class scoped_map {
 public:
-    scoped_map() { entries_.reserve(256); }
+    scoped_map() = default;
 
     /**
      * @brief Открывает новую область видимости.
@@ -110,8 +112,10 @@ private:
         size_t scope_depth_;
     };
 
-    std::vector<entry> entries_;  ///< Все записи (от глобальных к локальным)
-    size_t current_depth_ = 0;    ///< Текущая глубина (0 — глобальная)
+    std::array<std::byte, 4096> buffer_;                                      ///< Статический буфер для оптимизации
+    std::pmr::monotonic_buffer_resource mr_{buffer_.data(), buffer_.size()};  ///< mr для передачи в pmr::vector
+    std::pmr::vector<entry> entries_{&mr_};  ///< Все записи (от глобальных к локальным)
+    size_t current_depth_ = 0;               ///< Текущая глубина (0 — глобальная)
 
     template <typename Self>
     static auto* get_impl(Self& self, std::string_view name) noexcept {
