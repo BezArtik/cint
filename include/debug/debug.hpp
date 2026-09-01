@@ -64,8 +64,8 @@ void print_ast(const debug_writer& writer, std::span<const ast::statement> state
  * @param level       Уровень вложенности (для отступов)
  * @param exec_result Результат выполнения (если уже известен)
  */
-void print_statement(const debug_writer& writer, const ast::statement& stmt, uint32_t level = 0,
-                     const core::value* exec_result = nullptr);
+void print(const debug_writer& writer, const ast::statement& stmt, uint32_t level = 0,
+           const core::value* exec_result = nullptr);
 
 /**
  * @brief Выводит выражение при вычислении.
@@ -78,8 +78,8 @@ void print_statement(const debug_writer& writer, const ast::statement& stmt, uin
  * @param level       Уровень вложенности (для отступов)
  * @param eval_result Результат вычисления (если уже известен)
  */
-void print_expression(const debug_writer& writer, const ast::expression& expr, uint32_t level = 0,
-                      const core::value* eval_result = nullptr);
+void print(const debug_writer& writer, const ast::expression& expr, uint32_t level = 0,
+           const core::value* eval_result = nullptr);
 
 /**
  * @brief Выводит значение (компактное представление).

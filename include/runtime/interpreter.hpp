@@ -80,69 +80,33 @@ private:
     /// @brief Результат выполнения инструкции.
     struct execution_result;
 
-    /// Диспетчеризует выполнение по типу инструкции.
     execution_result execute(const ast::statement& stmt);
+    execution_result execute(const ast::expression_stmt& stmt);
+    execution_result execute(const ast::var_declaration_stmt& stmt);
+    execution_result execute(const ast::func_declaration_stmt&);
+    execution_result execute(const ast::struct_declaration_stmt&);
+    execution_result execute(const ast::block_stmt& stmt);
+    execution_result execute(const ast::while_stmt& stmt);
+    execution_result execute(const ast::for_stmt& stmt);
+    execution_result execute(const ast::if_stmt& stmt);
+    execution_result execute(const ast::return_stmt& stmt);
 
-    /// Вычисляет выражение и отбрасывает результат.
-    execution_result execute_expression_stmt(const ast::expression_stmt& stmt);
-
-    /// Создаёт переменную с начальным значением в текущей области видимости.
-    execution_result execute_var_declaration(const ast::var_declaration_stmt& stmt);
-
-    /**
-     * @brief Выполняет блок инструкций.
-     *
-     * @param create_scope Если true — создаёт новую область видимости
-     *                     для переменных, объявленных внутри блока.
-     */
-    execution_result execute_block(const ast::block_stmt& stmt, bool create_scope = true);
-
-    /// Выполняет тело конструкции (блок или одиночную инструкцию).
-    execution_result execute_body(const ast::statement& body);
-    execution_result execute_while(const ast::while_stmt& stmt);
-    execution_result execute_for(const ast::for_stmt& stmt);
-    execution_result execute_if(const ast::if_stmt& stmt);
-
-    /// Вычисляет возвращаемое значение и оборачивает в execution_result::return_.
-    execution_result execute_return_stmt(const ast::return_stmt& stmt);
-
-    /**
-     * @brief Вычисляет значение выражения.
-     *
-     * Рекурсивно обходит дерево выражения и вычисляет результат.
-     * При включённой трассировке выводит выражение и результат
-     * через debug_writer.
-     *
-     * @param expr Выражение для вычисления
-     * @return Значение выражения.
-     */
     core::value evaluate(const ast::expression& expr);
-
-    core::value evaluate_literal(const ast::literal_expr& expr);
-    core::value evaluate_assignment(const ast::assignment_expr& expr);
-    core::value evaluate_binary(const ast::binary_expr& expr);
-    core::value evaluate_unary(const ast::unary_expr& expr);
-    core::value evaluate_postfix(const ast::postfix_expr& expr);
-
-    /**
-     * @brief Вычисляет вызов функции.
-     *
-     * Поддерживает:
-     * - **Пользовательские функции**: создаёт область видимости,
-     *   связывает аргументы с параметрами, выполняет тело.
-     * - **Builtin-функции**: вызывает нативную реализацию напрямую.
-     *
-     * Контролирует глубину рекурсии через MAX_RECURSION_DEPTH.
-     */
-    core::value evaluate_call(const ast::call_expr& expr);
-
-    core::value evaluate_initializer_list(const ast::initializer_list_expr& expr);
+    core::value evaluate(const ast::variable_expr& expr);
+    core::value evaluate(const ast::literal_expr& expr);
+    core::value evaluate(const ast::assignment_expr& expr);
+    core::value evaluate(const ast::binary_expr& expr);
+    core::value evaluate(const ast::unary_expr& expr);
+    core::value evaluate(const ast::postfix_expr& expr);
+    core::value evaluate(const ast::index_expr& expr);
+    core::value evaluate(const ast::member_access_expr& expr);
+    core::value evaluate(const ast::call_expr& expr);
+    core::value evaluate(const ast::initializer_list_expr& expr);
 
     /**
      * @brief Вычисляет lvalue-ссылку на переменную.
      *
-     * Используется в присваиваниях и инкрементах/декрементах для
-     * изменения значения по месту. В отличие от evaluate(),
+     * Используется для изменения значения по месту. В отличие от evaluate(),
      * возвращает ссылку на value, хранящуюся в таблице переменных.
      *
      * @param expr lvalue-выражение
@@ -150,6 +114,9 @@ private:
      * @throws core::runtime_error если выражение не является lvalue.
      */
     core::value& evaluate_lvalue(const ast::expression& expr);
+    core::value& evaluate_lvalue(const ast::variable_expr& expr);
+    core::value& evaluate_lvalue(const ast::index_expr& expr);
+    core::value& evaluate_lvalue(const ast::member_access_expr& expr);
 
     core::error_reporter& reporter_;         ///< Обработчик ошибок
     const core::symbol_registry& registry_;  ///< Реестр функций

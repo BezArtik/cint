@@ -63,59 +63,28 @@ public:
     bool check(std::span<const ast::statement> statements);
 
 private:
-    /// Диспетчеризует проверку по типу инструкции.
-    void check_statement(const ast::statement& stmt);
-    void check_expression_stmt(const ast::expression_stmt& stmt);
-    void check_var_declaration(const ast::var_declaration_stmt& stmt);
-    void check_block(const ast::block_stmt& stmt, bool create_scope = false);
+    void check(const ast::statement& stmt);
+    void check(const ast::expression_stmt& stmt);
+    void check(const ast::var_declaration_stmt& stmt);
+    void check(const ast::block_stmt& stmt);
+    void check(const ast::while_stmt& stmt);
+    void check(const ast::for_stmt& stmt);
+    void check(const ast::if_stmt& stmt);
+    void check(const ast::return_stmt& stmt);
+    void check(const ast::struct_declaration_stmt& stmt);
+    void check(const ast::func_declaration_stmt& stmt);
 
-    /**
-     * @brief Проверяет тело конструкции (блок или одиночную инструкцию).
-     *
-     * Если тело — блок, содержащий объявления переменных, создаёт
-     * новую область видимости. Оптимизация: если блок не содержит
-     * объявлений (has_declarations), scope не создаётся.
-     *
-     * @param body Тело для проверки
-     */
-    void check_body(const ast::statement& body);
-    void check_while(const ast::while_stmt& stmt);
-    void check_for(const ast::for_stmt& stmt);
-    void check_if(const ast::if_stmt& stmt);
-    void check_return_stmt(const ast::return_stmt& stmt);
-    void check_struct_declaration(const ast::struct_declaration_stmt& stmt);
-
-    /**
-     * @brief Проверяет объявление функции.
-     *
-     * Создаёт новую область видимости для параметров, устанавливает
-     * curr_return_type_ для проверки return-инструкций внутри тела.
-     * Проверяет отсутствие повторных объявлений.
-     */
-    void check_func_declaration(const ast::func_declaration_stmt& stmt);
-
-    /**
-     * @brief Вычисляет тип выражения.
-     *
-     * Основной метод вывода типов. Рекурсивно обходит дерево выражения
-     * и возвращает результирующий тип. При обнаружении ошибки возвращает
-     * unknown_type, но продолжает анализ.
-     *
-     * @param expr Выражение для анализа
-     * @return Тип выражения или unknown_type при ошибке.
-     */
     core::type type_of(const ast::expression& expr);
-
-    core::type type_of_literal(const ast::literal_expr& expr);
-    core::type type_of_variable(const ast::variable_expr& expr);
-    core::type type_of_binary(const ast::binary_expr& expr);
-    core::type type_of_assignment(const ast::assignment_expr& expr);
-    core::type type_of_unary(const ast::unary_expr& expr);
-    core::type type_of_postfix(const ast::postfix_expr& expr);
-    core::type type_of_call(const ast::call_expr& expr);
-    core::type type_of_initializer_list(const ast::initializer_list_expr& expr);
-    core::type type_of_index(const ast::index_expr& expr);
-    core::type type_of_member_access(const ast::member_access_expr& expr);
+    core::type type_of(const ast::literal_expr& expr);
+    core::type type_of(const ast::variable_expr& expr);
+    core::type type_of(const ast::binary_expr& expr);
+    core::type type_of(const ast::assignment_expr& expr);
+    core::type type_of(const ast::unary_expr& expr);
+    core::type type_of(const ast::postfix_expr& expr);
+    core::type type_of(const ast::call_expr& expr);
+    core::type type_of(const ast::initializer_list_expr& expr);
+    core::type type_of(const ast::index_expr& expr);
+    core::type type_of(const ast::member_access_expr& expr);
 
     /**
      * @brief Проверяет, является ли выражение lvalue.

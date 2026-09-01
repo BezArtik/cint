@@ -17,29 +17,21 @@ using t = core::type;
 using err = core::error_code;
 
 bool type_checker::check(std::span<const ast::statement> statements) {
-    for (auto&& stmt : statements) check_statement(stmt);
+    for (auto&& stmt : statements) check(stmt);
     return !reporter_.has_error();
 }
-// clang-format off
-void type_checker::check_statement(const ast::statement& stmt) {
+
+void type_checker::check(const ast::statement& stmt) {
     stmt.visit(core::overloaded{
-            [&](const ast::expression_stmt& s) { check_expression_stmt(s); },
-            [&](const ast::var_declaration_stmt& s) { check_var_declaration(s); },
-            [&](const ast::block_stmt& s) { check_block(s); },
-            [&](const ast::while_stmt& s) { check_while(s); },
-            [&](const ast::for_stmt& s) { check_for(s); },
-            [&](const ast::if_stmt& s) { check_if(s); },
-            [&](const ast::return_stmt& s) { check_return_stmt(s); },
-            [&](const ast::func_declaration_stmt& s) { check_func_declaration(s); },
-            [&](const ast::struct_declaration_stmt& s) { check_struct_declaration(s); }
-            });
+        [&](const auto& s) { check(s); },
+    });
 }
-// clang-format on
-void type_checker::check_expression_stmt(const ast::expression_stmt& stmt) {
+
+void type_checker::check(const ast::expression_stmt& stmt) {
     type_of(stmt.expr_);
 }
 
-void type_checker::check_var_declaration(const ast::var_declaration_stmt& stmt) {
+void type_checker::check(const ast::var_declaration_stmt& stmt) {
     auto&& name = stmt.name_.lexeme_;
     auto&& type = stmt.type_;
     auto&& loc = stmt.name_.loc_;
@@ -104,47 +96,40 @@ void type_checker::check_var_declaration(const ast::var_declaration_stmt& stmt) 
     symbols_.define(name, resolved_type);
 }
 
-void type_checker::check_block(const ast::block_stmt& stmt, bool create_scope) {
+void type_checker::check(const ast::block_stmt& stmt) {
     std::optional<core::scope_guard<core::type>> guard;
-    if (create_scope) guard.emplace(symbols_);
-    for (auto&& s : stmt.statements_) check_statement(s);
+    if (stmt.has_declarations_) guard.emplace(symbols_);
+    for (auto&& s : stmt.statements_) check(s);
 }
 
-void type_checker::check_body(const ast::statement& body) {
-    if (auto&& block = body.get_if<ast::block_stmt>())
-        check_block(*block, block->has_declarations_);
-    else
-        check_statement(body);
-}
-
-void type_checker::check_while(const ast::while_stmt& stmt) {
+void type_checker::check(const ast::while_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "while");
 
     core::scope_guard guard{symbols_};
-    check_body(stmt.block_);
+    check(stmt.block_);
 }
 
-void type_checker::check_for(const ast::for_stmt& stmt) {
+void type_checker::check(const ast::for_stmt& stmt) {
     core::scope_guard guard{symbols_};
 
-    if (stmt.initializer_) check_statement(*stmt.initializer_);
+    if (stmt.initializer_) check(*stmt.initializer_);
     if (stmt.condition_) {
         auto&& cond_type = type_of(*stmt.condition_);
         if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "for");
     }
     if (stmt.increment_) type_of(*stmt.increment_);
-    check_body(stmt.block_);
+    check(stmt.block_);
 }
 
-void type_checker::check_if(const ast::if_stmt& stmt) {
+void type_checker::check(const ast::if_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "if");
-    check_body(stmt.then_block_);
-    if (stmt.else_block_) check_body(*stmt.else_block_);
+    check(stmt.then_block_);
+    if (stmt.else_block_) check(*stmt.else_block_);
 }
 
-void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
+void type_checker::check(const ast::return_stmt& stmt) {
     if (!curr_return_type_) {
         reporter_.error(stmt.loc_, err::return_outside_function);
         return;
@@ -160,7 +145,7 @@ void type_checker::check_return_stmt(const ast::return_stmt& stmt) {
     if (*curr_return_type_ != return_type) reporter_.error(stmt.loc_, err::return_type_mismatch);
 }
 
-void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt) {
+void type_checker::check(const ast::func_declaration_stmt& stmt) {
     core::scope_guard guard{symbols_};
     for (auto&& [name, type] : stmt.type_.param_infos()) symbols_.define(name, type);
 
@@ -168,12 +153,12 @@ void type_checker::check_func_declaration(const ast::func_declaration_stmt& stmt
     curr_return_type_ = stmt.type_.return_type();
 
     auto&& block = stmt.block_.get<ast::block_stmt>();
-    for (auto&& s : block.statements_) check_statement(s);
+    for (auto&& s : block.statements_) check(s);
 
     curr_return_type_ = prev_return_type;
 }
 
-void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& stmt) {
+void type_checker::check(const ast::struct_declaration_stmt& stmt) {
     std::unordered_set<std::string_view> seen;
     for (auto&& [name, type] : stmt.type_.struct_fields()) {
         if (!seen.insert(name).second) {
@@ -186,24 +171,13 @@ void type_checker::check_struct_declaration(const ast::struct_declaration_stmt& 
     }
 }
 
-// clang-format off
 t type_checker::type_of(const ast::expression& expr) {
-    return expr.visit(
-        core::overloaded{
-            [&](const ast::literal_expr& e) { return type_of_literal(e); },
-            [&](const ast::variable_expr& e) { return type_of_variable(e); },
-            [&](const ast::binary_expr& e) { return type_of_binary(e); },
-            [&](const ast::assignment_expr& e) { return type_of_assignment(e); },
-            [&](const ast::unary_expr& e) { return type_of_unary(e); },
-            [&](const ast::postfix_expr& e) { return type_of_postfix(e); },
-            [&](const ast::call_expr& e) { return type_of_call(e); },
-            [&](const ast::initializer_list_expr& e) { return type_of_initializer_list(e); },
-            [&](const ast::index_expr& e) { return type_of_index(e); },
-            [&](const ast::member_access_expr& e) { return type_of_member_access(e); }
-            });
+    return expr.visit(core::overloaded{
+        [&](const auto& e) { return type_of(e); },
+    });
 }
-// clang-format on
-t type_checker::type_of_literal(const ast::literal_expr& expr) {
+
+t type_checker::type_of(const ast::literal_expr& expr) {
     auto&& val = expr.value_;
 
     if (val.is_int()) return t::int_type();
@@ -215,7 +189,7 @@ t type_checker::type_of_literal(const ast::literal_expr& expr) {
     return t::unknown_type();
 }
 
-t type_checker::type_of_variable(const ast::variable_expr& expr_) {
+t type_checker::type_of(const ast::variable_expr& expr_) {
     auto&& name = expr_.name_.lexeme_;
     auto&& info = symbols_.get(name);
     if (!info) {
@@ -225,7 +199,7 @@ t type_checker::type_of_variable(const ast::variable_expr& expr_) {
     return *info;
 }
 
-t type_checker::type_of_binary(const ast::binary_expr& expr) {
+t type_checker::type_of(const ast::binary_expr& expr) {
     auto&& left = type_of(expr.left_);
     auto&& right = type_of(expr.right_);
     if (left.is_unknown() || right.is_unknown()) return t::unknown_type();
@@ -270,7 +244,7 @@ t type_checker::type_of_binary(const ast::binary_expr& expr) {
     return t::unknown_type();
 }
 
-t type_checker::type_of_assignment(const ast::assignment_expr& expr) {
+t type_checker::type_of(const ast::assignment_expr& expr) {
     auto&& target_type = type_of(expr.target_);
     auto&& value_type = type_of(expr.value_);
     if (target_type.is_unknown() || value_type.is_unknown()) return t::unknown_type();
@@ -303,7 +277,7 @@ bool type_checker::is_lvalue(const ast::expression& expr) {
                                        [](const auto&) { return false; }});
 }
 
-t type_checker::type_of_unary(const ast::unary_expr& expr) {
+t type_checker::type_of(const ast::unary_expr& expr) {
     auto&& operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
@@ -350,7 +324,7 @@ t type_checker::type_of_unary(const ast::unary_expr& expr) {
     return t::unknown_type();
 }
 
-t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
+t type_checker::type_of(const ast::postfix_expr& expr) {
     auto&& operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
@@ -367,7 +341,7 @@ t type_checker::type_of_postfix(const ast::postfix_expr& expr) {
     return operand_type;
 }
 
-t type_checker::type_of_call(const ast::call_expr& expr) {
+t type_checker::type_of(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
     auto&& loc = expr.callee_.loc_;
 
@@ -398,7 +372,7 @@ t type_checker::type_of_call(const ast::call_expr& expr) {
     return func_type.return_type();
 }
 
-t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr) {
+t type_checker::type_of(const ast::initializer_list_expr& expr) {
     if (expr.elements_.empty()) {
         reporter_.error(expr.loc_, err::empty_initializer_list);
         return t::unknown_type();
@@ -419,7 +393,7 @@ t type_checker::type_of_initializer_list(const ast::initializer_list_expr& expr)
     return t::array_type(first_type, expr.elements_.size());
 }
 
-t type_checker::type_of_index(const ast::index_expr& expr) {
+t type_checker::type_of(const ast::index_expr& expr) {
     auto&& object_type = type_of(expr.object_);
     auto&& index_type = type_of(expr.index_);
     if (object_type.is_unknown() || index_type.is_unknown()) return t::unknown_type();
@@ -435,7 +409,7 @@ t type_checker::type_of_index(const ast::index_expr& expr) {
     return object_type.element_type();
 }
 
-t type_checker::type_of_member_access(const ast::member_access_expr& expr) {
+t type_checker::type_of(const ast::member_access_expr& expr) {
     auto&& obj_type = type_of(expr.object_);
     if (obj_type.is_unknown()) return t::unknown_type();
 
