@@ -125,7 +125,6 @@ enum class token_type : uint8_t {
  * @brief Таблица строковых имён токенов для отладки.
  *
  * Индекс в массиве соответствует значению enum token_type.
- * Используется в debug::print_tokens() и сообщениях об ошибках.
  *
  */
 inline constexpr std::array token_type_names = {

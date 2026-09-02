@@ -14,7 +14,7 @@ target_sources(interpreter-lib PRIVATE
     core/value/operations.cpp
     semantics/type_check.cpp
     runtime/interpreter.cpp
-    debug/debug.cpp
+    debug/debug_writer.cpp
 )
 
 target_include_directories(interpreter-lib PUBLIC

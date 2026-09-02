@@ -3,7 +3,7 @@
 #include "core/error/error_report.hpp"
 #include "core/memory/arena.hpp"
 #include "core/symbol/symbol_registry.hpp"
-#include "debug/debug.hpp"
+#include "debug/debug_writer.hpp"
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
@@ -61,14 +61,14 @@ options parse_args(int argc, char* argv[]) {
             continue;
         }
 
-        opts.filename_ = argv[i];
+        opts.filename_ = arg;
     }
     return opts;
 }
 
 struct run_config {
     std::string_view source_;
-    const debug::debug_writer& writer_;
+    debug::debug_writer& writer_;
 };
 
 int run_program(const run_config& config) {
@@ -77,9 +77,9 @@ int run_program(const run_config& config) {
     core::error_reporter reporter{config.source_};
 
     lexer lex{config.source_, reporter, mr};
-    auto tokens = lex.scan_tokens();
+    auto&& tokens = lex.scan_tokens();
 
-    debug::print_tokens(config.writer_, tokens);
+    config.writer_.print_tokens(tokens);
     if (reporter.has_error()) {
         std::cerr << "Lexical errors found.\n";
         return 1;
@@ -88,7 +88,7 @@ int run_program(const run_config& config) {
     parser p{tokens, reporter, arena, mr};
     auto&& ast = p.parse();
 
-    debug::print_ast(config.writer_, ast);
+    config.writer_.print_ast(ast);
     if (reporter.has_error()) {
         std::cerr << "Syntax errors found.\n";
         return 1;

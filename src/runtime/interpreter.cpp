@@ -12,9 +12,7 @@
 #include "core/utils/scoped_map.hpp"
 #include "core/value/operations.hpp"
 #include "core/value/value.hpp"
-#include "debug/debug.hpp"
 #include "debug/debug_writer.hpp"
-#include "debug/trace_level.hpp"
 
 #include <algorithm>
 #include <array>
@@ -66,7 +64,7 @@ void interpreter::interpret(std::span<const ast::statement> statements) {
 }
 
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
-    if (writer_.enabled(debug::trace_level::execution)) debug::print(writer_, stmt);
+    if (writer_.enabled(debug::trace_level::execution)) writer_.print(stmt);
     return stmt.visit(core::overloaded{
         [&](const auto& s) { return execute(s); },
     });
@@ -174,7 +172,7 @@ core::value interpreter::evaluate(const ast::expression& expr) {
         core::overloaded{
             [&](const auto& e) { return evaluate(e); },
             });
-    if (writer_.enabled(debug::trace_level::execution)) debug::print(writer_, expr, 0, &result);
+    if (writer_.enabled(debug::trace_level::execution)) writer_.print(expr, &result);
     return result;
 }
 
@@ -338,7 +336,7 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
         [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
             try {
                 auto&& r = builtin->impl_({args_vec.data(), args_vec.size()});
-                if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
+                if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, r);
                 return r;
             } catch (const core::value_error& e) {
                 reporter_.runtime_error(expr.callee_.loc_, e.code_, name);
@@ -354,12 +352,12 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
                 auto&& result = execute(s);
                 if (result.is_return()) {
                     if (writer_.enabled(debug::trace_level::returns)) 
-                        debug::print_return(writer_, name, result.value_);
+                        writer_.print_return(name, result.value_);
                     return result.value_; 
                 }
             }
             auto&& r = core::value::default_value(body->type_.return_type());
-            if (writer_.enabled(debug::trace_level::returns)) debug::print_return(writer_, name, r);
+            if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, r);
             return r;
         },
         [&](core::symbol_registry::struct_ptr) -> core::value {
