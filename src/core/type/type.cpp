@@ -46,15 +46,15 @@ type type::struct_type(std::string_view name, std::vector<field_t> fields) {
     return std::make_shared<struct_t>(name, std::move(fields));
 }
 
-bool type::is_int()      const noexcept { return std::holds_alternative<int_t>(data_); }
-bool type::is_double()   const noexcept { return std::holds_alternative<double_t>(data_); }
-bool type::is_bool()     const noexcept { return std::holds_alternative<bool_t>(data_); }
-bool type::is_string()   const noexcept { return std::holds_alternative<string_t>(data_); }
-bool type::is_void()     const noexcept { return std::holds_alternative<void_t>(data_); }
-bool type::is_unknown()  const noexcept { return std::holds_alternative<unknown_t>(data_); }
-bool type::is_function() const noexcept { return std::holds_alternative<std::shared_ptr<function_t>>(data_); }
-bool type::is_array()    const noexcept { return std::holds_alternative<std::shared_ptr<array_t>>(data_); }
-bool type::is_struct()   const noexcept { return std::holds_alternative<std::shared_ptr<struct_t>>(data_); }
+bool type::is_int()      const noexcept { return data_.holds<int_t>(); }
+bool type::is_double()   const noexcept { return data_.holds<double_t>(); }
+bool type::is_bool()     const noexcept { return data_.holds<bool_t>(); }
+bool type::is_string()   const noexcept { return data_.holds<string_t>(); }
+bool type::is_void()     const noexcept { return data_.holds<void_t>(); }
+bool type::is_unknown()  const noexcept { return data_.holds<unknown_t>(); }
+bool type::is_function() const noexcept { return data_.holds<func_wrap>(); }
+bool type::is_array()    const noexcept { return data_.holds<array_wrap>(); }
+bool type::is_struct()   const noexcept { return data_.holds<struct_wrap>(); }
 bool type::is_numeric()  const noexcept { return is_int() || is_double(); }
 
 bool type::operator==(const type& other) const noexcept {
@@ -73,15 +73,15 @@ bool type::operator==(const type& other) const noexcept {
 
 bool type::operator!=(const type& other) const noexcept { return !(*this == other); }
 
-std::string_view type::function_name() const { return std::get<std::shared_ptr<function_t>>(data_)->name_; }
-const type& type::return_type() const { return std::get<std::shared_ptr<function_t>>(data_)->return_type_; }
-std::span<const type::param_t> type::param_infos() const { return std::get<std::shared_ptr<function_t>>(data_)->params_; }
+std::string_view type::function_name() const { return data_.get<func_wrap>()->name_; }
+const type& type::return_type() const { return data_.get<func_wrap>()->return_type_; }
+std::span<const type::param_t> type::param_infos() const { return data_.get<func_wrap>()->params_; }
 
-const type& type::element_type() const { return std::get<std::shared_ptr<array_t>>(data_)->element_type_; }
-size_t type::array_size() const { return std::get<std::shared_ptr<array_t>>(data_)->size_; }
+const type& type::element_type() const { return data_.get<array_wrap>()->element_type_; }
+size_t type::array_size() const { return data_.get<array_wrap>()->size_; }
 
-std::string_view type::struct_name() const { return std::get<std::shared_ptr<struct_t>>(data_)->name_; }
-std::span<const type::field_t> type::struct_fields() const { return std::get<std::shared_ptr<struct_t>>(data_)->fields_; }
+std::string_view type::struct_name() const { return data_.get<struct_wrap>()->name_; }
+std::span<const type::field_t> type::struct_fields() const { return data_.get<struct_wrap>()->fields_; }
 
 std::optional<size_t> type::field_index(std::string_view name) const noexcept {
     auto&& fields = struct_fields();

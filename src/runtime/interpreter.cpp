@@ -65,9 +65,7 @@ void interpreter::interpret(std::span<const ast::statement> statements) {
 
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (writer_.enabled(debug::trace_level::execution)) writer_.print(stmt);
-    return stmt.visit(core::overloaded{
-        [&](const auto& s) { return execute(s); },
-    });
+    return stmt.visit([&](const auto& s) { return execute(s); });
 }
 
 interpreter::execution_result interpreter::execute(const ast::expression_stmt& stmt) {
@@ -168,10 +166,7 @@ interpreter::execution_result interpreter::execute(const ast::return_stmt& stmt)
 
 // clang-format off
 core::value interpreter::evaluate(const ast::expression& expr) {
-    auto&& result = expr.visit(
-        core::overloaded{
-            [&](const auto& e) { return evaluate(e); },
-            });
+    auto&& result = expr.visit([&](const auto& e) { return evaluate(e); });
     if (writer_.enabled(debug::trace_level::execution)) writer_.print(expr, &result);
     return result;
 }
@@ -327,11 +322,10 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
     std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
     std::pmr::vector<core::value> args_vec(&args_mr);
 
-    std::ranges::transform(expr.args_, std::back_inserter(args_vec),
-            [&](auto&& arg) { return evaluate(arg); });
+    std::ranges::transform(expr.args_, std::back_inserter(args_vec), [&](auto&& arg) { return evaluate(arg); });
 
     auto&& func = registry_.find(name);
-    return core::visit(
+    return func->info_.visit(
         core::overloaded{
         [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
             try {
@@ -363,8 +357,8 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
         [&](core::symbol_registry::struct_ptr) -> core::value {
             reporter_.runtime_error(expr.callee_.loc_, err::not_a_function, name);
             return {};
-        }},
-        func->info_);
+        }
+        });
 }
 // clang-format on
 core::value interpreter::evaluate(const ast::initializer_list_expr& expr) {

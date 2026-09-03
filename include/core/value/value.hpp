@@ -9,6 +9,7 @@
 
 #pragma once
 #include "core/type/type.hpp"
+#include "core/utils/variant.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -49,9 +50,9 @@ public:
     value() : data_{std::monostate{}} {}
 
     /// Создают примитивные типы.
-    value(int_t v) : data_{v} {}
-    value(double_t v) : data_{v} {}
-    value(bool_t v) : data_{v} {}
+    value(int_t v) : data_{std::move(v)} {}
+    value(double_t v) : data_{std::move(v)} {}
+    value(bool_t v) : data_{std::move(v)} {}
 
     /// Создаёт строковое значение.
     value(string_t v) : data_{std::make_shared<string_t>(std::move(v))} {}
@@ -154,11 +155,6 @@ public:
     /// @}
 
 private:
-    /// @cond INTERNAL
-
-    static int_t parse_int(std::string_view text);
-    static double_t parse_double(std::string_view text);
-
     /**
      * @brief Данные структурного типа.
      *
@@ -169,10 +165,10 @@ private:
         std::vector<value> fields_;  ///< Значения полей (в порядке объявления)
     };
 
-    std::variant<int_t, double_t, bool_t, std::shared_ptr<string_t>, std::shared_ptr<array_t>, struct_t, std::monostate>
-        data_;
+    using string_wrap = std::shared_ptr<string_t>;
+    using array_wrap = std::shared_ptr<array_t>;
 
-    /// @endcond
+    core::variant<int_t, double_t, bool_t, string_wrap, array_wrap, struct_t, std::monostate> data_;
 };
 
 }  // namespace core

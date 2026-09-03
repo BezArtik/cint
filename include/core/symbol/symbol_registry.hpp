@@ -10,11 +10,11 @@
 #include "core/builtins/builtins.hpp"
 #include "core/error/error_report.hpp"
 #include "core/type/type.hpp"
+#include "core/utils/variant.hpp"
 
 #include <span>
 #include <string_view>
 #include <unordered_set>
-#include <variant>
 #include <vector>
 
 namespace core {
@@ -99,8 +99,8 @@ private:
      * @brief Запись реестра: имя, тип, информация о реализации.
      */
     struct entry {
-        std::string_view name_;                                      ///< Имя символа
-        std::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;  ///< Информация о реализации
+        std::string_view name_;                                       ///< Имя символа
+        core::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;  ///< Информация о реализации
     };
 
     symbol_registry() = default;

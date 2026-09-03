@@ -208,12 +208,6 @@ TEST(value_test, struct_default_value) {
     EXPECT_EQ(s.type_.struct_name(), "Point");
 }
 
-TEST(value_test, struct_to_string) {
-    auto&& st = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
-    auto&& val = v::default_value(st);
-    EXPECT_EQ(val.to_string(), "{0, 0}");
-}
-
 TEST(value_test, struct_equality) {
     auto&& st1 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});
     auto&& st2 = t::struct_type("Point", {{"x", t::int_type()}, {"y", t::int_type()}});

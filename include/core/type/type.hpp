@@ -8,11 +8,13 @@
  */
 
 #pragma once
+
+#include "core/utils/variant.hpp"
+
 #include <memory>
 #include <optional>
 #include <span>
 #include <string_view>
-#include <variant>
 #include <vector>
 
 namespace core {
@@ -167,9 +169,11 @@ private:
     template <typename Info>
     type(Info info) : data_{std::move(info)} {}
 
-    std::variant<int_t, double_t, bool_t, string_t, void_t, std::shared_ptr<function_t>, std::shared_ptr<array_t>,
-                 std::shared_ptr<struct_t>, unknown_t>
-        data_;
+    using func_wrap = std::shared_ptr<function_t>;
+    using array_wrap = std::shared_ptr<array_t>;
+    using struct_wrap = std::shared_ptr<struct_t>;
+
+    core::variant<int_t, double_t, bool_t, string_t, void_t, func_wrap, array_wrap, struct_wrap, unknown_t> data_;
 
     /// @endcond
 };

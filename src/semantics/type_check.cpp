@@ -22,9 +22,7 @@ bool type_checker::check(std::span<const ast::statement> statements) {
 }
 
 void type_checker::check(const ast::statement& stmt) {
-    stmt.visit(core::overloaded{
-        [&](const auto& s) { check(s); },
-    });
+    stmt.visit([&](const auto& s) { check(s); });
 }
 
 void type_checker::check(const ast::expression_stmt& stmt) {
@@ -172,9 +170,7 @@ void type_checker::check(const ast::struct_declaration_stmt& stmt) {
 }
 
 t type_checker::type_of(const ast::expression& expr) {
-    return expr.visit(core::overloaded{
-        [&](const auto& e) { return type_of(e); },
-    });
+    return expr.visit([&](const auto& e) { return type_of(e); });
 }
 
 t type_checker::type_of(const ast::literal_expr& expr) {

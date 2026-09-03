@@ -6,10 +6,35 @@
 #include "core/utils/overloaded.hpp"
 
 #include <charconv>
+#include <format>
+#include <ranges>
+#include <variant>
+
+namespace {
+
+[[noreturn]] void invalid_conversion() {
+    throw core::value_error{core::error_code::invalid_conversion};
+}
+
+core::value::int_t parse_int(std::string_view text) {
+    core::value::int_t result{};
+    auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
+    if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
+    return result;
+}
+
+core::value::double_t parse_double(std::string_view text) {
+    core::value::double_t result{};
+    auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
+    if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
+    return result;
+}
+
+}  // namespace
 
 namespace core {
 
-core::value value::default_value(const core::type& t) {
+value value::default_value(const core::type& t) {
     if (t.is_int()) return int_t{};
     if (t.is_double()) return double_t{};
     if (t.is_bool()) return bool_t{};
@@ -25,27 +50,13 @@ core::value value::default_value(const core::type& t) {
     }
 
     if (t.is_struct()) {
-        std::vector<core::value> fields;
+        std::vector<value> fields;
         fields.reserve(t.struct_fields().size());
         for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
         return struct_t{t, std::move(fields)};
     }
 
     return {};
-}
-
-value::int_t value::parse_int(std::string_view text) {
-    int_t result{};
-    auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    if (ec != std::errc{} || ptr != text.data() + text.size()) throw core::value_error{error_code::invalid_conversion};
-    return result;
-}
-
-value::double_t value::parse_double(std::string_view text) {
-    double_t result{};
-    auto&& [ptr, ec] = std::from_chars(text.data(), text.data() + text.size(), result);
-    if (ec != std::errc{} || ptr != text.data() + text.size()) throw core::value_error{error_code::invalid_conversion};
-    return result;
 }
 
 value value::from_string(std::string_view text, bool is_double) {
@@ -56,107 +67,100 @@ value value::from_string(std::string_view text, bool is_double) {
 // clang-format off
 
 value::int_t value::to_int() const {
-    return visit(
+    return data_.visit(
         overloaded{
             [](int_t v) { return v; },
             [](double_t v) { return static_cast<int_t>(v); },
-            [](const std::shared_ptr<string_t>& v) { return parse_int(*v); },
-            [](const auto&) -> int_t { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](bool_t v) { return static_cast<int_t>(v); },
+            [](const string_wrap& v) { return parse_int(*v); },
+            [](const auto&) -> int_t { invalid_conversion(); }
+        });
 }
 
 value::double_t value::to_double() const {
-    return visit(
+    return data_.visit(
         overloaded{
             [](int_t v) { return static_cast<double_t>(v); },
             [](double_t v) { return v; },
-            [](const std::shared_ptr<string_t>& v) { return parse_double(*v); },
-            [](const auto&) -> double_t { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](const string_wrap& v) { return parse_double(*v); },
+            [](const auto&) -> double_t { invalid_conversion(); }
+        });
 }
 
 value::bool_t value::to_bool() const {
-    return visit(
+    return data_.visit(
         overloaded{
-            [](int_t v) { return v != 0; },
-            [](double_t v) { return v != 0.0; },
+            [](int_t v) { return static_cast<bool_t>(v); },
+            [](double_t v) { return static_cast<bool_t>(v); },
             [](bool_t v) { return v; },
-            [](const std::shared_ptr<string_t>& s) { return !s->empty(); },
-            [](const std::shared_ptr<array_t>& a) { return !a->empty(); },
-            [](const auto&) -> bool_t { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](const auto&) -> bool_t { invalid_conversion(); }
+        });
 }
 
 value::string_t value::to_string() const {
-    auto&& to_string_range = [&](auto&& cnt) {
-        string_t res{"{"};
-        res.reserve(cnt.size() * 16);
-        for(size_t i = 0; i < cnt.size(); ++i) {
-            if (i > 0) res += ", ";
-            res += cnt[i].to_string();
+    auto&& to_string = [&](std::ranges::input_range auto&& cnt) {
+        string_t res;
+        auto&& it = cnt.cbegin(), &&end = cnt.cend();
+        if (it == end) return res;
+        res.reserve(cnt.size() * 2);
+        res += std::format("{}", it->to_string()); ++it;
+        for(; it != end; ++it) {
+            res += ", ";
+            res += std::format("{}", it->to_string());
         }
-        res += "}";
         return res;
     };
-    return visit(
+    return data_.visit(
         overloaded{
-            [](int_t v) { return std::to_string(v); },
-            [](double_t v) { return std::to_string(v); },
-            [](bool_t v) { return string_t{v ? "true" : "false"}; },
-            [](const std::shared_ptr<string_t>& s) { return *s; },
-            [&](const std::shared_ptr<array_t>& a) { return to_string_range(*a); },
-            [&](const struct_t& s) { return to_string_range(s.fields_); },
-            [](std::monostate) { return string_t{"void"}; }
-        },
-        data_);
+            [](int_t v) { return std::format("{}", v); },
+            [](double_t v) { return std::format("{}", v); },
+            [](bool_t v) { return std::format("{}", v ? "true" : "false"); },
+            [](const string_wrap& s) { return *s; },
+            [&](const array_wrap& a) { return std::format("{{}}", to_string(*a)); },
+            [&](const struct_t& s) { return std::format("{{}}", to_string(s.fields_)); },
+            [](std::monostate) { return std::format("void"); }
+        });
 }
 
 const value::array_t& value::to_array() const {
-    return visit(
+    return data_.visit(
         overloaded{
-            [](const std::shared_ptr<array_t>& arr) -> const array_t& { return *arr; },
-            [](const auto&) -> const array_t& { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](const array_wrap& arr) -> const array_t& { return *arr; },
+            [](const auto&) -> const array_t& { invalid_conversion(); }
+        });
 }
 
 value::array_t& value::to_array() {
-    return visit(
+    return data_.visit(
         overloaded{
-            [](std::shared_ptr<array_t>& arr) -> array_t& { return *arr; },
-            [](auto&) -> array_t& { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](array_wrap& arr) -> array_t& { return *arr; },
+            [](const auto&) -> array_t& { invalid_conversion(); }
+        });
 }
 
 const value::struct_t& value::to_struct() const {
-    return visit(
+    return data_.visit(
         overloaded{
             [](const struct_t& st) -> const struct_t& { return st; },
-            [](const auto&) -> const struct_t& { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](const auto&) -> const struct_t& { invalid_conversion(); }
+        });
 }
 
 value::struct_t& value::to_struct() {
-    return visit(
+    return data_.visit(
         overloaded{
             [](struct_t& st) -> struct_t& { return st; },
-            [](auto&) -> struct_t& { throw core::value_error{error_code::invalid_conversion}; }
-        },
-        data_);
+            [](const auto&) -> struct_t& { invalid_conversion(); }
+        });
 }
 
-bool value::is_int() const noexcept { return std::holds_alternative<int_t>(data_); }
-bool value::is_double() const noexcept { return std::holds_alternative<double_t>(data_); }
-bool value::is_bool() const noexcept { return std::holds_alternative<bool_t>(data_); }
-bool value::is_string() const noexcept { return std::holds_alternative<std::shared_ptr<string_t>>(data_); }
-bool value::is_array() const noexcept { return std::holds_alternative<std::shared_ptr<array_t>>(data_); }
-bool value::is_struct() const noexcept { return std::holds_alternative<struct_t>(data_); }
-bool value::is_void() const noexcept { return std::holds_alternative<std::monostate>(data_); }
+bool value::is_int() const noexcept { return data_.holds<int_t>(); }
+bool value::is_double() const noexcept { return data_.holds<double_t>(); }
+bool value::is_bool() const noexcept { return data_.holds<bool_t>(); }
+bool value::is_string() const noexcept { return data_.holds<string_wrap>(); }
+bool value::is_array() const noexcept { return data_.holds<array_wrap>(); }
+bool value::is_struct() const noexcept { return data_.holds<struct_t>(); }
+bool value::is_void() const noexcept { return data_.holds<std::monostate>(); }
 // clang-format on
 
 }  // namespace core
