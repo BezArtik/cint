@@ -9,29 +9,20 @@
 #include "core/memory/arena.hpp"
 #include "core/utils/overloaded.hpp"
 
+#include <concepts>
 #include <functional>
-#include <type_traits>
 #include <utility>
 #include <variant>
 
 namespace ast {
 
 /**
- * @brief Вспомогательная структура для проверки, входит ли тип в список.
+ * @brief Концепт для проверки, входит ли тип в список.
  * @tparam T Проверяемый тип
  * @tparam Types Список допустимых типов
  */
 template <typename T, typename... Types>
-struct is_one_of : std::disjunction<std::is_same<T, Types>...> {};
-
-/**
- * @brief Вспомогательная переменная для удобства использования.
- */
-template <typename T, typename... Types>
-inline constexpr bool is_one_of_v = is_one_of<T, Types...>::value;
-
-#define IS_ONE_OF(Type, Types) \
-    static_assert(is_one_of_v<Type, Types...>, "T must be one og the variant_wrapper's types")
+concept one_of = (std::same_as<T, Types> || ...);
 
 /**
  * @brief Обертка над std::variant, автоматически разыменовывающая arena_ptr.
@@ -63,9 +54,8 @@ public:
      * @param ptr Указатель на узел в арене
      */
     template <typename T>
-    variant_wrapper(wrap<T> ptr) : data_{std::move(ptr)} {
-        IS_ONE_OF(T, Types);
-    }
+        requires one_of<T, Types...>
+    variant_wrapper(wrap<T> ptr) : data_{std::move(ptr)} {}
 
     /// @}
     /// @name Проверка типа
@@ -77,8 +67,8 @@ public:
      * @return true, если обертка хранит T
      */
     template <typename T>
+        requires one_of<T, Types...>
     bool holds() const {
-        IS_ONE_OF(T, Types);
         return std::holds_alternative<wrap<T>>(data_);
     }
 
@@ -95,8 +85,8 @@ public:
      * @throws std::bad_variant_access если тип не совпадает
      */
     template <typename T>
+        requires one_of<T, Types...>
     T& get() {
-        IS_ONE_OF(T, Types);
         return *std::get<wrap<T>>(data_);
     }
 
@@ -104,8 +94,8 @@ public:
      * @brief Константная версия get().
      */
     template <typename T>
+        requires one_of<T, Types...>
     const T& get() const {
-        IS_ONE_OF(T, Types);
         return *std::get<wrap<T>>(data_);
     }
 
@@ -115,8 +105,8 @@ public:
      * @return Указатель на узел или nullptr, если тип не совпадает
      */
     template <typename T>
+        requires one_of<T, Types...>
     T* get_if() {
-        IS_ONE_OF(T, Types);
         if (auto&& ptr = std::get_if<wrap<T>>(&data_)) return ptr->get();
         return nullptr;
     }
@@ -125,8 +115,8 @@ public:
      * @brief Константная версия get_if().
      */
     template <typename T>
+        requires one_of<T, Types...>
     const T* get_if() const {
-        IS_ONE_OF(T, Types);
         if (auto&& ptr = std::get_if<wrap<T>>(&data_)) return ptr->get();
         return nullptr;
     }
@@ -165,7 +155,5 @@ public:
 private:
     std::variant<wrap<Types>...> data_;
 };
-
-#undef IS_ONE_OF
 
 }  // namespace ast
