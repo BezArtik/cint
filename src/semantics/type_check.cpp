@@ -348,6 +348,11 @@ t type_checker::type_of(const ast::call_expr& expr) {
         return t::unknown_type();
     }
 
+    if (func->info_.holds<core::symbol_registry::struct_ptr>()) {
+        reporter_.error(expr.callee_.loc_, err::not_a_function, name);
+        return t::unknown_type();
+    }
+
     auto&& func_type = registry_.get_type(func);
     auto&& params = func_type.param_infos();
 
