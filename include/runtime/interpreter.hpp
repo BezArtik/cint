@@ -100,8 +100,13 @@ private:
     core::value evaluate(const ast::postfix_expr& expr);
     core::value evaluate(const ast::index_expr& expr);
     core::value evaluate(const ast::member_access_expr& expr);
-    core::value evaluate(const ast::call_expr& expr);
     core::value evaluate(const ast::initializer_list_expr& expr);
+    core::value evaluate(const ast::call_expr& expr);
+
+    core::value call(core::symbol_registry::builtin_func_ptr builtin, std::span<const core::value> args,
+                     std::string_view name);
+    core::value call(core::symbol_registry::func_ptr body, std::span<const core::value> args, std::string_view name);
+    core::value call(core::symbol_registry::struct_ptr ptr, std::span<const core::value> args, std::string_view name);
 
     /**
      * @brief Вычисляет lvalue-ссылку на переменную.

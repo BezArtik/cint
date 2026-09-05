@@ -27,22 +27,6 @@ using t = core::type;
 using err = core::error_code;
 namespace op = core::ops;
 
-namespace {
-
-core::value apply_increment(core::value& val, core::token_type op, bool return_old) {
-    auto old_val = val;
-
-    if (val.is_int()) {
-        val = (op == tt::INCREMENT ? val.to_int() + 1 : val.to_int() - 1);
-    } else if (val.is_double()) {
-        val = (op == tt::INCREMENT ? val.to_double() + 1.0 : val.to_double() - 1.0);
-    }
-
-    return return_old ? old_val : val;
-}
-
-}  // namespace
-
 struct interpreter::execution_result {
     enum class kind : uint8_t { normal, return_ };
 
@@ -164,7 +148,6 @@ interpreter::execution_result interpreter::execute(const ast::return_stmt& stmt)
     return execution_result::return_(ret_val);
 }
 
-// clang-format off
 core::value interpreter::evaluate(const ast::expression& expr) {
     auto&& result = expr.visit([&](const auto& e) { return evaluate(e); });
     if (writer_.enabled(debug::trace_level::execution)) writer_.print(expr, &result);
@@ -180,25 +163,22 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
         [&](const ast::variable_expr& e) -> core::value& { return evaluate_lvalue(e); },
         [&](const ast::index_expr& e) -> core::value& { return evaluate_lvalue(e); },
         [&](const ast::member_access_expr& e) -> core::value& { return evaluate_lvalue(e); },
-        [](const auto&) -> core::value& {
-            throw core::runtime_error{err::type_mismatch_assignment};
-        }
-    });
+        [](const auto&) -> core::value& { throw core::runtime_error{err::type_mismatch_assignment}; }});
 }
+
 core::value& interpreter::evaluate_lvalue(const ast::variable_expr& expr) {
-    auto var = values_.get(expr.name_.lexeme_);
-    return *var;
+    return *values_.get(expr.name_.lexeme_);
 }
 
 core::value& interpreter::evaluate_lvalue(const ast::index_expr& expr) {
-    auto&& obj = evaluate_lvalue(expr.object_); 
+    auto&& obj = evaluate_lvalue(expr.object_);
     auto&& index_val = evaluate(expr.index_);
     auto&& i = index_val.to_int();
     auto&& arr = obj.to_array();
-    
+
     if (i < 0 || i >= static_cast<core::value::int_t>(arr.size()))
         reporter_.runtime_error(expr.loc_, err::index_out_of_bounds);
-    
+
     return arr[i];
 }
 
@@ -218,7 +198,7 @@ core::value interpreter::evaluate(const ast::member_access_expr& expr) {
 core::value interpreter::evaluate(const ast::index_expr& expr) {
     return evaluate_lvalue(expr);
 }
-
+// clang-format off
 core::value interpreter::evaluate(const ast::binary_expr& expr) {
     auto&& left = evaluate(expr.left_);
     auto&& type = expr.op_.type_;
@@ -251,7 +231,7 @@ core::value interpreter::evaluate(const ast::binary_expr& expr) {
             case tt::XOR:           return op::bit_xor(left, right);
             case tt::SHL:           return op::shl(left, right);
             case tt::SHR:           return op::shr(left, right);
-            default: reporter_.runtime_error(expr.op_.loc_, err::unsupported_binary_operator, expr.op_.lexeme_);
+            default:                return {};
         }
     } catch (const core::value_error& e) { reporter_.runtime_error(expr.op_.loc_, e.code_, expr.op_.lexeme_); }
 }
@@ -296,17 +276,30 @@ core::value interpreter::evaluate(const ast::unary_expr& expr) {
         case tt::BIT_NOT:
             return op::bit_not(operand);
         case tt::INCREMENT:
+            return op::pre_increment(evaluate_lvalue(expr.operand_));
         case tt::DECREMENT:
-            return apply_increment(evaluate_lvalue(expr.operand_), op, false);
+            return op::pre_decrement(evaluate_lvalue(expr.operand_));
+
         default:
-            reporter_.runtime_error(expr.op_.loc_, err::unsupported_unary_operator, expr.op_.lexeme_);
+            return {};
     }
 }
 
 core::value interpreter::evaluate(const ast::postfix_expr& expr) {
-    return apply_increment(evaluate_lvalue(expr.operand_), expr.op_.type_, true);
+    return expr.op_.type_ == tt::INCREMENT ? op::post_increment(evaluate_lvalue(expr.operand_))
+                                           : op::post_decrement(evaluate_lvalue(expr.operand_));
 }
-// clang-format off
+
+core::value interpreter::evaluate(const ast::initializer_list_expr& expr) {
+    std::vector<core::value> elements;
+    elements.reserve(expr.elements_.size());
+    std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
+
+    if (elements.empty()) return std::vector<core::value>{};
+
+    return elements;
+}
+
 core::value interpreter::evaluate(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
@@ -325,48 +318,41 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
     std::ranges::transform(expr.args_, std::back_inserter(args_vec), [&](auto&& arg) { return evaluate(arg); });
 
     auto&& func = registry_.find(name);
-    return func->info_.visit(
-        core::overloaded{
-        [&](core::symbol_registry::builtin_func_ptr builtin) -> core::value {
-            try {
-                auto&& r = builtin->impl_({args_vec.data(), args_vec.size()});
-                if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, r);
-                return r;
-            } catch (const core::value_error& e) {
-                reporter_.runtime_error(expr.callee_.loc_, e.code_, name);
-                return {};
-            }
-        },
-        [&](core::symbol_registry::func_ptr body) -> core::value {
-            core::scope_guard guard{values_};
-            auto&& params = body->type_.param_infos();
-            for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].first, args_vec[i]);
-            auto&& block = body->block_.get<ast::block_stmt>();
-            for (auto&& s : block.statements_) {
-                auto&& result = execute(s);
-                if (result.is_return()) {
-                    if (writer_.enabled(debug::trace_level::returns)) 
-                        writer_.print_return(name, result.value_);
-                    return result.value_; 
-                }
-            }
-            auto&& r = core::value::default_value(body->type_.return_type());
-            if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, r);
-            return r;
-        },
-        [&](core::symbol_registry::struct_ptr) -> core::value {
-            reporter_.runtime_error(expr.callee_.loc_, err::not_a_function, name);
-            return {};
-        }
-        });
+    try {
+        return func->info_.visit([&](const auto& ptr) { return call(ptr, args_vec, name); });
+    } catch (const core::value_error& e) {
+        reporter_.runtime_error(expr.callee_.loc_, e.code_, name);
+        return {};
+    }
 }
-// clang-format on
-core::value interpreter::evaluate(const ast::initializer_list_expr& expr) {
-    std::vector<core::value> elements;
-    elements.reserve(expr.elements_.size());
-    std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
 
-    if (elements.empty()) return std::vector<core::value>{};
+core::value interpreter::call(core::symbol_registry::builtin_func_ptr builtin, std::span<const core::value> args,
+                              std::string_view name) {
+    auto&& result = builtin->impl_(args);
+    if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result);
+    return result;
+}
 
-    return elements;
+core::value interpreter::call(core::symbol_registry::func_ptr body, std::span<const core::value> args,
+                              std::string_view name) {
+    core::scope_guard guard{values_};
+    auto&& params = body->type_.param_infos();
+    for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].first, args[i]);
+
+    auto&& block = body->block_.get<ast::block_stmt>();
+    for (auto&& s : block.statements_) {
+        auto&& result = execute(s);
+        if (result.is_return()) {
+            if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result.value_);
+            return result.value_;
+        }
+    }
+
+    auto&& result = core::value::default_value(body->type_.return_type());
+    if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result);
+    return result;
+}
+
+core::value interpreter::call(core::symbol_registry::struct_ptr, std::span<const core::value>, std::string_view) {
+    return {};
 }

@@ -90,4 +90,14 @@ value shr(const value& a, const value& b);  ///< Сдвиг вправо: a >> b
 
 /// @}
 
+/// @name Операции инкремента/декремента
+/// @ingroup CoreOps
+/// @{
+value pre_increment(value& a);   ///< Преинкремент: ++a
+value pre_decrement(value& a);   ///< Предекремент: --a
+value post_increment(value& a);  ///< Постинкремент: a++
+value post_decrement(value& a);  ///< Постдекремент: a--
+
+/// @}
+
 }  // namespace core::ops

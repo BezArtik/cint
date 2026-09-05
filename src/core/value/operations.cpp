@@ -16,6 +16,34 @@ value arithmetic_op(const value& a, const value& b, Op&& op) {
     return std::invoke(op, a.to_double(), b.to_double());
 }
 
+value increment(value& val, bool return_old) {
+    auto old_val = val;
+
+    if (val.is_int()) {
+        val = val.to_int() + 1;
+    } else if (val.is_double()) {
+        val = val.to_double() + 1.0;
+    } else {
+        throw core::value_error{error_code::invalid_conversion};
+    }
+
+    return return_old ? old_val : val;
+}
+
+value decrement(value& val, bool return_old) {
+    auto old_val = val;
+
+    if (val.is_int()) {
+        val = val.to_int() - 1;
+    } else if (val.is_double()) {
+        val = val.to_double() - 1.0;
+    } else {
+        throw core::value_error{error_code::invalid_conversion};
+    }
+
+    return return_old ? old_val : val;
+}
+
 }  // namespace
 
 value add(const value& a, const value& b) {
@@ -97,6 +125,22 @@ value shl(const value& a, const value& b) {
 }
 value shr(const value& a, const value& b) {
     return a.to_int() >> b.to_int();
+}
+
+value pre_increment(value& a) {
+    return increment(a, false);
+}
+
+value pre_decrement(value& a) {
+    return decrement(a, false);
+}
+
+value post_increment(value& a) {
+    return increment(a, true);
+}
+
+value post_decrement(value& a) {
+    return decrement(a, true);
 }
 
 }  // namespace core::ops
