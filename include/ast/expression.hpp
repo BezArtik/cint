@@ -141,7 +141,7 @@ struct member_access_expr {
  */
 template <typename T, typename... Args>
 expression make_expr(core::arena& arena, Args&&... args) {
-    return expression{core::make_arena<T>(arena, std::forward<Args>(args)...)};
+    return {core::make_arena<T>(arena, std::forward<Args>(args)...)};
 }
 
 }  // namespace ast

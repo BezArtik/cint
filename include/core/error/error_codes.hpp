@@ -5,7 +5,6 @@
  */
 
 #pragma once
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <string_view>
@@ -109,19 +108,6 @@ inline constexpr std::array error_table = {
     ERROR(X)
 #undef X
 };
-
-/**
- * @brief Возвращает шаблон сообщения по коду ошибки.
- *
- * Линейный поиск по таблице. Вызывается при каждой ошибке.
- *
- * @param code Код ошибки
- * @return Шаблон сообщения или "Unknown error" для несуществующего кода.
- */
-inline std::string_view get_error_message(error_code code) {
-    auto it = std::ranges::find(error_table, code, &error_entry::code_);
-    return it != error_table.end() ? it->format_ : "Unknown error";
-}
 
 /**
  * @brief Исключение: фатальная синтаксическая ошибка.

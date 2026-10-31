@@ -3,7 +3,6 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/token/token_types.hpp"
-#include "core/utils/overloaded.hpp"
 
 #include <format>
 
@@ -24,6 +23,16 @@ std::string type_name(const core::type& t) {
 std::string location_str(core::location loc) {
     return std::format(" [line {}:{}]", loc.line_, loc.column_);
 }
+
+struct level_guard {
+    uint32_t& level_;
+
+    level_guard(uint32_t& level) : level_{level} { ++level_; }
+    ~level_guard() { --level_; }
+
+    level_guard(const level_guard&) = delete;
+    level_guard& operator=(const level_guard&) = delete;
+};
 
 }  // namespace
 
@@ -66,9 +75,7 @@ void debug_writer::print_ast(std::span<const ast::statement> statements) {
 void debug_writer::print(const ast::statement& stmt, const core::value* result) {
     if (!enabled(trace_level::ast) && !enabled(trace_level::execution)) return;
 
-    stmt.visit(core::overloaded{
-        [&](const auto& s) { print(s); },
-    });
+    stmt.visit([&](const auto& s) { print(s); });
 
     if (result && enabled(trace_level::execution)) {
         emit("  → ");
@@ -79,9 +86,7 @@ void debug_writer::print(const ast::statement& stmt, const core::value* result) 
 void debug_writer::print(const ast::expression& expr, const core::value* result) {
     if (!enabled(trace_level::ast) && !enabled(trace_level::execution)) return;
 
-    expr.visit(core::overloaded{
-        [&](const auto& e) { print(e); },
-    });
+    expr.visit([&](const auto& e) { print(e); });
 
     if (result && enabled(trace_level::execution)) {
         emit("  → ");

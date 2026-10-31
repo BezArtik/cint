@@ -18,7 +18,6 @@
 #include <array>
 #include <iterator>
 #include <memory_resource>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -80,7 +79,7 @@ interpreter::execution_result interpreter::execute(const ast::var_declaration_st
 
     if (writer_.enabled(debug::trace_level::execution)) {
         auto&& var = values_.get(name);
-        writer_.emit("  " + std::string{name} + " = " + var->to_string() + "\n");
+        writer_.emit(std::format(" {} = {}\n", name, var->to_string()));
     }
     return execution_result::normal();
 }

@@ -188,21 +188,6 @@ private:
      */
     void emit_line(std::string_view msg) const;
 
-    /// @name RAII-guard для временного изменения уровня отступа
-    /// @{
-
-    struct level_guard {
-        uint32_t& level_;
-
-        level_guard(uint32_t& level) : level_{level} { ++level_; }
-        ~level_guard() { --level_; }
-
-        level_guard(const level_guard&) = delete;
-        level_guard& operator=(const level_guard&) = delete;
-    };
-
-    /// @}
-
     write_fn write_;           ///< Функция вывода
     trace_level mask_;         ///< Маска активных уровней
     uint32_t curr_level_ = 0;  ///< Текущий уровень отступа

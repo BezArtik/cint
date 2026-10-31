@@ -161,7 +161,8 @@ private:
      */
     template <typename... Args>
     std::string format_message(error_code code, Args&&... args) {
-        auto format = get_error_message(code);
+        auto&& it = std::ranges::find(error_table, code, &error_entry::code_);
+        auto&& format = it != error_table.end() ? it->format_ : "Unknown error";
         if constexpr (sizeof...(Args) == 0) return std::string{format};
         return std::vformat(format, std::make_format_args(args...));
     }
