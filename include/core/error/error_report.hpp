@@ -16,7 +16,7 @@
 #include <string_view>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Централизованный обработчик ошибок интерпретатора.
@@ -35,7 +35,6 @@ namespace core {
  * - Визуальное выделение проблемного места в исходном коде
  *
  * Особенности:
- * - **Форматирование сообщений**: через std::vformat с плейсхолдерами {}
  * - **Визуализация ошибки**: показывает строку исходного кода и позицию ошибки
  * - **Накопление ошибок**: не останавливается на первой, собирает все за проход
  * - **Фатальные ошибки**: parse_error, value_error и runtime_error прерывают выполнение
@@ -160,16 +159,16 @@ private:
      * @return Отформатированная строка.
      */
     template <typename... Args>
-    std::string format_message(error_code code, Args&&... args) {
-        auto&& it = std::ranges::find(error_table, code, &error_entry::code_);
-        auto&& format = it != error_table.end() ? it->format_ : "Unknown error";
+    auto format_message(error_code code, Args&&... args) {
+        const auto it = std::ranges::find(error_table, code, &error_entry::code_);
+        const auto format = it != error_table.end() ? it->format_ : "Unknown error";
         if constexpr (sizeof...(Args) == 0) return std::string{format};
         return std::vformat(format, std::make_format_args(args...));
     }
 
     bool had_error_ = false;               ///< Была ли хотя бы одна ошибка
-    std::string_view source_;              ///< Исходный код (для визуализации)
+    std::string_view source_;              ///< Исходный код
     std::vector<std::string_view> lines_;  ///< Кеш строк исходного кода
 };
 
-}  // namespace core
+}  // namespace cint::core

@@ -11,6 +11,8 @@
 #include <cctype>
 #include <string_view>
 
+namespace cint {
+
 using tt = core::token_type;
 using err = core::error_code;
 
@@ -116,8 +118,7 @@ void lexer::consume_identifier_or_keyword(core::location start_loc) {
 
     auto&& it =
         std::ranges::find(core::keywords, source_.substr(start_, current_ - start_), &core::keyword_info::lexeme_);
-    auto&& type = it != core::keywords.end() ? it->type_ : tt::IDENTIFIER;
-    add_token(type, start_loc);
+    add_token(it != core::keywords.end() ? it->type_ : tt::IDENTIFIER, start_loc);
 }
 
 void lexer::consume_number(core::location start_loc) {
@@ -175,3 +176,5 @@ bool lexer::match(char expected) noexcept {
 bool lexer::is_at_end() const noexcept {
     return current_ >= source_.length();
 }
+
+}  // namespace cint

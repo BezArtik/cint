@@ -19,30 +19,30 @@ namespace {
 
 struct flag_info {
     std::string_view name_;
-    debug::trace_level level_;
+    cint::debug::trace_level level_;
 };
 
 // clang-format off
 constexpr std::array flag_table = {
-    flag_info{"--debug", debug::trace_level::all},         
-    flag_info{"--trace=tokens", debug::trace_level::tokens},
-    flag_info{"--trace=ast", debug::trace_level::ast},     
-    flag_info{"--trace=exec", debug::trace_level::execution},
-    flag_info{"--trace=returns", debug::trace_level::returns},
-    flag_info{"--trace=all", debug::trace_level::all},
+    flag_info{"--debug", cint::debug::trace_level::all},         
+    flag_info{"--trace=tokens", cint::debug::trace_level::tokens},
+    flag_info{"--trace=ast", cint::debug::trace_level::ast},     
+    flag_info{"--trace=exec", cint::debug::trace_level::execution},
+    flag_info{"--trace=returns", cint::debug::trace_level::returns},
+    flag_info{"--trace=all", cint::debug::trace_level::all},
 };
 // clang-format on
 
 struct options {
     bool debug_ = false;
     std::string filename_;
-    debug::trace_level trace_mask_ = debug::trace_level::none;
+    cint::debug::trace_level trace_mask_ = cint::debug::trace_level::none;
 };
 
-options parse_args(int argc, char* argv[]) {
-    options opts;
+options parse_args(int argc, char** argv) {
+    auto opts = options{};
     for (int i = 1; i < argc; ++i) {
-        std::string_view arg(argv[i]);
+        const auto arg = std::string_view(argv[i]);
 
         if (arg == "--help") {
             std::cout << "Usage: " << argv[0] << " [options] <source_file>\n"
@@ -54,7 +54,7 @@ options parse_args(int argc, char* argv[]) {
             std::exit(0);
         }
 
-        auto&& it = std::ranges::find(flag_table, arg, &flag_info::name_);
+        const auto it = std::ranges::find(flag_table, arg, &flag_info::name_);
         if (it != flag_table.end()) {
             opts.debug_ = true;
             opts.trace_mask_ = opts.trace_mask_ | it->level_;
@@ -68,16 +68,16 @@ options parse_args(int argc, char* argv[]) {
 
 struct run_config {
     std::string_view source_;
-    debug::debug_writer& writer_;
+    cint::debug::debug_writer& writer_;
 };
 
 int run_program(const run_config& config) {
-    core::arena arena;
-    core::arena_memory_resource mr{arena};
-    core::error_reporter reporter{config.source_};
+    auto arena = cint::core::arena{};
+    auto mr = cint::core::arena_memory_resource{arena};
+    auto reporter = cint::core::error_reporter{config.source_};
 
-    lexer lex{config.source_, reporter, mr};
-    auto&& tokens = lex.scan_tokens();
+    auto lex = cint::lexer{config.source_, reporter, mr};
+    const auto tokens = lex.scan_tokens();
 
     config.writer_.print_tokens(tokens);
     if (reporter.has_error()) {
@@ -85,8 +85,8 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    parser p{tokens, reporter, arena, mr};
-    auto&& ast = p.parse();
+    auto pr = cint::parser{tokens, reporter, arena, mr};
+    const auto ast = pr.parse();
 
     config.writer_.print_ast(ast);
     if (reporter.has_error()) {
@@ -94,16 +94,16 @@ int run_program(const run_config& config) {
         return 1;
     }
 
-    auto&& registry = core::symbol_registry::build(ast, reporter);
+    const auto registry = cint::core::symbol_registry::build(ast, reporter);
 
-    type_checker checker{reporter, registry};
+    auto checker = cint::type_checker{reporter, registry};
     if (!checker.check(ast)) {
         std::cerr << "Semantic errors found.\n";
         return 1;
     }
 
-    interpreter interpreter{reporter, registry, config.writer_};
-    interpreter.interpret(ast);
+    auto interp = cint::interpreter{reporter, registry, config.writer_};
+    interp.interpret(ast);
 
     if (reporter.has_error()) {
         std::cerr << "Runtime errors found.\n";
@@ -115,9 +115,9 @@ int run_program(const run_config& config) {
 
 }  // namespace
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
     try {
-        auto&& opts = parse_args(argc, argv);
+        const auto opts = parse_args(argc, argv);
 
         if (opts.filename_.empty()) {
             std::cerr << "Usage: " << argv[0] << " [options] <source_file>\n"
@@ -125,23 +125,23 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        std::ifstream file{opts.filename_};
+        auto file = std::ifstream{opts.filename_};
         if (!file) {
             std::cerr << "Error: cannot open file '" << opts.filename_ << "'\n";
             return 1;
         }
 
-        std::string source{std::istreambuf_iterator(file), {}};
+        const auto source = std::string{std::istreambuf_iterator(file), {}};
 
-        debug::debug_writer writer{
+        cint::debug::debug_writer writer{
             opts.debug_ ? [](std::string_view msg) { std::cerr << msg; } : [](std::string_view) {}, opts.trace_mask_};
         run_config config{source, writer};
 
-        auto&& start = std::chrono::steady_clock::now();
-        auto&& exit_code = run_program(config);
-        auto&& finish = std::chrono::steady_clock::now();
+        const auto start = std::chrono::steady_clock::now();
+        const auto exit_code = run_program(config);
+        const auto finish = std::chrono::steady_clock::now();
 
-        const std::chrono::duration<double> elapsed{finish - start};
+        const auto elapsed = std::chrono::duration<double>{finish - start};
         std::cout << "\nProgram execution time (" << elapsed << ")\n";
 
         if (exit_code == 0) std::cout << "Program finished successfully.\n";

@@ -6,7 +6,7 @@
 
 #include <functional>
 
-namespace core::ops {
+namespace cint::core {
 
 namespace {
 
@@ -24,7 +24,7 @@ value increment(value& val, bool return_old) {
     } else if (val.is_double()) {
         val = val.to_double() + 1.0;
     } else {
-        throw core::value_error{error_code::invalid_conversion};
+        throw value_error{error_code::invalid_conversion};
     }
 
     return return_old ? old_val : val;
@@ -38,7 +38,7 @@ value decrement(value& val, bool return_old) {
     } else if (val.is_double()) {
         val = val.to_double() - 1.0;
     } else {
-        throw core::value_error{error_code::invalid_conversion};
+        throw value_error{error_code::invalid_conversion};
     }
 
     return return_old ? old_val : val;
@@ -58,15 +58,15 @@ value mul(const value& a, const value& b) {
 
 value div(const value& a, const value& b) {
     return arithmetic_op(a, b, [](auto x, auto y) {
-        if (y == 0) throw core::value_error{error_code::division_by_zero};
+        if (y == 0) throw value_error{error_code::division_by_zero};
         return x / y;
     });
 }
 
 value mod(const value& a, const value& b) {
-    auto&& li = a.to_int();
     auto&& ri = b.to_int();
-    if (ri == 0) throw core::value_error{error_code::modulo_by_zero};
+    if (ri == 0) throw value_error{error_code::modulo_by_zero};
+    auto&& li = a.to_int();
     return li % ri;
 }
 
@@ -143,4 +143,4 @@ value post_decrement(value& a) {
     return decrement(a, true);
 }
 
-}  // namespace core::ops
+}  // namespace cint::core

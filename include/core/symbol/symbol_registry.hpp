@@ -17,7 +17,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Реестр всех объявленных символов программы.
@@ -115,4 +115,4 @@ private:
     entries_t entries_;
 };
 
-}  // namespace core
+}  // namespace cint::core

@@ -7,7 +7,7 @@
 #include <gtest/gtest.h>
 #include <string_view>
 
-namespace tests {
+namespace cint::tests {
 
 using t = core::type;
 
@@ -573,4 +573,4 @@ TEST(parser_test, struct_with_string_field) {
     EXPECT_FALSE(h.had_error());
 }
 
-}  // namespace tests
+}  // namespace cint::tests

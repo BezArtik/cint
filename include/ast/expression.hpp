@@ -11,7 +11,7 @@
 #include "core/token/token.hpp"
 #include "core/value/value.hpp"
 
-namespace ast {
+namespace cint::ast {
 
 /**
  * @brief Литеральное значение: число, строка, true/false.
@@ -144,4 +144,4 @@ expression make_expr(core::arena& arena, Args&&... args) {
     return {core::make_arena<T>(arena, std::forward<Args>(args)...)};
 }
 
-}  // namespace ast
+}  // namespace cint::ast

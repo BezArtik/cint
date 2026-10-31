@@ -13,7 +13,7 @@
 #include <string_view>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Словарь со стеком областей видимости.
@@ -145,4 +145,4 @@ private:
     scoped_map<T>& map_;
 };
 
-}  // namespace core
+}  // namespace cint::core

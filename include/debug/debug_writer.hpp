@@ -18,7 +18,7 @@
 #include <span>
 #include <string_view>
 
-namespace debug {
+namespace cint::debug {
 
 /**
  * @brief Битовые флаги уровней трассировки.
@@ -193,4 +193,4 @@ private:
     uint32_t curr_level_ = 0;  ///< Текущий уровень отступа
 };
 
-}  // namespace debug
+}  // namespace cint::debug

@@ -17,7 +17,7 @@
 #include <string_view>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Статический тип в языке.
@@ -178,4 +178,4 @@ private:
     /// @endcond
 };
 
-}  // namespace core
+}  // namespace cint::core

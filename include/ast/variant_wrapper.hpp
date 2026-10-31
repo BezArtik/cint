@@ -12,7 +12,7 @@
 #include <functional>
 #include <utility>
 
-namespace ast {
+namespace cint::ast {
 
 /**
  * @brief Обертка над std::variant, автоматически разыменовывающая arena_ptr.
@@ -142,4 +142,4 @@ private:
     core::variant<wrap<Types>...> data_;
 };
 
-}  // namespace ast
+}  // namespace cint::ast

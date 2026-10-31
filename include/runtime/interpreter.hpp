@@ -19,6 +19,8 @@
 
 #include <span>
 
+namespace cint {
+
 /**
  * @brief Интерпретатор, выполняющий программу путём обхода AST.
  * @ingroup Runtime
@@ -132,3 +134,5 @@ private:
     /// Максимально допустимая глубина рекурсивных вызовов.
     static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
 };
+
+}  // namespace cint

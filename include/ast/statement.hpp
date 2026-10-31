@@ -14,7 +14,7 @@
 #include <optional>
 #include <utility>
 
-namespace ast {
+namespace cint::ast {
 
 /**
  * @brief Инструкция-выражение: `expr;`.
@@ -141,7 +141,7 @@ struct struct_declaration_stmt {
  */
 template <typename Stmt, typename... Args>
 statement make_stmt(core::arena& arena, Args&&... args) {
-    return statement{core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};
+    return {core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};
 }
 
-}  // namespace ast
+}  // namespace cint::ast

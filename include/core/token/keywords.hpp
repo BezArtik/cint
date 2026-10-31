@@ -11,7 +11,7 @@
 #include <array>
 #include <string_view>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Информация о ключевом слове.
@@ -53,4 +53,4 @@ inline const std::array keywords{
     keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false},
 };
 
-}  // namespace core
+}  // namespace cint::core

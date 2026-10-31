@@ -21,10 +21,11 @@
 #include <utility>
 #include <vector>
 
+namespace cint {
+
 using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
-namespace op = core::ops;
 
 struct interpreter::execution_result {
     enum class kind : uint8_t { normal, return_ };
@@ -93,7 +94,7 @@ interpreter::execution_result interpreter::execute(const ast::struct_declaration
 }
 
 interpreter::execution_result interpreter::execute(const ast::block_stmt& stmt) {
-    std::optional<core::scope_guard<core::value>> guard;
+    auto guard = std::optional<core::scope_guard<core::value>>{};
     if (stmt.has_declarations_) guard.emplace(values_);
     for (auto&& s : stmt.statements_) {
         auto&& res = execute(s);
@@ -103,7 +104,7 @@ interpreter::execution_result interpreter::execute(const ast::block_stmt& stmt) 
 }
 
 interpreter::execution_result interpreter::execute(const ast::while_stmt& stmt) {
-    core::scope_guard guard{values_};
+    auto guard = core::scope_guard{values_};
     while (true) {
         auto&& cond = evaluate(stmt.condition_);
         if (!cond.to_bool()) break;
@@ -115,7 +116,7 @@ interpreter::execution_result interpreter::execute(const ast::while_stmt& stmt) 
 }
 
 interpreter::execution_result interpreter::execute(const ast::for_stmt& stmt) {
-    core::scope_guard guard{values_};
+    auto guard = core::scope_guard{values_};
     if (stmt.initializer_) execute(*stmt.initializer_);
     while (true) {
         if (stmt.condition_) {
@@ -142,7 +143,7 @@ interpreter::execution_result interpreter::execute(const ast::if_stmt& stmt) {
 }
 
 interpreter::execution_result interpreter::execute(const ast::return_stmt& stmt) {
-    core::value ret_val;
+    auto ret_val = core::value{};
     if (stmt.value_) ret_val = evaluate(*stmt.value_);
     return execution_result::return_(ret_val);
 }
@@ -214,22 +215,22 @@ core::value interpreter::evaluate(const ast::binary_expr& expr) {
     auto&& right = evaluate(expr.right_);
     try {
         switch (type) {
-            case tt::PLUS:          return op::add(left, right);
-            case tt::MINUS:         return op::sub(left, right);
-            case tt::STAR:          return op::mul(left, right);
-            case tt::SLASH:         return op::div(left, right);
-            case tt::PERCENT:       return op::mod(left, right);
-            case tt::EQUAL_EQUAL:   return op::eq(left, right);
-            case tt::BANG_EQUAL:    return op::neq(left, right);
-            case tt::LESS:          return op::lt(left, right);
-            case tt::LESS_EQUAL:    return op::le(left, right);
-            case tt::GREATER:       return op::gt(left, right);
-            case tt::GREATER_EQUAL: return op::ge(left, right);
-            case tt::BIT_AND:       return op::bit_and(left, right);
-            case tt::BIT_OR:        return op::bit_or(left, right);
-            case tt::XOR:           return op::bit_xor(left, right);
-            case tt::SHL:           return op::shl(left, right);
-            case tt::SHR:           return op::shr(left, right);
+            case tt::PLUS:          return core::add(left, right);
+            case tt::MINUS:         return core::sub(left, right);
+            case tt::STAR:          return core::mul(left, right);
+            case tt::SLASH:         return core::div(left, right);
+            case tt::PERCENT:       return core::mod(left, right);
+            case tt::EQUAL_EQUAL:   return core::eq(left, right);
+            case tt::BANG_EQUAL:    return core::neq(left, right);
+            case tt::LESS:          return core::lt(left, right);
+            case tt::LESS_EQUAL:    return core::le(left, right);
+            case tt::GREATER:       return core::gt(left, right);
+            case tt::GREATER_EQUAL: return core::ge(left, right);
+            case tt::BIT_AND:       return core::bit_and(left, right);
+            case tt::BIT_OR:        return core::bit_or(left, right);
+            case tt::XOR:           return core::bit_xor(left, right);
+            case tt::SHL:           return core::shl(left, right);
+            case tt::SHR:           return core::shr(left, right);
             default:                return {};
         }
     } catch (const core::value_error& e) { reporter_.runtime_error(expr.op_.loc_, e.code_, expr.op_.lexeme_); }
@@ -240,22 +241,18 @@ core::value interpreter::evaluate(const ast::assignment_expr& expr) {
     auto&& right = evaluate(expr.value_);
     auto&& target = evaluate_lvalue(expr.target_);
 
-    if (op == tt::EQUAL) {
-        target = std::move(right);
-        return target;
-    }
-
     switch (op) {
-        case tt::PLUS_EQUAL:    target = op::add(target, right);     break;
-        case tt::MINUS_EQUAL:   target = op::sub(target, right);     break;
-        case tt::STAR_EQUAL:    target = op::mul(target, right);     break;
-        case tt::SLASH_EQUAL:   target = op::div(target, right);     break;
-        case tt::PERCENT_EQUAL: target = op::mod(target, right);     break;
-        case tt::BIT_AND_EQUAL: target = op::bit_and(target, right); break;
-        case tt::BIT_OR_EQUAL:  target = op::bit_or(target, right);  break;
-        case tt::XOR_EQUAL:     target = op::bit_xor(target, right); break;
-        case tt::SHL_EQUAL:     target = op::shl(target, right);     break;
-        case tt::SHR_EQUAL:     target = op::shr(target, right);     break;
+        case tt::EQUAL:         target = std::move(right);             break;
+        case tt::PLUS_EQUAL:    target = core::add(target, right);     break;
+        case tt::MINUS_EQUAL:   target = core::sub(target, right);     break;
+        case tt::STAR_EQUAL:    target = core::mul(target, right);     break;
+        case tt::SLASH_EQUAL:   target = core::div(target, right);     break;
+        case tt::PERCENT_EQUAL: target = core::mod(target, right);     break;
+        case tt::BIT_AND_EQUAL: target = core::bit_and(target, right); break;
+        case tt::BIT_OR_EQUAL:  target = core::bit_or(target, right);  break;
+        case tt::XOR_EQUAL:     target = core::bit_xor(target, right); break;
+        case tt::SHL_EQUAL:     target = core::shl(target, right);     break;
+        case tt::SHR_EQUAL:     target = core::shr(target, right);     break;
         default: break;
     }
 
@@ -269,15 +266,15 @@ core::value interpreter::evaluate(const ast::unary_expr& expr) {
 
     switch (op) {
         case tt::MINUS:
-            return op::unary_minus(operand);
+            return core::unary_minus(operand);
         case tt::BANG:
-            return op::not_op(operand);
+            return core::not_op(operand);
         case tt::BIT_NOT:
-            return op::bit_not(operand);
+            return core::bit_not(operand);
         case tt::INCREMENT:
-            return op::pre_increment(evaluate_lvalue(expr.operand_));
+            return core::pre_increment(evaluate_lvalue(expr.operand_));
         case tt::DECREMENT:
-            return op::pre_decrement(evaluate_lvalue(expr.operand_));
+            return core::pre_decrement(evaluate_lvalue(expr.operand_));
 
         default:
             return {};
@@ -285,12 +282,12 @@ core::value interpreter::evaluate(const ast::unary_expr& expr) {
 }
 
 core::value interpreter::evaluate(const ast::postfix_expr& expr) {
-    return expr.op_.type_ == tt::INCREMENT ? op::post_increment(evaluate_lvalue(expr.operand_))
-                                           : op::post_decrement(evaluate_lvalue(expr.operand_));
+    return expr.op_.type_ == tt::INCREMENT ? core::post_increment(evaluate_lvalue(expr.operand_))
+                                           : core::post_decrement(evaluate_lvalue(expr.operand_));
 }
 
 core::value interpreter::evaluate(const ast::initializer_list_expr& expr) {
-    std::vector<core::value> elements;
+    auto elements = std::vector<core::value>{};
     elements.reserve(expr.elements_.size());
     std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
 
@@ -310,9 +307,9 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
         ~depth_guard() { d--; }
     } d_guard{recursion_depth_};
 
-    std::array<std::byte, 512> args_buf;
-    std::pmr::monotonic_buffer_resource args_mr{args_buf.data(), args_buf.size()};
-    std::pmr::vector<core::value> args_vec(&args_mr);
+    auto args_buf = std::array<std::byte, 512>{};
+    auto args_mr = std::pmr::monotonic_buffer_resource{args_buf.data(), args_buf.size()};
+    auto args_vec = std::pmr::vector<core::value>(&args_mr);
 
     std::ranges::transform(expr.args_, std::back_inserter(args_vec), [&](auto&& arg) { return evaluate(arg); });
 
@@ -334,7 +331,7 @@ core::value interpreter::call(core::symbol_registry::builtin_func_ptr builtin, s
 
 core::value interpreter::call(core::symbol_registry::func_ptr body, std::span<const core::value> args,
                               std::string_view name) {
-    core::scope_guard guard{values_};
+    auto guard = core::scope_guard{values_};
     auto&& params = body->type_.param_infos();
     for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].first, args[i]);
 
@@ -355,3 +352,5 @@ core::value interpreter::call(core::symbol_registry::func_ptr body, std::span<co
 core::value interpreter::call(core::symbol_registry::struct_ptr, std::span<const core::value>, std::string_view) {
     return {};
 }
+
+}  // namespace cint

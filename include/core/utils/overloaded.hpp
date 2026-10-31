@@ -6,7 +6,7 @@
 
 #pragma once
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Вспомогательный шаблон для создания visitor'а "на лету".
@@ -24,4 +24,4 @@ struct overloaded : Ts... {
     using Ts::operator()...;
 };
 
-}  // namespace core
+}  // namespace cint::core

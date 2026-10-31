@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 // clang-format off
 
 struct type::function_t {
@@ -84,11 +84,11 @@ std::string_view type::struct_name() const { return data_.get<struct_wrap>()->na
 std::span<const type::field_t> type::struct_fields() const { return data_.get<struct_wrap>()->fields_; }
 
 std::optional<size_t> type::field_index(std::string_view name) const noexcept {
-    auto&& fields = struct_fields();
-    auto&& it = std::ranges::find(fields, name, &field_t::first);
+    const auto fields = struct_fields();
+    const auto it = std::ranges::find(fields, name, &field_t::first);
     if (it == fields.end()) return std::nullopt;
     return std::distance(fields.begin(), it);
 }
 // clang-format on
 
-}  // namespace core
+}  // namespace cint::core

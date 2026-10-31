@@ -16,6 +16,8 @@
 
 #include <span>
 
+namespace cint {
+
 /**
  * @brief Синтаксический анализатор, строящий AST из
  * входной последовательности токенов
@@ -367,3 +369,5 @@ private:
     core::arena& arena_;                   ///< Арена для размещения узлов AST
     core::arena_memory_resource& mr_;      ///< Memory resource для списков
 };
+
+}  // namespace cint

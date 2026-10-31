@@ -14,7 +14,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Позиция в исходном коде (строка и колонка).
@@ -49,4 +49,4 @@ struct token {
     location loc_;             ///< Позиция в исходном коде
 };
 
-}  // namespace core
+}  // namespace cint::core

@@ -10,29 +10,29 @@
 #include <ranges>
 #include <variant>
 
+namespace cint::core {
+
 namespace {
 
 [[noreturn]] void invalid_conversion() {
     throw core::value_error{core::error_code::invalid_conversion};
 }
 
-core::value::int_t parse_int(std::string_view text) {
-    core::value::int_t result{};
+value::int_t parse_int(std::string_view text) {
+    auto result = value::int_t{};
     auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
     if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
     return result;
 }
 
-core::value::double_t parse_double(std::string_view text) {
-    core::value::double_t result{};
+value::double_t parse_double(std::string_view text) {
+    auto result = value::double_t{};
     auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
     if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
     return result;
 }
 
 }  // namespace
-
-namespace core {
 
 value value::default_value(const core::type& t) {
     if (t.is_int()) return int_t{};
@@ -43,14 +43,14 @@ value value::default_value(const core::type& t) {
     if (t.is_unknown()) return {};
 
     if (t.is_array()) {
-        array_t elements;
+        auto elements = array_t{};
         elements.reserve(t.array_size());
         for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
         return elements;
     }
 
     if (t.is_struct()) {
-        std::vector<value> fields;
+        auto fields = std::vector<value>{};
         fields.reserve(t.struct_fields().size());
         for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
         return struct_t{t, std::move(fields)};
@@ -100,7 +100,7 @@ value::bool_t value::to_bool() const {
 value::string_t value::to_string() const {
     auto&& to_string = [&](std::ranges::input_range auto&& cnt) {
         string_t res;
-        auto&& it = cnt.cbegin(), &&end = cnt.cend();
+        auto it = cnt.cbegin(), end = cnt.cend();
         if (it == end) return res;
         res.reserve(cnt.size() * 2);
         res += std::format("{}", it->to_string()); ++it;
@@ -163,4 +163,4 @@ bool value::is_struct() const noexcept { return data_.holds<struct_t>(); }
 bool value::is_void() const noexcept { return data_.holds<std::monostate>(); }
 // clang-format on
 
-}  // namespace core
+}  // namespace cint::core

@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <string_view>
 
-namespace tests {
+namespace cint::tests {
 
 struct valid_execution_case {
     std::string_view source_;
@@ -16,7 +16,7 @@ class valid_execution_test : public ::testing::TestWithParam<valid_execution_cas
 
 TEST_P(valid_execution_test, runs_without_error) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     EXPECT_TRUE(h.run_all()) << "Unexpected runtime error for: " << tc.description_;
 }
 // clang-format off
@@ -98,7 +98,7 @@ class runtime_error_test : public ::testing::TestWithParam<runtime_error_case> {
 
 TEST_P(runtime_error_test, reports_error) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     h.lex();
     h.parse();
     h.check_semantics();
@@ -115,4 +115,4 @@ INSTANTIATE_TEST_SUITE_P(
         runtime_error_case{"int f() { return f(); } int x = f();", "stack overflow"}
 ));
 // clang-format on
-}  // namespace tests
+}  // namespace cint::tests

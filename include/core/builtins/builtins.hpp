@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 class value;
 
@@ -56,7 +56,7 @@ struct builtin_def {
 /// @ingroup Builtins
 /// @{
 
-namespace builtin_impl {
+namespace detail {
 
 /// @name Ввод/вывод
 /// @{
@@ -113,7 +113,7 @@ value srand(std::span<const value> args);
 
 /// @}
 
-}  // namespace builtin_impl
+}  // namespace detail
 
 /// @}
 
@@ -130,35 +130,31 @@ value srand(std::span<const value> args);
  */
 inline const std::array builtins = {
     // Ввод/вывод
-    builtin_def{type::function_type("print_int", type::void_type(), {{"x", type::int_type()}}),
-                builtin_impl::print_int},
-    builtin_def{type::function_type("print_dbl", type::void_type(), {{"x", type::double_type()}}),
-                builtin_impl::print_dbl},
-    builtin_def{type::function_type("print_bool", type::void_type(), {{"x", type::bool_type()}}),
-                builtin_impl::print_bool},
-    builtin_def{type::function_type("print_str", type::void_type(), {{"x", type::string_type()}}),
-                builtin_impl::print_str},
+    builtin_def{type::function_type("print_int", type::void_type(), {{"x", type::int_type()}}), detail::print_int},
+    builtin_def{type::function_type("print_dbl", type::void_type(), {{"x", type::double_type()}}), detail::print_dbl},
+    builtin_def{type::function_type("print_bool", type::void_type(), {{"x", type::bool_type()}}), detail::print_bool},
+    builtin_def{type::function_type("print_str", type::void_type(), {{"x", type::string_type()}}), detail::print_str},
 
-    builtin_def{type::function_type("input", type::string_type(), {}), builtin_impl::input},
+    builtin_def{type::function_type("input", type::string_type(), {}), detail::input},
 
     // Математика
-    builtin_def{type::function_type("sqrt", type::double_type(), {{"x", type::double_type()}}), builtin_impl::sqrt},
-    builtin_def{type::function_type("sin", type::double_type(), {{"x", type::double_type()}}), builtin_impl::sin},
-    builtin_def{type::function_type("exp", type::double_type(), {{"x", type::double_type()}}), builtin_impl::exp},
+    builtin_def{type::function_type("sqrt", type::double_type(), {{"x", type::double_type()}}), detail::sqrt},
+    builtin_def{type::function_type("sin", type::double_type(), {{"x", type::double_type()}}), detail::sin},
+    builtin_def{type::function_type("exp", type::double_type(), {{"x", type::double_type()}}), detail::exp},
 
     // Преобразования
-    builtin_def{type::function_type("dtoi", type::int_type(), {{"x", type::double_type()}}), builtin_impl::dtoi},
-    builtin_def{type::function_type("stoi", type::int_type(), {{"s", type::string_type()}}), builtin_impl::stoi},
-    builtin_def{type::function_type("itod", type::double_type(), {{"x", type::int_type()}}), builtin_impl::itod},
-    builtin_def{type::function_type("stod", type::double_type(), {{"s", type::string_type()}}), builtin_impl::stod},
+    builtin_def{type::function_type("dtoi", type::int_type(), {{"x", type::double_type()}}), detail::dtoi},
+    builtin_def{type::function_type("stoi", type::int_type(), {{"s", type::string_type()}}), detail::stoi},
+    builtin_def{type::function_type("itod", type::double_type(), {{"x", type::int_type()}}), detail::itod},
+    builtin_def{type::function_type("stod", type::double_type(), {{"s", type::string_type()}}), detail::stod},
 
     // Случайные числа
     builtin_def{
         type::function_type("rand_int", type::int_type(), {{"min", type::int_type()}, {"max", type::int_type()}}),
-        builtin_impl::rand_int},
+        detail::rand_int},
     builtin_def{type::function_type("rand_dbl", type::double_type(),
                                     {{"min", type::double_type()}, {"max", type::double_type()}}),
-                builtin_impl::rand_dbl},
-    builtin_def{type::function_type("srand", type::void_type(), {{"seed", type::int_type()}}), builtin_impl::srand}};
+                detail::rand_dbl},
+    builtin_def{type::function_type("srand", type::void_type(), {{"seed", type::int_type()}}), detail::srand}};
 
-}  // namespace core
+}  // namespace cint::core

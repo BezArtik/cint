@@ -5,9 +5,9 @@
 #include <iostream>
 #include <string_view>
 
-namespace core {
+namespace cint::core {
 
-error_reporter::error_reporter(std::string_view source) : source_(source) {
+error_reporter::error_reporter(std::string_view source) : source_{source} {
     build_line_cache();
 }
 
@@ -65,4 +65,4 @@ void error_reporter::report(location loc, std::string_view kind, std::string_vie
     }
 }
 
-}  // namespace core
+}  // namespace cint::core

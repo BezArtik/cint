@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-namespace tests {
+namespace cint::tests {
 
 using tt = core::token_type;
 
@@ -264,4 +264,4 @@ TEST(lexer_test, unexpected_character_recovery) {
     expect_token(h.tokens()[1], tt::NUMBER, "43");
 }
 
-}  // namespace tests
+}  // namespace cint::tests

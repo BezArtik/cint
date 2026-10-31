@@ -11,7 +11,7 @@
 #include <utility>
 #include <variant>
 
-namespace core {
+namespace cint::core {
 
 namespace detail {
 
@@ -187,4 +187,4 @@ private:
     std::variant<Types...> data_;
 };
 
-}  // namespace core
+}  // namespace cint::core

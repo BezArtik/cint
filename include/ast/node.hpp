@@ -12,7 +12,7 @@
 
 #include <vector>
 
-namespace ast {
+namespace cint::ast {
 
 // Forward declarations expressions
 struct literal_expr;
@@ -59,4 +59,4 @@ using expression = variant_wrapper<literal_expr, variable_expr, binary_expr, ass
 /// Список выражений.
 using expr_list = std::pmr::vector<expression>;
 
-}  // namespace ast
+}  // namespace cint::ast

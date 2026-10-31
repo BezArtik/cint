@@ -7,7 +7,7 @@
 #include <memory>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 void* arena::allocate_raw(size_t size, size_t alignment) {
     auto&& ptr = align_ptr(current_, alignment);
@@ -53,4 +53,4 @@ std::byte* arena::align_ptr(std::byte* ptr, size_t alignment) noexcept {
     return reinterpret_cast<std::byte*>(aligned);
 }
 
-}  // namespace core
+}  // namespace cint::core

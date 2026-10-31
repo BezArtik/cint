@@ -6,6 +6,8 @@
 
 #include <format>
 
+namespace cint::debug {
+
 namespace {
 
 std::string type_name(const core::type& t) {
@@ -35,8 +37,6 @@ struct level_guard {
 };
 
 }  // namespace
-
-namespace debug {
 
 void debug_writer::emit_line(std::string_view msg) const {
     emit(std::format("{}{}\n", std::string(static_cast<size_t>(curr_level_) * 2, ' '), msg));
@@ -105,27 +105,27 @@ void debug_writer::print_return(std::string_view func_name, const core::value& r
 
 void debug_writer::print(const ast::expression_stmt& stmt) {
     emit_line("[EXEC] ExpressionStmt");
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     print(stmt.expr_);
 }
 
 void debug_writer::print(const ast::var_declaration_stmt& stmt) {
     emit_line(std::format("[EXEC] VarDeclaration: {} : {}", stmt.name_.lexeme_, type_name(stmt.type_)));
     if (stmt.initializer_) {
-        level_guard guard{curr_level_};
+        auto guard = level_guard{curr_level_};
         print(*stmt.initializer_);
     }
 }
 
 void debug_writer::print(const ast::block_stmt& stmt) {
     emit_line(std::format("[EXEC] BlockStmt [{} statements]", stmt.statements_.size()));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     for (auto&& inner : stmt.statements_) print(inner);
 }
 
 void debug_writer::print(const ast::while_stmt& stmt) {
     emit_line("[EXEC] WhileStmt");
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Condition:");
     print(stmt.condition_);
@@ -136,7 +136,7 @@ void debug_writer::print(const ast::while_stmt& stmt) {
 
 void debug_writer::print(const ast::for_stmt& stmt) {
     emit_line("[EXEC] ForStmt");
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     if (stmt.initializer_) {
         emit_line("Initializer:");
@@ -159,7 +159,7 @@ void debug_writer::print(const ast::for_stmt& stmt) {
 
 void debug_writer::print(const ast::if_stmt& stmt) {
     emit_line("[EXEC] IfStmt");
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Condition:");
     print(stmt.condition_);
@@ -176,7 +176,7 @@ void debug_writer::print(const ast::if_stmt& stmt) {
 void debug_writer::print(const ast::return_stmt& stmt) {
     if (stmt.value_) {
         emit_line("[EXEC] ReturnStmt");
-        level_guard guard{curr_level_};
+        auto guard = level_guard{curr_level_};
         print(*stmt.value_);
     } else {
         emit_line("[EXEC] ReturnStmt (void)");
@@ -186,13 +186,13 @@ void debug_writer::print(const ast::return_stmt& stmt) {
 void debug_writer::print(const ast::func_declaration_stmt& stmt) {
     emit_line(std::format("[EXEC] FuncDeclaration: {} -> {}", stmt.type_.function_name(), type_name(stmt.type_)));
 
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     auto&& params = stmt.type_.param_infos();
     if (params.empty()) {
         emit_line("Params: (none)");
     } else {
-        std::string params_str;
+        auto params_str = std::string{};
         for (auto&& [name, type] : params)
             std::format_to(std::back_inserter(params_str), "{}{} : {}", params_str.empty() ? "" : " ", name,
                            type_name(type));
@@ -206,11 +206,11 @@ void debug_writer::print(const ast::func_declaration_stmt& stmt) {
 
 void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
     emit_line(std::format("[EXEC] StructDeclaration: {}", stmt.type_.struct_name()));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Fields:");
     for (auto&& [name, type] : stmt.type_.struct_fields()) {
-        level_guard field_guard{curr_level_};
+        auto guard = level_guard{curr_level_};
         emit_line(std::format("{} : {}", name, type_name(type)));
     }
 }
@@ -225,7 +225,7 @@ void debug_writer::print(const ast::variable_expr& expr) {
 
 void debug_writer::print(const ast::binary_expr& expr) {
     emit_line(std::format("Binary: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Left:");
     print(expr.left_);
@@ -236,7 +236,7 @@ void debug_writer::print(const ast::binary_expr& expr) {
 
 void debug_writer::print(const ast::assignment_expr& expr) {
     emit_line(std::format("Assignment: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Target:");
     print(expr.target_);
@@ -247,13 +247,13 @@ void debug_writer::print(const ast::assignment_expr& expr) {
 
 void debug_writer::print(const ast::unary_expr& expr) {
     emit_line(std::format("Unary: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
 void debug_writer::print(const ast::postfix_expr& expr) {
     emit_line(std::format("Postfix: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
@@ -264,7 +264,7 @@ void debug_writer::print(const ast::call_expr& expr) {
     }
 
     emit_line(std::format("Call: {}{}", expr.callee_.lexeme_, location_str(expr.callee_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     for (size_t i = 0; i < expr.args_.size(); ++i) {
         emit_line(std::format("Arg {}:", i));
         print(expr.args_[i]);
@@ -273,7 +273,7 @@ void debug_writer::print(const ast::call_expr& expr) {
 
 void debug_writer::print(const ast::initializer_list_expr& expr) {
     emit_line(std::format("InitializerList: [{} elements]{}", expr.elements_.size(), location_str(expr.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
     for (size_t i = 0; i < expr.elements_.size(); ++i) {
         emit_line(std::format("Element {}:", i));
         print(expr.elements_[i]);
@@ -282,7 +282,7 @@ void debug_writer::print(const ast::initializer_list_expr& expr) {
 
 void debug_writer::print(const ast::index_expr& expr) {
     emit_line(std::format("IndexExpr{}", location_str(expr.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Object:");
     print(expr.object_);
@@ -293,10 +293,10 @@ void debug_writer::print(const ast::index_expr& expr) {
 
 void debug_writer::print(const ast::member_access_expr& expr) {
     emit_line(std::format("MemberAccess: .{}{}", expr.member_.lexeme_, location_str(expr.member_.loc_)));
-    level_guard guard{curr_level_};
+    auto guard = level_guard{curr_level_};
 
     emit_line("Object:");
     print(expr.object_);
 }
 
-}  // namespace debug
+}  // namespace cint::debug

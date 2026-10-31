@@ -17,6 +17,8 @@
 #include <optional>
 #include <span>
 
+namespace cint {
+
 /**
  * @brief Модуль статической проверки типов.
  * @ingroup Semantics
@@ -102,3 +104,5 @@ private:
     core::scoped_map<core::type> symbols_;        ///< Таблица типов переменных в текущей области видимости
     std::optional<core::type> curr_return_type_;  ///< Ожидаемый тип возврата (внутри функции)
 };
+
+}  // namespace cint

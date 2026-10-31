@@ -9,7 +9,7 @@
 #include <random>
 #include <span>
 
-namespace core::builtin_impl {
+namespace cint::core::detail {
 
 auto& out = std::cout;
 
@@ -86,4 +86,4 @@ value rand_dbl(std::span<const value> args) {
     return dist(generator());
 }
 
-}  // namespace core::builtin_impl
+}  // namespace cint::core::detail

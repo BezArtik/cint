@@ -11,7 +11,7 @@
 #include <string>
 #include <string_view>
 
-namespace tests {
+namespace cint::tests {
 
 class pipeline_harness {
 public:
@@ -38,4 +38,4 @@ private:
     std::optional<core::symbol_registry> registry_;
 };
 
-}  // namespace tests
+}  // namespace cint::tests

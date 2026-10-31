@@ -15,6 +15,8 @@
 #include <string_view>
 #include <vector>
 
+namespace cint {
+
 /**
  * @brief Лексический анализатор, выполняющий обработку
  * входной строки исходного кода.
@@ -156,3 +158,5 @@ private:
     uint32_t current_ = 0;      ///< Текущая позиция в тексте
     core::location loc_{1, 1};  ///< Текущая позиция (строка:колонка)};
 };
+
+}  // namespace cint

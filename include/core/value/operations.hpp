@@ -7,7 +7,7 @@
 #pragma once
 #include "core/value/value.hpp"
 
-namespace core::ops {
+namespace cint::core {
 
 /**
  * @defgroup CoreOps Операции над значениями
@@ -100,4 +100,4 @@ value post_decrement(value& a);  ///< Постдекремент: a--
 
 /// @}
 
-}  // namespace core::ops
+}  // namespace cint::core

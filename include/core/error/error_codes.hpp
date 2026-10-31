@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace core {
+namespace cint::core {
 // clang-format off
 #define ERROR(X)                                                                                \
     /* Lexer */                                                                                 \
@@ -153,4 +153,4 @@ struct runtime_error : std::exception {
     const char* what() const noexcept override { return "Runtime error"; }
 };
 
-}  // namespace core
+}  // namespace cint::core

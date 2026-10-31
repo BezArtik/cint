@@ -7,11 +7,10 @@
 #include <gtest/gtest.h>
 #include <string>
 
-namespace tests {
+namespace cint::tests {
 
 using t = core::type;
 using v = core::value;
-namespace op = core::ops;
 
 TEST(value_test, default_is_void) {
     v val{};
@@ -66,117 +65,117 @@ TEST(value_test, double_to_int) {
 TEST(value_test, add_ints) {
     v a{v::int_t{10}};
     v b{v::int_t{20}};
-    EXPECT_EQ(op::add(a, b).to_int(), 30);
+    EXPECT_EQ(core::add(a, b).to_int(), 30);
 }
 
 TEST(value_test, add_int_and_double) {
     v a{v::int_t{10}};
     v b{3.5};
-    EXPECT_DOUBLE_EQ(op::add(a, b).to_double(), 13.5);
+    EXPECT_DOUBLE_EQ(core::add(a, b).to_double(), 13.5);
 }
 
 TEST(value_test, sub_ints) {
     v a{v::int_t{30}};
     v b{v::int_t{10}};
-    EXPECT_EQ(op::sub(a, b).to_int(), 20);
+    EXPECT_EQ(core::sub(a, b).to_int(), 20);
 }
 
 TEST(value_test, mul_ints) {
     v a{v::int_t{6}};
     v b{v::int_t{7}};
-    EXPECT_EQ(op::mul(a, b).to_int(), 42);
+    EXPECT_EQ(core::mul(a, b).to_int(), 42);
 }
 
 TEST(value_test, div_ints) {
     v a{v::int_t{20}};
     v b{v::int_t{4}};
-    EXPECT_EQ(op::div(a, b).to_int(), 5);
+    EXPECT_EQ(core::div(a, b).to_int(), 5);
 }
 
 TEST(value_test, div_by_zero) {
     v a{v::int_t{1}};
     v b{v::int_t{0}};
-    EXPECT_THROW(op::div(a, b), core::value_error);
+    EXPECT_THROW(core::div(a, b), core::value_error);
 }
 
 TEST(value_test, mod_ints) {
     v a{v::int_t{17}};
     v b{v::int_t{5}};
-    EXPECT_EQ(op::mod(a, b).to_int(), 2);
+    EXPECT_EQ(core::mod(a, b).to_int(), 2);
 }
 
 TEST(value_test, mod_by_zero) {
     v a{v::int_t{1}};
     v b{v::int_t{0}};
-    EXPECT_THROW(op::mod(a, b), core::value_error);
+    EXPECT_THROW(core::mod(a, b), core::value_error);
 }
 
 TEST(value_test, eq_ints) {
     v a{v::int_t{42}};
     v b{v::int_t{42}};
     v c{v::int_t{0}};
-    EXPECT_TRUE(op::eq(a, b).to_bool());
-    EXPECT_FALSE(op::eq(a, c).to_bool());
+    EXPECT_TRUE(core::eq(a, b).to_bool());
+    EXPECT_FALSE(core::eq(a, c).to_bool());
 }
 
 TEST(value_test, lt_ints) {
     v a{v::int_t{10}};
     v b{v::int_t{20}};
-    EXPECT_TRUE(op::lt(a, b).to_bool());
-    EXPECT_FALSE(op::lt(b, a).to_bool());
+    EXPECT_TRUE(core::lt(a, b).to_bool());
+    EXPECT_FALSE(core::lt(b, a).to_bool());
 }
 
 TEST(value_test, not_op) {
     v t{true};
     v f{false};
-    EXPECT_FALSE(op::not_op(t).to_bool());
-    EXPECT_TRUE(op::not_op(f).to_bool());
+    EXPECT_FALSE(core::not_op(t).to_bool());
+    EXPECT_TRUE(core::not_op(f).to_bool());
 }
 
 TEST(value_test, unary_minus_int) {
     v a{v::int_t{42}};
-    EXPECT_EQ(op::unary_minus(a).to_int(), -42);
+    EXPECT_EQ(core::unary_minus(a).to_int(), -42);
 }
 
 TEST(value_test, bit_and) {
     v a{v::int_t{0b1100}};
     v b{v::int_t{0b1010}};
-    EXPECT_EQ(op::bit_and(a, b).to_int(), 0b1000);
+    EXPECT_EQ(core::bit_and(a, b).to_int(), 0b1000);
 }
 
 TEST(value_test, bit_or) {
     v a{v::int_t{0b1001}};
     v b{v::int_t{0b0110}};
-    EXPECT_EQ(op::bit_or(a, b).to_int(), 0b1111);
+    EXPECT_EQ(core::bit_or(a, b).to_int(), 0b1111);
 }
 
 TEST(value_test, bit_xor) {
     v a{v::int_t{0b1011}};
     v b{v::int_t{0b0110}};
-    EXPECT_EQ(op::bit_xor(a, b).to_int(), 0b1101);
+    EXPECT_EQ(core::bit_xor(a, b).to_int(), 0b1101);
 }
 
 TEST(value_test, bit_not) {
     v a{v::int_t{10}};
-    EXPECT_EQ(op::bit_not(a).to_int(), -11);
+    EXPECT_EQ(core::bit_not(a).to_int(), -11);
 }
 
 TEST(value_test, shl) {
     v a{v::int_t{0b0001}};
     v b{v::int_t{2}};
-    EXPECT_EQ(op::shl(a, b).to_int(), 0b0100);
+    EXPECT_EQ(core::shl(a, b).to_int(), 0b0100);
 }
 
 TEST(value_test, shr) {
     v a{v::int_t{0b1000}};
     v b{v::int_t{3}};
-    EXPECT_EQ(op::shr(a, b).to_int(), 0b0001);
+    EXPECT_EQ(core::shr(a, b).to_int(), 0b0001);
 }
 
 TEST(value_test, invalid_add) {
     v a{true};
     v b{v::int_t{1}};
-    EXPECT_THROW(op::add(a, b), core::value_error);
+    EXPECT_THROW(core::add(a, b), core::value_error);
 }
 
 TEST(value_test, struct_type_int_fields) {
@@ -243,4 +242,4 @@ TEST(value_test, from_string_invalid) {
     EXPECT_THROW(v::from_string("abc", false), core::value_error);
 }
 
-}  // namespace tests
+}  // namespace cint::tests

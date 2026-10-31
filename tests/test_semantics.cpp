@@ -5,7 +5,7 @@
 #include <gtest/gtest.h>
 #include <string_view>
 
-namespace tests {
+namespace cint::tests {
 
 struct type_error_case {
     std::string_view source_;
@@ -16,7 +16,7 @@ class type_error_test : public ::testing::TestWithParam<type_error_case> {};
 
 TEST_P(type_error_test, reports_error) {
     auto&& tc = GetParam();
-    pipeline_harness h(tc.source_);
+    auto h = pipeline_harness{tc.source_};
     h.lex();
     h.parse();
     h.check_semantics();
@@ -47,4 +47,4 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 // clang-format on
 
-}  // namespace tests
+}  // namespace cint::tests

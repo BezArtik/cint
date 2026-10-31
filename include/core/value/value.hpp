@@ -18,7 +18,7 @@
 #include <variant>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Универсальное значение времени выполнения.
@@ -171,4 +171,4 @@ private:
     core::variant<int_t, double_t, bool_t, string_wrap, array_wrap, struct_t, std::monostate> data_;
 };
 
-}  // namespace core
+}  // namespace cint::core

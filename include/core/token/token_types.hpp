@@ -9,7 +9,7 @@
 #include <cstdint>
 #include <string_view>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @def TOKEN_TYPES
@@ -133,4 +133,4 @@ inline constexpr std::array token_type_names = {
 #undef X
 };
 
-}  // namespace core
+}  // namespace cint::core

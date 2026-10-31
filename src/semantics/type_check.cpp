@@ -12,6 +12,8 @@
 
 #include <unordered_set>
 
+namespace cint {
+
 using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
@@ -95,7 +97,7 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
 }
 
 void type_checker::check(const ast::block_stmt& stmt) {
-    std::optional<core::scope_guard<core::type>> guard;
+    auto guard = std::optional<core::scope_guard<core::type>>{};
     if (stmt.has_declarations_) guard.emplace(symbols_);
     for (auto&& s : stmt.statements_) check(s);
 }
@@ -104,12 +106,12 @@ void type_checker::check(const ast::while_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
     if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "while");
 
-    core::scope_guard guard{symbols_};
+    auto guard = core::scope_guard{symbols_};
     check(stmt.block_);
 }
 
 void type_checker::check(const ast::for_stmt& stmt) {
-    core::scope_guard guard{symbols_};
+    auto guard = core::scope_guard{symbols_};
 
     if (stmt.initializer_) check(*stmt.initializer_);
     if (stmt.condition_) {
@@ -144,7 +146,7 @@ void type_checker::check(const ast::return_stmt& stmt) {
 }
 
 void type_checker::check(const ast::func_declaration_stmt& stmt) {
-    core::scope_guard guard{symbols_};
+    auto guard = core::scope_guard{symbols_};
     for (auto&& [name, type] : stmt.type_.param_infos()) symbols_.define(name, type);
 
     auto&& prev_return_type = curr_return_type_;
@@ -434,3 +436,5 @@ t type_checker::type_of(const ast::member_access_expr& expr) {
 
     return obj_type.struct_fields()[*idx].second;
 }
+
+}  // namespace cint

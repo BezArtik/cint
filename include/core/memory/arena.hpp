@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 
-namespace core {
+namespace cint::core {
 
 /**
  * @brief Арена-аллокатор с поддержкой деструкторов.
@@ -71,10 +71,10 @@ public:
     template <typename T, typename... Args>
     T* allocate(Args&&... args) {
         auto&& ptr = allocate_raw(sizeof(T), alignof(T));
-        auto&& obj = ::new (ptr) T(std::forward<Args>(args)...);
+        auto&& obj = std::construct_at<T>(static_cast<T*>(ptr), std::forward<Args>(args)...);
 
         if constexpr (!std::is_trivially_destructible_v<T>)
-            destructors_.emplace_back(obj, [](void* p) { static_cast<T*>(p)->~T(); });
+            destructors_.emplace_back(obj, [](void* p) { std::destroy_at<T>(static_cast<T*>(p)); });
 
         return obj;
     }
@@ -132,8 +132,7 @@ private:
  * Деаллокация — no-op: память освобождается только при reset() арены.
  *
  */
-class arena_memory_resource : public std::pmr::memory_resource {
-public:
+struct arena_memory_resource : std::pmr::memory_resource {
     /**
      * @brief Конструктор.
      * @param arena Арена, в которой будет выделяться память.
@@ -188,8 +187,7 @@ using arena_ptr = std::unique_ptr<T, arena_deleter<T>>;
  */
 template <typename T, typename... Args>
 arena_ptr<T> make_arena(arena& arena, Args&&... args) {
-    auto&& ptr = arena.allocate<T>(std::forward<Args>(args)...);
-    return arena_ptr<T>(ptr);
+    return arena_ptr<T>{arena.allocate<T>(std::forward<Args>(args)...)};
 }
 
-}  // namespace core
+}  // namespace cint::core
