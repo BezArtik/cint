@@ -47,7 +47,7 @@ namespace cint::core {
     X(undefined_function,                    "Undefined function '{}'")                         \
     X(not_a_function,                        "'{}' is not a function")                          \
     X(argument_count_mismatch,               "Function '{}' expects {} arguments, got {}")      \
-    X(argument_type_mismatch,                "Argument {} type mismatch in call to '{}'")       \
+    X(argument_type_mismatch,                "Argument type mismatch in call to '{}'")          \
     X(redeclaration,                         "Redeclaration of '{}'")                           \
     X(return_outside_function,               "Return statement outside of function")            \
     X(return_type_mismatch,                  "Return type mismatch")                            \
@@ -78,7 +78,7 @@ namespace cint::core {
  * Каждый код соответствует одному виду ошибки.
  *
  */
-enum class error_code : uint8_t {
+enum class error_code : std::uint8_t {
 #define X(code, msg) code,
     ERROR(X)
 #undef X
@@ -123,7 +123,7 @@ struct parse_error : std::exception {
 /**
  * @brief Исключение: ошибка операции над значением.
  *
- * Выбрасывается операциями системы значений (core::ops, value::to_*)
+ * Выбрасывается операциями системы значений
  * при невозможности выполнить операцию: деление на ноль, неверное
  * преобразование типа и т.д.
  *
@@ -133,15 +133,14 @@ struct parse_error : std::exception {
 struct value_error : std::exception {
     error_code code_;
 
-    value_error(error_code c) noexcept : code_(c) {}
+    value_error(error_code c) noexcept : code_{c} {}
     const char* what() const noexcept override { return "Value error"; }
 };
 
 /**
  * @brief Исключение: ошибка времени выполнения интерпретатора.
  *
- * Выбрасывается интерпретатором при обходе AST: переполнение стека,
- * выход за границу массива.
+ * Выбрасывается интерпретатором.
  *
  * Отличается от value_error тем, что возникает в контексте выполнения
  * конкретной инструкции/выражения, а не абстрактной операции над значением.
@@ -149,7 +148,7 @@ struct value_error : std::exception {
 struct runtime_error : std::exception {
     error_code code_;
 
-    runtime_error(error_code c) noexcept : code_(c) {}
+    runtime_error(error_code c) noexcept : code_{c} {}
     const char* what() const noexcept override { return "Runtime error"; }
 };
 

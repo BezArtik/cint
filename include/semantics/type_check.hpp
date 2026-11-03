@@ -39,7 +39,7 @@ namespace cint {
  *            не содержит ошибок типов, видимости или дублирования имён.
  *
  */
-class type_checker {
+class [[nodiscard]] type_checker {
 public:
     /**
      * @brief Конструктор.

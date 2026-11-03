@@ -2,29 +2,29 @@
   "version": 6,
   "configurePresets": [
     {
-      "name": "gcc-base",
+      "name": "clang-base",
       "hidden": true,
-      "description": "Base configuration for GCC with Ninja",
+      "description": "Base configuration for Clang with Ninja",
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "gcc",
-        "CMAKE_CXX_COMPILER": "g++",
-        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "CMAKE_CXX_EXTENSIONS": "OFF",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "environment": {
-        "CC": "gcc",
-        "CXX": "g++"
+        "CC": "clang",
+        "CXX": "clang++"
       }
     },
     {
-      "name": "gcc-debug",
-      "displayName": "GCC Debug (Sanitizers + Tests)",
+      "name": "clang-debug",
+      "displayName": "Clang Debug (Sanitizers + Tests)",
       "description": "Debug build with ASan, UBSan, warnings as errors, and tests enabled",
-      "inherits": "gcc-base",
+      "inherits": "clang-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "BUILD_TESTS": "ON",
@@ -34,10 +34,10 @@
       }
     },
     {
-      "name": "gcc-release",
-      "displayName": "GCC Release",
+      "name": "clang-release",
+      "displayName": "Clang Release",
       "description": "Optimized build with no debug symbols and tests off",
-      "inherits": "gcc-base",
+      "inherits": "clang-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTS": "OFF",
@@ -45,10 +45,10 @@
       }
     },
     {
-      "name": "gcc-docs",
+      "name": "clang-docs",
       "displayName": "GCC Documentation Only",
       "description": "Generate documentation without building the project",
-      "inherits": "gcc-base",
+      "inherits": "clang-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "BUILD_TESTS": "OFF",
@@ -59,35 +59,29 @@
 
   "buildPresets": [
     {
-      "name": "gcc-debug",
-      "configurePreset": "gcc-debug",
-      "displayName": "Build GCC Debug"
+      "name": "clang-debug",
+      "configurePreset": "clang-debug",
+      "displayName": "Build Clang Debug"
     },
     {
-      "name": "gcc-release",
-      "configurePreset": "gcc-release",
-      "displayName": "Build GCC Release"
+      "name": "clang-release",
+      "configurePreset": "clang-release",
+      "displayName": "Build Clang Release"
     },
     {
-      "name": "gcc-docs",
-      "configurePreset": "gcc-docs",
+      "name": "clang-docs",
+      "configurePreset": "clang-docs",
       "displayName": "Build Documentation",
       "targets": ["doc"]
-    },
-    {
-      "name": "gcc-debug-with-docs",
-      "configurePreset": "gcc-debug",
-      "displayName": "Build GCC Debug + Documentation",
-      "targets": ["all", "doc"]
     }
   ],
 
   "testPresets": [
     {
-      "name": "gcc-debug",
-      "configurePreset": "gcc-debug",
+      "name": "clang-debug",
+      "configurePreset": "clang-debug",
       "configuration": "Debug",
-      "displayName": "Test GCC Debug (under Sanitizers)"
+      "displayName": "Test Clang Debug (under Sanitizers)"
     }
   ]
 }

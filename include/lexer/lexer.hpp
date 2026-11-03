@@ -21,28 +21,26 @@ namespace cint {
  * @brief Лексический анализатор, выполняющий обработку
  * входной строки исходного кода.
  */
-class lexer {
+class [[nodiscard]] lexer {
 public:
     /**
      * @brief Тип контейнера для хранения токенов.
-     * Используйет полиморфный аллокатор для
-     * эффективного управления памятью через арену.
      */
-    using token_list = std::pmr::vector<core::token>;
+    using token_list = core::arena_vector<core::token>;
 
     /**
      * @brief Конструктор лексического анализатора.
      *
      * @param source   Исходный код программы (не должен быть пустым)
      * @param reporter Обработчик ошибок (должен существовать всё время жизни лексера)
-     * @param mr       Memory resource для размещения токенов
+     * @param arena    Arena для размещения токенов
      *
      * @note Лексер не копирует исходную строку, а хранит на неё
      *       string_view. Вызывающий код должен гарантировать,
      *       что строка существует всё время сканирования.
      */
-    lexer(std::string_view source, core::error_reporter& reporter, core::arena_memory_resource& mr)
-        : source_{source}, reporter_{reporter}, mr_{mr}, tokens_{&mr_} {}
+    lexer(std::string_view source, core::error_reporter& reporter, core::arena& arena)
+        : source_{source}, reporter_{reporter}, arena_{arena}, tokens_{arena_} {}
     /**
      * @brief Выполняет полный проход по исходному тексту.
      *
@@ -149,10 +147,10 @@ private:
      */
     void consume_identifier_or_keyword(core::location start_loc);
 
-    std::string_view source_;          ///< Исходный код программы
-    core::error_reporter& reporter_;   ///< Обработчик ошибок
-    core::arena_memory_resource& mr_;  ///< Memory resource для токенов
-    token_list tokens_;                ///< Результирующий список токенов
+    std::string_view source_;         ///< Исходный код программы
+    core::error_reporter& reporter_;  ///< Обработчик ошибок
+    core::arena& arena_;              ///< Arena для токенов
+    token_list tokens_;               ///< Результирующий список токенов
 
     uint32_t start_ = 0;        ///< Начало текущей лексемы
     uint32_t current_ = 0;      ///< Текущая позиция в тексте

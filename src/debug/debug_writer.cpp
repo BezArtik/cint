@@ -5,6 +5,9 @@
 #include "core/token/token_types.hpp"
 
 #include <format>
+#include <print>
+#include <ranges>
+#include <string_view>
 
 namespace cint::debug {
 
@@ -27,9 +30,9 @@ std::string location_str(core::location loc) {
 }
 
 struct level_guard {
-    uint32_t& level_;
+    std::uint32_t& level_;
 
-    level_guard(uint32_t& level) : level_{level} { ++level_; }
+    level_guard(std::uint32_t& level) : level_{level} { ++level_; }
     ~level_guard() { --level_; }
 
     level_guard(const level_guard&) = delete;
@@ -38,37 +41,41 @@ struct level_guard {
 
 }  // namespace
 
-void debug_writer::emit_line(std::string_view msg) const {
-    emit(std::format("{}{}\n", std::string(static_cast<size_t>(curr_level_) * 2, ' '), msg));
+std::string debug_writer::indent() const {
+    return std::string(curr_level_ * 2, ' ');
+}
+
+bool debug_writer::enabled(trace_level level) const noexcept {
+    return mask_ != trace_level::none && has_level(mask_, level);
 }
 
 void debug_writer::print_tokens(std::span<const core::token> tokens) {
     if (!enabled(trace_level::tokens)) return;
 
-    emit(
-        "\n═══════════════════════════════════════════════════════\n"
-        "  LEXICAL ANALYSIS\n"
-        "═══════════════════════════════════════════════════════\n\n");
-    emit(std::string(60, '-') + "\n");
+    std::print(os_,
+               "\n═══════════════════════════════════════════════════════\n"
+               "  LEXICAL ANALYSIS\n"
+               "═══════════════════════════════════════════════════════\n\n");
+    std::println(os_, "{}", std::string(60, '-'));
 
     for (auto&& tok : tokens)
-        emit(std::format("{:<20}{:<25}{}:{}\n", core::token_type_names[static_cast<size_t>(tok.type_)],
-                         tok.lexeme_.empty() ? "(empty)" : tok.lexeme_, tok.loc_.line_, tok.loc_.column_));
+        std::print(os_, "{:<20}{:<25}{}:{}\n", core::token_type_names[static_cast<size_t>(tok.type_)],
+                   tok.lexeme_.empty() ? "(empty)" : tok.lexeme_, tok.loc_.line_, tok.loc_.column_);
 
-    emit("\n");
+    std::println(os_);
 }
 
 void debug_writer::print_ast(std::span<const ast::statement> statements) {
     if (!enabled(trace_level::ast)) return;
 
-    emit(
-        "\n═══════════════════════════════════════════════════════\n"
-        "  ABSTRACT SYNTAX TREE\n"
-        "═══════════════════════════════════════════════════════\n\n");
+    std::print(os_,
+               "\n═══════════════════════════════════════════════════════\n"
+               "  ABSTRACT SYNTAX TREE\n"
+               "═══════════════════════════════════════════════════════\n\n");
 
     for (auto&& stmt : statements) {
         print(stmt);
-        emit("\n");
+        std::println(os_);
     }
 }
 
@@ -77,10 +84,7 @@ void debug_writer::print(const ast::statement& stmt, const core::value* result) 
 
     stmt.visit([&](const auto& s) { print(s); });
 
-    if (result && enabled(trace_level::execution)) {
-        emit("  → ");
-        print_value(*result);
-    }
+    if (result && enabled(trace_level::execution)) std::println(os_, "  -> {}", result->to_string());
 }
 
 void debug_writer::print(const ast::expression& expr, const core::value* result) {
@@ -88,29 +92,27 @@ void debug_writer::print(const ast::expression& expr, const core::value* result)
 
     expr.visit([&](const auto& e) { print(e); });
 
-    if (result && enabled(trace_level::execution)) {
-        emit("  → ");
-        print_value(*result);
-    }
-}
-
-void debug_writer::print_value(const core::value& val) {
-    emit(std::format("{}\n", val.to_string()));
+    if (result && enabled(trace_level::execution)) std::println(os_, "  -> {}", result->to_string());
 }
 
 void debug_writer::print_return(std::string_view func_name, const core::value& result) {
     if (!enabled(trace_level::returns)) return;
-    emit_line(std::format("[RETURN] {} → {}", func_name, result.to_string()));
+    std::println(os_, "{} [RETURN] {} -> {}", indent(), func_name, result.to_string());
+}
+
+void debug_writer::print_var(std::string_view name, const core::value& val) {
+    if (!enabled(trace_level::execution)) return;
+    std::println(os_, "{} [VAR] {} = {}", indent(), name, val.to_string());
 }
 
 void debug_writer::print(const ast::expression_stmt& stmt) {
-    emit_line("[EXEC] ExpressionStmt");
+    std::println(os_, "{} [EXEC] ExpressionStmt", indent());
     auto guard = level_guard{curr_level_};
     print(stmt.expr_);
 }
 
 void debug_writer::print(const ast::var_declaration_stmt& stmt) {
-    emit_line(std::format("[EXEC] VarDeclaration: {} : {}", stmt.name_.lexeme_, type_name(stmt.type_)));
+    std::println(os_, "{} [EXEC] VarDeclaration: {} : {}", indent(), stmt.name_.lexeme_, type_name(stmt.type_));
     if (stmt.initializer_) {
         auto guard = level_guard{curr_level_};
         print(*stmt.initializer_);
@@ -118,184 +120,185 @@ void debug_writer::print(const ast::var_declaration_stmt& stmt) {
 }
 
 void debug_writer::print(const ast::block_stmt& stmt) {
-    emit_line(std::format("[EXEC] BlockStmt [{} statements]", stmt.statements_.size()));
+    std::println(os_, "{} [EXEC] BlockStmt [{} statements]", indent(), stmt.statements_.size());
     auto guard = level_guard{curr_level_};
     for (auto&& inner : stmt.statements_) print(inner);
 }
 
 void debug_writer::print(const ast::while_stmt& stmt) {
-    emit_line("[EXEC] WhileStmt");
+    std::println(os_, "{} [EXEC] WhileStmt", indent());
     auto guard = level_guard{curr_level_};
 
-    emit_line("Condition:");
+    std::println(os_, "{} Condition:", indent());
     print(stmt.condition_);
 
-    emit_line("Body:");
+    std::println(os_, "{} Body:", indent());
     print(stmt.block_);
 }
 
 void debug_writer::print(const ast::for_stmt& stmt) {
-    emit_line("[EXEC] ForStmt");
+    std::println(os_, "{} [EXEC] ForStmt", indent());
     auto guard = level_guard{curr_level_};
 
     if (stmt.initializer_) {
-        emit_line("Initializer:");
+        std::println(os_, "{} Initializer:", indent());
         print(*stmt.initializer_);
     }
 
     if (stmt.condition_) {
-        emit_line("Condition:");
+        std::println(os_, "{} Condition:", indent());
         print(*stmt.condition_);
     }
 
     if (stmt.increment_) {
-        emit_line("Increment:");
+        std::println(os_, "{} Increment:", indent());
         print(*stmt.increment_);
     }
 
-    emit_line("Body:");
+    std::println(os_, "{} Body:", indent());
     print(stmt.block_);
 }
 
 void debug_writer::print(const ast::if_stmt& stmt) {
-    emit_line("[EXEC] IfStmt");
+    std::println(os_, "{} [EXEC] IfStmt", indent());
     auto guard = level_guard{curr_level_};
 
-    emit_line("Condition:");
+    std::println(os_, "{} Condition:", indent());
     print(stmt.condition_);
 
-    emit_line("Then:");
+    std::println(os_, "{} Then:", indent());
     print(stmt.then_block_);
 
     if (stmt.else_block_) {
-        emit_line("Else:");
+        std::println(os_, "{} Else:", indent());
         print(*stmt.else_block_);
     }
 }
 
 void debug_writer::print(const ast::return_stmt& stmt) {
     if (stmt.value_) {
-        emit_line("[EXEC] ReturnStmt");
+        std::println(os_, "{} [EXEC] ReturnStmt", indent());
         auto guard = level_guard{curr_level_};
         print(*stmt.value_);
     } else {
-        emit_line("[EXEC] ReturnStmt (void)");
+        std::println(os_, "{} [EXEC] ReturnStmt (void)", indent());
     }
 }
 
 void debug_writer::print(const ast::func_declaration_stmt& stmt) {
-    emit_line(std::format("[EXEC] FuncDeclaration: {} -> {}", stmt.type_.function_name(), type_name(stmt.type_)));
+    std::println(os_, "{} [EXEC] FuncDeclaration: {} -> {}", indent(), stmt.type_.function_name(),
+                 type_name(stmt.type_));
 
     auto guard = level_guard{curr_level_};
 
     auto&& params = stmt.type_.param_infos();
     if (params.empty()) {
-        emit_line("Params: (none)");
+        std::println(os_, "{} Params: (none)", indent());
     } else {
         auto params_str = std::string{};
         for (auto&& [name, type] : params)
             std::format_to(std::back_inserter(params_str), "{}{} : {}", params_str.empty() ? "" : " ", name,
                            type_name(type));
-        emit_line(std::format("Params: {}", params_str));
+        std::println(os_, "{} Params: {}", indent(), params_str);
     }
 
-    emit_line("Body:");
+    std::println(os_, "{} Body:", indent());
     auto&& block = stmt.block_.get<ast::block_stmt>();
     for (auto&& inner : block.statements_) print(inner);
 }
 
 void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
-    emit_line(std::format("[EXEC] StructDeclaration: {}", stmt.type_.struct_name()));
+    std::println(os_, "{} [EXEC] StructDeclaration: {}", indent(), stmt.type_.struct_name());
     auto guard = level_guard{curr_level_};
 
-    emit_line("Fields:");
+    std::println(os_, "{} Fields:", indent());
     for (auto&& [name, type] : stmt.type_.struct_fields()) {
         auto guard = level_guard{curr_level_};
-        emit_line(std::format("{} : {}", name, type_name(type)));
+        std::println(os_, "{} {} : {}", indent(), name, type_name(type));
     }
 }
 
 void debug_writer::print(const ast::literal_expr& expr) {
-    emit_line(std::format("Literal: {}{}", expr.value_.to_string(), location_str(expr.loc_)));
+    std::println(os_, "{} Literal: {}{}", indent(), expr.value_.to_string(), location_str(expr.loc_));
 }
 
 void debug_writer::print(const ast::variable_expr& expr) {
-    emit_line(std::format("Variable: {}{}", expr.name_.lexeme_, location_str(expr.name_.loc_)));
+    std::println(os_, "{} Variable: {}{}", indent(), expr.name_.lexeme_, location_str(expr.name_.loc_));
 }
 
 void debug_writer::print(const ast::binary_expr& expr) {
-    emit_line(std::format("Binary: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
+    std::println(os_, "{} Binary: {}{}", indent(), expr.op_.lexeme_, location_str(expr.op_.loc_));
     auto guard = level_guard{curr_level_};
 
-    emit_line("Left:");
+    std::println(os_, "{} Left:", indent());
     print(expr.left_);
 
-    emit_line("Right:");
+    std::println(os_, "{} Right:", indent());
     print(expr.right_);
 }
 
 void debug_writer::print(const ast::assignment_expr& expr) {
-    emit_line(std::format("Assignment: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
+    std::println(os_, "{} Assignment: {}{}", indent(), expr.op_.lexeme_, location_str(expr.op_.loc_));
     auto guard = level_guard{curr_level_};
 
-    emit_line("Target:");
+    std::println(os_, "{} Target:", indent());
     print(expr.target_);
 
-    emit_line("Value:");
+    std::println(os_, "{} Value:", indent());
     print(expr.value_);
 }
 
 void debug_writer::print(const ast::unary_expr& expr) {
-    emit_line(std::format("Unary: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
+    std::println(os_, "{} Unary: {}{}", indent(), expr.op_.lexeme_, location_str(expr.op_.loc_));
     auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
 void debug_writer::print(const ast::postfix_expr& expr) {
-    emit_line(std::format("Postfix: {}{}", expr.op_.lexeme_, location_str(expr.op_.loc_)));
+    std::println(os_, "{} Postfix: {}{}", indent(), expr.op_.lexeme_, location_str(expr.op_.loc_));
     auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
 void debug_writer::print(const ast::call_expr& expr) {
     if (expr.args_.empty()) {
-        emit_line(std::format("Call: {}{} (no args)", expr.callee_.lexeme_, location_str(expr.callee_.loc_)));
+        std::println(os_, "{} Call: {}{} (no args)", indent(), expr.callee_.lexeme_, location_str(expr.callee_.loc_));
         return;
     }
 
-    emit_line(std::format("Call: {}{}", expr.callee_.lexeme_, location_str(expr.callee_.loc_)));
+    std::println(os_, "{} Call: {}{}", indent(), expr.callee_.lexeme_, location_str(expr.callee_.loc_));
     auto guard = level_guard{curr_level_};
-    for (size_t i = 0; i < expr.args_.size(); ++i) {
-        emit_line(std::format("Arg {}:", i));
-        print(expr.args_[i]);
+    for (auto&& [pos, arg] : std::views::enumerate(expr.args_)) {
+        std::print(os_, "{} Arg {}:", indent(), pos);
+        print(arg);
     }
 }
 
 void debug_writer::print(const ast::initializer_list_expr& expr) {
-    emit_line(std::format("InitializerList: [{} elements]{}", expr.elements_.size(), location_str(expr.loc_)));
+    std::println(os_, "{} InitializerList: [{} elements]{}", indent(), expr.elements_.size(), location_str(expr.loc_));
     auto guard = level_guard{curr_level_};
-    for (size_t i = 0; i < expr.elements_.size(); ++i) {
-        emit_line(std::format("Element {}:", i));
-        print(expr.elements_[i]);
+    for (auto&& [pos, elem] : std::views::enumerate(expr.elements_)) {
+        std::println(os_, "{} Element {}:", indent(), pos);
+        print(elem);
     }
 }
 
 void debug_writer::print(const ast::index_expr& expr) {
-    emit_line(std::format("IndexExpr{}", location_str(expr.loc_)));
+    std::println(os_, "{} IndexExpr{}", indent(), location_str(expr.loc_));
     auto guard = level_guard{curr_level_};
 
-    emit_line("Object:");
+    std::println(os_, "{} Object:", indent());
     print(expr.object_);
 
-    emit_line("Index:");
+    std::println(os_, "{} Index:", indent());
     print(expr.index_);
 }
 
 void debug_writer::print(const ast::member_access_expr& expr) {
-    emit_line(std::format("MemberAccess: .{}{}", expr.member_.lexeme_, location_str(expr.member_.loc_)));
+    std::println(os_, "{} MemberAccess: .{}{}", indent(), expr.member_.lexeme_, location_str(expr.member_.loc_));
     auto guard = level_guard{curr_level_};
 
-    emit_line("Object:");
+    std::println(os_, "{} Object:", indent());
     print(expr.object_);
 }
 

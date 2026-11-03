@@ -15,7 +15,7 @@ namespace cint::tests {
 
 class pipeline_harness {
 public:
-    pipeline_harness(std::string_view source) : source_code_{source}, reporter_{source_code_}, mr_{arena_} {}
+    pipeline_harness(std::string_view source) : source_code_{source}, reporter_{source_code_} {}
 
     bool lex();
     bool parse();
@@ -32,7 +32,6 @@ private:
     std::string source_code_;
     core::error_reporter reporter_;
     core::arena arena_;
-    core::arena_memory_resource mr_;
     lexer::token_list tokens_;
     ast::stmt_list ast_;
     std::optional<core::symbol_registry> registry_;

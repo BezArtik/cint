@@ -10,6 +10,7 @@
 #include "core/utils/overloaded.hpp"
 #include "core/utils/scoped_map.hpp"
 
+#include <ranges>
 #include <unordered_set>
 
 namespace cint {
@@ -28,7 +29,7 @@ void type_checker::check(const ast::statement& stmt) {
 }
 
 void type_checker::check(const ast::expression_stmt& stmt) {
-    type_of(stmt.expr_);
+    std::ignore = type_of(stmt.expr_);
 }
 
 void type_checker::check(const ast::var_declaration_stmt& stmt) {
@@ -64,10 +65,10 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
                                     list->elements_.size());
                     return;
                 }
-                for (size_t i = 0; i < list->elements_.size(); ++i) {
-                    auto&& elem_type = type_of(list->elements_[i]);
+                for (auto&& [element, field] : std::views::zip(list->elements_, fields)) {
+                    auto&& elem_type = type_of(element);
                     if (elem_type.is_unknown()) continue;
-                    if (fields[i].second != elem_type) {
+                    if (field.second != elem_type) {
                         reporter_.error(loc, err::type_mismatch_initialization, name);
                         return;
                     }
@@ -118,7 +119,7 @@ void type_checker::check(const ast::for_stmt& stmt) {
         auto&& cond_type = type_of(*stmt.condition_);
         if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "for");
     }
-    if (stmt.increment_) type_of(*stmt.increment_);
+    if (stmt.increment_) std::ignore = type_of(*stmt.increment_);
     check(stmt.block_);
 }
 
@@ -159,7 +160,7 @@ void type_checker::check(const ast::func_declaration_stmt& stmt) {
 }
 
 void type_checker::check(const ast::struct_declaration_stmt& stmt) {
-    std::unordered_set<std::string_view> seen;
+    auto seen = std::unordered_set<std::string_view>{};
     for (auto&& [name, type] : stmt.type_.struct_fields()) {
         if (!seen.insert(name).second) {
             reporter_.error(stmt.loc_, err::redeclaration, name);
@@ -202,43 +203,55 @@ t type_checker::type_of(const ast::binary_expr& expr) {
     auto&& right = type_of(expr.right_);
     if (left.is_unknown() || right.is_unknown()) return t::unknown_type();
 
-    auto&& op = expr.op_.type_;
     auto&& loc = expr.op_.loc_;
 
-    if (op == tt::PLUS || op == tt::MINUS || op == tt::STAR || op == tt::SLASH || op == tt::PERCENT) {
-        if (!left.is_numeric() || !right.is_numeric()) {
-            reporter_.error(loc, err::arithmetic_requires_numeric);
-            return t::unknown_type();
-        }
-        return (left.is_int() && right.is_int()) ? t::int_type() : t::double_type();
-    }
+    switch (expr.op_.type_) {
+        case tt::PLUS:
+        case tt::MINUS:
+        case tt::STAR:
+        case tt::SLASH:
+        case tt::PERCENT:
+            if (!left.is_numeric() || !right.is_numeric()) {
+                reporter_.error(loc, err::arithmetic_requires_numeric);
+                break;
+            }
+            return (left.is_int() && right.is_int()) ? t::int_type() : t::double_type();
 
-    if (op == tt::EQUAL_EQUAL || op == tt::BANG_EQUAL || op == tt::LESS || op == tt::LESS_EQUAL || op == tt::GREATER ||
-        op == tt::GREATER_EQUAL) {
-        if (!left.is_numeric() || !right.is_numeric()) {
-            reporter_.error(loc, err::comparison_requires_numeric);
-            return t::unknown_type();
-        }
-        return t::bool_type();
-    }
+        case tt::EQUAL_EQUAL:
+        case tt::BANG_EQUAL:
+        case tt::LESS:
+        case tt::LESS_EQUAL:
+        case tt::GREATER:
+        case tt::GREATER_EQUAL:
+            if (!left.is_numeric() || !right.is_numeric()) {
+                reporter_.error(loc, err::comparison_requires_numeric);
+                break;
+            }
+            return t::bool_type();
 
-    if (op == tt::BIT_AND || op == tt::BIT_OR || op == tt::XOR || op == tt::SHL || op == tt::SHR) {
-        if (!left.is_int() || !right.is_int()) {
-            reporter_.error(loc, err::arithmetic_requires_numeric);
-            return t::unknown_type();
-        }
-        return t::int_type();
-    }
+        case tt::BIT_AND:
+        case tt::BIT_OR:
+        case tt::XOR:
+        case tt::SHL:
+        case tt::SHR:
+            if (!left.is_int() || !right.is_int()) {
+                reporter_.error(loc, err::arithmetic_requires_numeric);
+                break;
+            }
+            return t::int_type();
 
-    if (op == tt::LOGICAL_AND || op == tt::LOGICAL_OR) {
-        if (!left.is_bool() || !right.is_bool()) {
-            reporter_.error(loc, err::logical_requires_bool);
-            return t::unknown_type();
-        }
-        return t::bool_type();
-    }
+        case tt::LOGICAL_AND:
+        case tt::LOGICAL_OR:
+            if (!left.is_bool() || !right.is_bool()) {
+                reporter_.error(loc, err::logical_requires_bool);
+                break;
+            }
+            return t::bool_type();
 
-    reporter_.error(loc, err::unsupported_binary_operator);
+        default:
+            reporter_.error(loc, err::unsupported_binary_operator);
+            break;
+    }
     return t::unknown_type();
 }
 
@@ -279,46 +292,46 @@ t type_checker::type_of(const ast::unary_expr& expr) {
     auto&& operand_type = type_of(expr.operand_);
     if (operand_type.is_unknown()) return t::unknown_type();
 
-    auto&& op = expr.op_.type_;
     auto&& loc = expr.op_.loc_;
 
-    if (op == tt::MINUS) {
-        if (!operand_type.is_numeric()) {
-            reporter_.error(loc, err::unary_minus_requires_numeric);
-            return t::unknown_type();
-        }
-        return operand_type;
-    }
+    switch (expr.op_.type_) {
+        case tt::MINUS:
+            if (!operand_type.is_numeric()) {
+                reporter_.error(loc, err::unary_minus_requires_numeric);
+                break;
+            }
+            return operand_type;
 
-    if (op == tt::INCREMENT || op == tt::DECREMENT) {
-        if (!operand_type.is_numeric()) {
-            reporter_.error(loc, err::increment_requires_numeric);
-            return t::unknown_type();
-        }
-        if (!is_lvalue(expr.operand_)) {
-            reporter_.error(loc, err::increment_requires_lvalue);
-            return t::unknown_type();
-        }
-        return operand_type;
-    }
+        case tt::INCREMENT:
+        case tt::DECREMENT:
+            if (!operand_type.is_numeric()) {
+                reporter_.error(loc, err::increment_requires_numeric);
+                break;
+            }
+            if (!is_lvalue(expr.operand_)) {
+                reporter_.error(loc, err::increment_requires_lvalue);
+                break;
+            }
+            return operand_type;
 
-    if (op == tt::BANG) {
-        if (!operand_type.is_bool()) {
-            reporter_.error(loc, err::not_requires_bool);
-            return t::unknown_type();
-        }
-        return t::bool_type();
-    }
+        case tt::BANG:
+            if (!operand_type.is_bool()) {
+                reporter_.error(loc, err::not_requires_bool);
+                break;
+            }
+            return t::bool_type();
 
-    if (op == tt::BIT_NOT) {
-        if (!operand_type.is_int()) {
-            reporter_.error(loc, err::arithmetic_requires_numeric);
-            return t::unknown_type();
-        }
-        return t::int_type();
-    }
+        case tt::BIT_NOT:
+            if (!operand_type.is_int()) {
+                reporter_.error(loc, err::arithmetic_requires_numeric);
+                break;
+            }
+            return t::int_type();
 
-    reporter_.error(loc, err::unsupported_unary_operator);
+        default:
+            reporter_.error(loc, err::unsupported_unary_operator);
+            break;
+    }
     return t::unknown_type();
 }
 
@@ -363,11 +376,11 @@ t type_checker::type_of(const ast::call_expr& expr) {
         return t::unknown_type();
     }
 
-    for (size_t i = 0; i < expr.args_.size(); ++i) {
-        auto&& arg_type = type_of(expr.args_[i]);
+    for (auto&& [param, arg] : std::views::zip(params, expr.args_)) {
+        auto&& arg_type = type_of(arg);
         if (arg_type.is_unknown()) return t::unknown_type();
-        if (params[i].second != arg_type) {
-            reporter_.error(loc, err::argument_type_mismatch, i + 1, name);
+        if (param.second != arg_type) {
+            reporter_.error(loc, err::argument_type_mismatch, name);
             return t::unknown_type();
         }
     }

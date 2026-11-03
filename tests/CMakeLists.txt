@@ -1,12 +1,3 @@
-include(FetchContent)
-
-FetchContent_Declare(
-    GoogleTest
-    URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
-    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-)
-FetchContent_MakeAvailable(GoogleTest)
-
 add_library(test_harness STATIC
     pipeline_harness.hpp
     pipeline_harness.cpp

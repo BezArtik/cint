@@ -64,9 +64,8 @@ concept one_of = (std::same_as<T, Types> || ...);
  * @invariant Всегда содержит один из допустимых типов.
  */
 template <typename... Types>
-class variant {
-    static_assert(sizeof...(Types) > 0, "variant must have at least one type");
-
+    requires(sizeof...(Types) > 0)
+class [[nodiscard]] variant {
 public:
     /// @name Конструкторы
     /// @{

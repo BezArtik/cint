@@ -14,7 +14,7 @@
 #include "core/value/value.hpp"
 
 #include <cstdint>
-#include <functional>
+#include <ostream>
 #include <span>
 #include <string_view>
 
@@ -27,7 +27,7 @@ namespace cint::debug {
  * Определяют, какая информация выводится при включённой отладке.
  * Поддерживается комбинирование через побитовые операции (|, &).
  */
-enum class trace_level : uint8_t {
+enum class trace_level : std::uint8_t {
     none = 0,  ///< Трассировка отключена
 
     tokens = 1 << 0,     ///< Вывод токенов после лексического анализа
@@ -42,11 +42,11 @@ enum class trace_level : uint8_t {
 /// @{
 
 inline trace_level operator|(trace_level a, trace_level b) noexcept {
-    return static_cast<trace_level>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+    return static_cast<trace_level>(static_cast<std::uint8_t>(a) | static_cast<std::uint8_t>(b));
 }
 
 inline trace_level operator&(trace_level a, trace_level b) noexcept {
-    return static_cast<trace_level>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
+    return static_cast<trace_level>(static_cast<std::uint8_t>(a) & static_cast<std::uint8_t>(b));
 }
 
 inline bool has_level(trace_level mask, trace_level level) noexcept {
@@ -66,31 +66,20 @@ inline bool has_level(trace_level mask, trace_level level) noexcept {
  *
  * Управление отступами автоматическое через поле curr_level_ и RAII-guard.
  */
-class debug_writer {
+class [[nodiscard]] debug_writer {
 public:
-    /// Функция вывода сообщения.
-    using write_fn = std::function<void(std::string_view)>;
-
     /**
      * @brief Конструктор.
      *
-     * @param write Функция вывода (если пустая — вывод отключён)
+     * @param write Поток вывода
      * @param mask  Маска активных уровней трассировки
      */
-    debug_writer(write_fn write = nullptr, trace_level mask = trace_level::none)
-        : write_{std::move(write)}, mask_{mask} {}
+    debug_writer(std::ostream& os, trace_level mask) : os_{os}, mask_{mask} {}
 
     /**
      * @brief Проверяет, нужно ли выводить сообщение данного уровня.
      */
-    bool enabled(trace_level level) const noexcept { return write_ && has_level(mask_, level); }
-
-    /**
-     * @brief Выводит сообщение (без проверки уровня).
-     */
-    void emit(std::string_view msg) const {
-        if (write_) write_(msg);
-    }
+    bool enabled(trace_level level) const noexcept;
 
     /// @name Печать этапов компиляции
     /// @{
@@ -132,14 +121,6 @@ public:
 
     /// @}
 
-    /// @name Печать значений и возвратов
-    /// @{
-
-    /**
-     * @brief Выводит значение.
-     */
-    void print_value(const core::value& val);
-
     /**
      * @brief Выводит информацию о возврате из функции.
      * Требует trace_level::returns.
@@ -149,7 +130,15 @@ public:
      */
     void print_return(std::string_view func_name, const core::value& result);
 
-    /// @}
+    /*
+     * @brief Выводит информацию об использовании переменной.
+     * Требует trace_level::execution.
+     *
+     * @param name Имя переменной
+     * @param val  Значение переменной
+     *
+     */
+    void print_var(std::string_view name, const core::value& val);
 
 private:
     /// @name Внутренние перегрузки для инструкций
@@ -184,11 +173,11 @@ private:
     /// @}
 
     /**
-     * @brief Выводит строку с текущим отступом и переводом строки.
+     * @brief Создает строку с отступом в соответствии с текущим уровнем.
      */
-    void emit_line(std::string_view msg) const;
+    std::string indent() const;
 
-    write_fn write_;           ///< Функция вывода
+    std::ostream& os_;         ///< Поток вывода
     trace_level mask_;         ///< Маска активных уровней
     uint32_t curr_level_ = 0;  ///< Текущий уровень отступа
 };

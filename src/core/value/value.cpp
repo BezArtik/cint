@@ -45,7 +45,7 @@ value value::default_value(const core::type& t) {
     if (t.is_array()) {
         auto elements = array_t{};
         elements.reserve(t.array_size());
-        for (size_t i = 0; i < t.array_size(); ++i) elements.push_back(default_value(t.element_type()));
+        for (auto _ : std::views::iota(0ul, t.array_size())) elements.push_back(default_value(t.element_type()));
         return elements;
     }
 
@@ -72,7 +72,7 @@ value::int_t value::to_int() const {
             [](int_t v) { return v; },
             [](double_t v) { return static_cast<int_t>(v); },
             [](bool_t v) { return static_cast<int_t>(v); },
-            [](const string_wrap& v) { return parse_int(*v); },
+            [](const string_impl& v) { return parse_int(*v); },
             [](const auto&) -> int_t { invalid_conversion(); }
         });
 }
@@ -82,7 +82,7 @@ value::double_t value::to_double() const {
         overloaded{
             [](int_t v) { return static_cast<double_t>(v); },
             [](double_t v) { return v; },
-            [](const string_wrap& v) { return parse_double(*v); },
+            [](const string_impl& v) { return parse_double(*v); },
             [](const auto&) -> double_t { invalid_conversion(); }
         });
 }
@@ -115,8 +115,8 @@ value::string_t value::to_string() const {
             [](int_t v) { return std::format("{}", v); },
             [](double_t v) { return std::format("{}", v); },
             [](bool_t v) { return std::format("{}", v ? "true" : "false"); },
-            [](const string_wrap& s) { return *s; },
-            [&](const array_wrap& a) { return std::format("{{}}", to_string(*a)); },
+            [](const string_impl& s) { return *s; },
+            [&](const array_impl& a) { return std::format("{{}}", to_string(*a)); },
             [&](const struct_t& s) { return std::format("{{}}", to_string(s.fields_)); },
             [](std::monostate) { return std::format("void"); }
         });
@@ -125,7 +125,7 @@ value::string_t value::to_string() const {
 const value::array_t& value::to_array() const {
     return data_.visit(
         overloaded{
-            [](const array_wrap& arr) -> const array_t& { return *arr; },
+            [](const array_impl& arr) -> const array_t& { return *arr; },
             [](const auto&) -> const array_t& { invalid_conversion(); }
         });
 }
@@ -133,7 +133,7 @@ const value::array_t& value::to_array() const {
 value::array_t& value::to_array() {
     return data_.visit(
         overloaded{
-            [](array_wrap& arr) -> array_t& { return *arr; },
+            [](array_impl& arr) -> array_t& { return *arr; },
             [](const auto&) -> array_t& { invalid_conversion(); }
         });
 }
@@ -157,8 +157,8 @@ value::struct_t& value::to_struct() {
 bool value::is_int() const noexcept { return data_.holds<int_t>(); }
 bool value::is_double() const noexcept { return data_.holds<double_t>(); }
 bool value::is_bool() const noexcept { return data_.holds<bool_t>(); }
-bool value::is_string() const noexcept { return data_.holds<string_wrap>(); }
-bool value::is_array() const noexcept { return data_.holds<array_wrap>(); }
+bool value::is_string() const noexcept { return data_.holds<string_impl>(); }
+bool value::is_array() const noexcept { return data_.holds<array_impl>(); }
 bool value::is_struct() const noexcept { return data_.holds<struct_t>(); }
 bool value::is_void() const noexcept { return data_.holds<std::monostate>(); }
 // clang-format on

@@ -4,6 +4,7 @@
 #include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
+#include <ranges>
 #include <string_view>
 #include <vector>
 
@@ -28,7 +29,7 @@ class single_token_test : public ::testing::TestWithParam<single_token_case> {};
 
 TEST_P(single_token_test, recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2) << "Expected at least token + EOF for source: " << tc.source_;
     expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
@@ -84,7 +85,7 @@ class keyword_test : public ::testing::TestWithParam<keyword_case> {};
 
 TEST_P(keyword_test, recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     EXPECT_NE(h.tokens()[0].type_, tt::IDENTIFIER);
@@ -119,7 +120,7 @@ class number_test : public ::testing::TestWithParam<number_case> {};
 
 TEST_P(number_test, recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::NUMBER, tc.lexeme_);
@@ -145,7 +146,7 @@ class bool_test : public ::testing::TestWithParam<bool_case> {};
 
 TEST_P(bool_test, recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tc.expected_type_, tc.source_);
@@ -167,7 +168,7 @@ class string_test : public ::testing::TestWithParam<string_case> {};
 
 TEST_P(string_test, recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::STRING, tc.expected_lexeme_);
@@ -186,7 +187,7 @@ class identifier_test : public ::testing::TestWithParam<std::string_view> {};
 
 TEST_P(identifier_test, recognized) {
     auto&& id = GetParam();
-    pipeline_harness h{id};
+    auto h = pipeline_harness{id};
     ASSERT_TRUE(h.lex());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::IDENTIFIER, id);
@@ -207,15 +208,14 @@ class sequence_test : public ::testing::TestWithParam<token_sequence> {};
 
 TEST_P(sequence_test, Recognized) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
 
     ASSERT_EQ(h.tokens().size(), tc.expected_types_.size() + 1) << "Unexpected token count for source: " << tc.source_;
 
-    for (size_t i = 0; i < tc.expected_types_.size(); ++i) {
-        expect_token(h.tokens()[i], tc.expected_types_[i],
-                     i < tc.expected_lexemes_.size() ? tc.expected_lexemes_[i] : std::string_view{});
-    }
+    auto&& zip = std::views::zip(h.tokens(), tc.expected_types_, tc.expected_lexemes_);
+    for (auto&& [token, type, lexem] : zip) expect_token(token, type, lexem);
+    
     EXPECT_EQ(h.tokens()[tc.expected_types_.size()].type_, tt::END_OF_FILE);
 }
 
@@ -235,7 +235,7 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(lexer_test, line_comment) {
-    pipeline_harness h{"42 // comment\n43"};
+    auto h = pipeline_harness{"42 // comment\n43"};
     ASSERT_TRUE(h.lex());
     ASSERT_EQ(h.tokens().size(), 3);
     expect_token(h.tokens()[0], tt::NUMBER, "42");
@@ -244,19 +244,19 @@ TEST(lexer_test, line_comment) {
 }
 
 TEST(LexerTest, unterminated_string) {
-    pipeline_harness h{"\"unterminated"};
+    auto h = pipeline_harness{"\"unterminated"};
     h.lex();
     EXPECT_TRUE(h.had_error());
 }
 
 TEST(lexer_test, unexpected_character) {
-    pipeline_harness h{"@"};
+    auto h = pipeline_harness{"@"};
     h.lex();
     EXPECT_TRUE(h.had_error());
 }
 
 TEST(lexer_test, unexpected_character_recovery) {
-    pipeline_harness h{"42 @ 43"};
+    auto h = pipeline_harness{"42 @ 43"};
     h.lex();
     EXPECT_TRUE(h.had_error());
     ASSERT_GE(h.tokens().size(), 3);

@@ -1,18 +1,27 @@
 ﻿cmake_minimum_required(VERSION 3.20...4.1)
 project(interpreter LANGUAGES CXX)
 
-set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
-add_custom_target(compile_commands_symlink ALL
-  COMMAND ${CMAKE_COMMAND} -E create_symlink
-    ${CMAKE_BINARY_DIR}/compile_commands.json
-    ${CMAKE_SOURCE_DIR}/compile_commands.json
-  COMMENT "Symlink compile_commands.json to project root"
-)
-
 option(BUILD_TESTS "Build tests" ON)
 option(ENABLE_SANITIZERS "Enable ASan and UBSan" OFF)
 option(ENABLE_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 option(BUILD_DOCS "Build Documentation" OFF)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    cli11
+    GIT_REPOSITORY https://github.com/CLIUtils/CLI11.git
+    GIT_TAG v2.7.2
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(cli11)
+
+FetchContent_Declare(
+    GoogleTest
+    URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+FetchContent_MakeAvailable(GoogleTest)
 
 add_subdirectory(src)
 

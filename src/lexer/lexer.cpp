@@ -37,8 +37,8 @@ void lexer::add_token(tt type, core::location loc) {
 
 // clang-format off
 void lexer::scan_token() {
-    auto&& start_loc = loc_; 
-    auto&& c = advance();
+    const auto start_loc = loc_; 
+    const auto c = advance();
     switch (c) {
         case '(': add_token(tt::LEFT_PAREN, start_loc); break;
         case ')': add_token(tt::RIGHT_PAREN, start_loc); break;

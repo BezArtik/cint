@@ -38,9 +38,9 @@ namespace cint::core {
  *            валидны до вызова reset() или разрушения арены.
  *
  */
-class arena {
+class [[nodiscard]] arena {
     /// Размер блока по умолчанию: 16 КБ.
-    static constexpr size_t BLOCK_SIZE = 16 * 1024;
+    static constexpr std::size_t BLOCK_SIZE = 16 * 1024;
 
 public:
     arena() = default;
@@ -70,8 +70,8 @@ public:
      */
     template <typename T, typename... Args>
     T* allocate(Args&&... args) {
-        auto&& ptr = allocate_raw(sizeof(T), alignof(T));
-        auto&& obj = std::construct_at<T>(static_cast<T*>(ptr), std::forward<Args>(args)...);
+        const auto ptr = allocate_raw(sizeof(T), alignof(T));
+        const auto obj = std::construct_at<T>(static_cast<T*>(ptr), std::forward<Args>(args)...);
 
         if constexpr (!std::is_trivially_destructible_v<T>)
             destructors_.emplace_back(obj, [](void* p) { std::destroy_at<T>(static_cast<T*>(p)); });
@@ -89,7 +89,7 @@ public:
      * @param alignment Выравнивание (степень двойки)
      * @return Указатель на выровненную память.
      */
-    void* allocate_raw(size_t size, size_t alignment);
+    void* allocate_raw(std::size_t size, std::size_t alignment);
 
     /**
      * @brief Освобождает всю память арены.
@@ -104,9 +104,6 @@ public:
     void reset() noexcept;
 
 private:
-    void allocate_block();
-    static std::byte* align_ptr(std::byte* ptr, size_t alignment) noexcept;
-
     /**
      * @brief Запись реестра деструкторов.
      */
@@ -122,30 +119,53 @@ private:
     std::byte* end_ = nullptr;                          ///< Конец активного блока
 };
 
-/**
- * @brief Адаптер арены для std::pmr-контейнеров.
- * @ingroup CoreUtils
- *
- * Позволяет использовать arena с любым стандартным контейнером,
- * принимающим polymorphic_allocator (std::pmr::vector, std::pmr::string).
- *
- * Деаллокация — no-op: память освобождается только при reset() арены.
- *
- */
-struct arena_memory_resource : std::pmr::memory_resource {
-    /**
-     * @brief Конструктор.
-     * @param arena Арена, в которой будет выделяться память.
-     */
-    arena_memory_resource(arena& arena) noexcept : arena_{arena} {}
+template <typename T>
+class [[nodiscard]] arena_allocator {
+public:
+    using value_type = T;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap = std::true_type;
+
+    arena_allocator() noexcept = default;
+    arena_allocator(arena& a) noexcept : arena_{&a} {}
+
+    template <typename U>
+    arena_allocator(const arena_allocator<U>& other) noexcept : arena_{other.arena_} {}
+
+    T* allocate(std::size_t n) {
+        if (!arena_) throw std::bad_alloc{};
+        if (n > std::numeric_limits<std::size_t>::max() / sizeof(T)) throw std::bad_array_new_length{};
+        return static_cast<T*>(arena_->allocate_raw(n * sizeof(T), alignof(T)));
+    }
+
+    void deallocate(T*, std::size_t) noexcept {}
+
+    template <typename U>
+    friend class arena_allocator;
+    template <typename U>
+    friend bool operator==(const arena_allocator<U>&, const arena_allocator<U>&) noexcept;
 
 private:
-    void* do_allocate(size_t bytes, size_t alignment) override { return arena_.allocate_raw(bytes, alignment); }
-    void do_deallocate(void*, size_t, size_t) noexcept override {}
-    bool do_is_equal(const std::pmr::memory_resource& other) const noexcept override { return this == &other; }
-
-    arena& arena_;
+    arena* arena_ = nullptr;
 };
+
+template <typename T, typename U>
+[[nodiscard]] bool operator==(const arena_allocator<T>& a, const arena_allocator<U>& b) noexcept {
+    return a.arena_ == b.arena_;
+}
+
+template <typename T, typename U>
+[[nodiscard]] bool operator!=(const arena_allocator<T>& a, const arena_allocator<U>& b) noexcept {
+    return !(a == b);
+}
+
+/*
+ * @brief Псевдоним для контейнеров, использующего арену.
+ *
+ * @tparam T Тип объекта
+ */
+template <typename T>
+using arena_vector = std::vector<T, arena_allocator<T>>;
 
 /**
  * @brief Deleter для std::unique_ptr, совместимый с ареной.
@@ -186,7 +206,7 @@ using arena_ptr = std::unique_ptr<T, arena_deleter<T>>;
  * @return       Готовый arena_ptr<T>
  */
 template <typename T, typename... Args>
-arena_ptr<T> make_arena(arena& arena, Args&&... args) {
+[[nodiscard]] auto make_arena(arena& arena, Args&&... args) {
     return arena_ptr<T>{arena.allocate<T>(std::forward<Args>(args)...)};
 }
 

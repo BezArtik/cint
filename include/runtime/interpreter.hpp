@@ -49,7 +49,7 @@ namespace cint {
  * @invariant После interpret() значения переменных не сохраняются.
  *            Каждый вызов интерпретатора начинает выполнение с чистого состояния.
  */
-class interpreter {
+class [[nodiscard]] interpreter {
 public:
     /**
      * @brief Конструктор.
@@ -57,10 +57,8 @@ public:
      * @param reporter Обработчик ошибок времени выполнения
      * @param registry Реестр символов (функции, builtin-функции, структуры)
      * @param writer   Отладочный writer для трассировки выполнения.
-     *                 Если не указан — трассировка отключена.
      */
-    interpreter(core::error_reporter& reporter, const core::symbol_registry& registry,
-                const debug::debug_writer& writer = {})
+    interpreter(core::error_reporter& reporter, const core::symbol_registry& registry, debug::debug_writer& writer)
         : reporter_{reporter}, registry_{registry}, writer_{writer} {}
     /**
      * @brief Выполняет программу.
@@ -127,7 +125,7 @@ private:
 
     core::error_reporter& reporter_;         ///< Обработчик ошибок
     const core::symbol_registry& registry_;  ///< Реестр функций
-    debug::debug_writer writer_;             ///< Отладочный вывод
+    debug::debug_writer& writer_;            ///< Отладочный вывод
     core::scoped_map<core::value> values_;   ///< Таблица переменных (стек областей видимости)
     uint32_t recursion_depth_ = 0;           ///< Текущая глубина рекурсии
 

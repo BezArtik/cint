@@ -42,7 +42,7 @@ namespace cint::core {
  * @invariant has_error() возвращает true, если была хотя бы одна ошибка.
  *
  */
-class error_reporter {
+class [[nodiscard]] error_reporter {
 public:
     /**
      * @brief Конструктор.
@@ -50,7 +50,7 @@ public:
      * @param source Исходный код программы (для визуализации ошибок).
      *               Если не указан — визуализация отключена.
      */
-    error_reporter(std::string_view source = {});
+    error_reporter(std::string_view source = {}) : source_{source} { build_line_cache(); }
 
     /**
      * @brief Сообщает об ошибке с указанием позиции.
@@ -127,7 +127,7 @@ public:
      *
      * @return true, если зарегистрирована хотя бы одна ошибка.
      */
-    bool has_error() const noexcept;
+    bool has_error() const noexcept { return had_error_; }
 
 private:
     /// Разбирает исходный код на строки для визуализации ошибок.

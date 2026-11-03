@@ -1,5 +1,5 @@
 /**
- * @file include/ast/variant_wrapper.hpp
+ * @file include/ast/variant.hpp
  * @brief Обертка над std::variant для узлов AST, скрывающая работу с указателями.
  * @ingroup AST
  */
@@ -26,16 +26,15 @@ namespace cint::ast {
  * @invariant Всегда содержит валидный указатель на узел AST.
  */
 template <typename... Types>
-class variant_wrapper {
+    requires(sizeof...(Types) > 0)
+class [[nodiscard]] variant {
     /**
      * Тип, которым обернуты альтернативы Types.
      */
     template <typename T>
-    using wrap = core::arena_ptr<T>;
+    using impl_t = core::arena_ptr<T>;
 
 public:
-    static_assert(sizeof...(Types) > 0, "variant_wrapper must have at least one type");
-
     /// @name Конструкторы
     /// @{
 
@@ -45,7 +44,7 @@ public:
      * @param ptr Указатель на узел в арене
      */
     template <typename T>
-    variant_wrapper(wrap<T> ptr) : data_{std::move(ptr)} {}
+    variant(impl_t<T> ptr) : data_{std::move(ptr)} {}
 
     /// @}
 
@@ -59,7 +58,7 @@ public:
      */
     template <typename T>
     bool holds() const noexcept {
-        return data_.template holds<wrap<T>>();
+        return data_.template holds<impl_t<T>>();
     }
 
     /// @}
@@ -76,7 +75,7 @@ public:
      */
     template <typename T>
     T& get() {
-        return *data_.template get<wrap<T>>();
+        return *data_.template get<impl_t<T>>();
     }
 
     /**
@@ -84,7 +83,7 @@ public:
      */
     template <typename T>
     const T& get() const {
-        return *data_.template get<wrap<T>>();
+        return *data_.template get<impl_t<T>>();
     }
 
     /**
@@ -94,7 +93,7 @@ public:
      */
     template <typename T>
     T* get_if() noexcept {
-        if (auto&& ptr = data_.template get_if<wrap<T>>()) return ptr->get();
+        if (auto&& ptr = data_.template get_if<impl_t<T>>()) return ptr->get();
         return nullptr;
     }
 
@@ -103,7 +102,7 @@ public:
      */
     template <typename T>
     const T* get_if() const noexcept {
-        if (auto&& ptr = data_.template get_if<wrap<T>>()) return ptr->get();
+        if (auto&& ptr = data_.template get_if<impl_t<T>>()) return ptr->get();
         return nullptr;
     }
 
@@ -139,7 +138,7 @@ public:
 
     /// @}
 private:
-    core::variant<wrap<Types>...> data_;
+    core::variant<impl_t<Types>...> data_;
 };
 
 }  // namespace cint::ast

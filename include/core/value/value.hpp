@@ -33,7 +33,7 @@ namespace cint::core {
  *            Конструктор по умолчанию создаёт void-значение (monostate).
  *
  */
-class value {
+class [[nodiscard]] value {
     /// @cond INTERNAL
     struct struct_data;
     /// @endcond
@@ -67,7 +67,7 @@ public:
      * @brief Возвращает значение по умолчанию для указанного типа.
      *
      * - Числа: 0
-     * - Bool: false
+     * - bool: false
      * - Строка: ""
      * - Массив: массив заданного размера с default-элементами
      * - Структура: структура с default-полями
@@ -165,10 +165,10 @@ private:
         std::vector<value> fields_;  ///< Значения полей (в порядке объявления)
     };
 
-    using string_wrap = std::shared_ptr<string_t>;
-    using array_wrap = std::shared_ptr<array_t>;
+    using string_impl = std::shared_ptr<string_t>;
+    using array_impl = std::shared_ptr<array_t>;
 
-    core::variant<int_t, double_t, bool_t, string_wrap, array_wrap, struct_t, std::monostate> data_;
+    core::variant<int_t, double_t, bool_t, string_impl, array_impl, struct_t, std::monostate> data_;
 };
 
 }  // namespace cint::core

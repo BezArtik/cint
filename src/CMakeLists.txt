@@ -1,6 +1,7 @@
 add_library(interpreter-lib STATIC)
 
-target_compile_features(interpreter-lib PRIVATE cxx_std_20)
+target_link_libraries(interpreter-lib PRIVATE CLI11::CLI11)
+target_compile_features(interpreter-lib PUBLIC cxx_std_23)
 
 target_sources(interpreter-lib PRIVATE
     lexer/lexer.cpp
@@ -15,6 +16,7 @@ target_sources(interpreter-lib PRIVATE
     semantics/type_check.cpp
     runtime/interpreter.cpp
     debug/debug_writer.cpp
+    app/application.cpp
 )
 
 target_include_directories(interpreter-lib PUBLIC

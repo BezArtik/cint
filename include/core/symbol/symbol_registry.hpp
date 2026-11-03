@@ -29,7 +29,7 @@ namespace cint::core {
  * - **Структуры** (struct_declaration)
  *
  */
-class symbol_registry {
+class [[nodiscard]] symbol_registry {
     struct entry;
     /// Тип списка записей.
     using entries_t = std::vector<entry>;

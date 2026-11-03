@@ -63,7 +63,7 @@ bool is_type_start(tt type) noexcept {
 }  // namespace
 
 ast::stmt_list parser::parse() {
-    auto statements = ast::stmt_list{&mr_};
+    auto statements = ast::stmt_list{arena_};
     while (!is_at_end()) {
         auto&& stmt = declaration();
         if (stmt) statements.push_back(std::move(*stmt));
@@ -285,7 +285,7 @@ ast::statement parser::return_statement() {
 }
 
 ast::statement parser::block_statement() {
-    auto statements = ast::stmt_list{&mr_};
+    auto statements = ast::stmt_list{arena_};
     auto&& has_decls = false;
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& stmt = declaration();
@@ -356,7 +356,7 @@ ast::expression parser::postfix() {
 }
 
 ast::expression parser::initializer_list() {
-    auto elements = ast::expr_list{&mr_};
+    auto elements = ast::expr_list{arena_};
 
     if (!check(tt::RIGHT_BRACE)) {
         do {
@@ -404,7 +404,7 @@ std::string parser::process_escape_sequences(std::string_view raw, core::locatio
 ast::expression parser::primary() {
     if (match({tt::NUMBER})) {
         auto&& token = prev();
-        auto&& is_double = token.lexeme_.find('.') != std::string_view::npos;
+        const auto is_double = token.lexeme_.find('.') != std::string_view::npos;
         auto&& val = core::value::from_string(token.lexeme_, is_double);
         return ast::make_expr<ast::literal_expr>(arena_, std::move(val), token.loc_);
     }
@@ -436,7 +436,7 @@ ast::expression parser::primary() {
 }
 
 ast::expression parser::finish_call(const core::token& callee) {
-    auto args = ast::expr_list{&mr_};
+    auto args = ast::expr_list{arena_};
 
     if (!check(tt::RIGHT_PAREN)) {
         do { args.push_back(assignment()); } while (match({tt::COMMA}));

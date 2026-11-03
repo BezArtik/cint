@@ -30,7 +30,7 @@ namespace cint::core {
  * - **Служебные**: unknown (для ошибок вывода типов)
  *
  */
-class type {
+class [[nodiscard]] type {
 public:
     /// @brief Параметр функции: имя + тип.
     using param_t = std::pair<std::string_view, type>;
@@ -169,11 +169,11 @@ private:
     template <typename Info>
     type(Info info) : data_{std::move(info)} {}
 
-    using func_wrap = std::shared_ptr<function_t>;
-    using array_wrap = std::shared_ptr<array_t>;
-    using struct_wrap = std::shared_ptr<struct_t>;
+    using func_impl = std::shared_ptr<function_t>;
+    using array_impl = std::shared_ptr<array_t>;
+    using struct_impl = std::shared_ptr<struct_t>;
 
-    core::variant<int_t, double_t, bool_t, string_t, void_t, func_wrap, array_wrap, struct_wrap, unknown_t> data_;
+    core::variant<int_t, double_t, bool_t, string_t, void_t, func_impl, array_impl, struct_impl, unknown_t> data_;
 
     /// @endcond
 };

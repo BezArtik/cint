@@ -21,16 +21,15 @@ namespace cint::core {
  * - Сравнение: числовые операнды, результат — bool
  * - Логика: операнды — bool, результат — bool
  *
- * @note Операции **не изменяют** переданные значения — всегда возвращают новый value.
  */
 
 /// @name Арифметические операции
 /// @ingroup CoreOps
 /// @{
 
-value add(const value& a, const value& b);  ///< Сложение: a + b
-value sub(const value& a, const value& b);  ///< Вычитание: a - b
-value mul(const value& a, const value& b);  ///< Умножение: a * b
+[[nodiscard]] value add(const value& a, const value& b);  ///< Сложение: a + b
+[[nodiscard]] value sub(const value& a, const value& b);  ///< Вычитание: a - b
+[[nodiscard]] value mul(const value& a, const value& b);  ///< Умножение: a * b
 
 /**
  * @brief Деление: a / b.
@@ -40,7 +39,7 @@ value mul(const value& a, const value& b);  ///< Умножение: a * b
  *
  * @throws core::interpret_error с кодом division_by_zero при b == 0.
  */
-value div(const value& a, const value& b);
+[[nodiscard]] value div(const value& a, const value& b);
 
 /**
  * @brief Остаток от деления: a % b.
@@ -49,9 +48,9 @@ value div(const value& a, const value& b);
  *
  * @throws core::interpret_error с кодом modulo_by_zero при b == 0.
  */
-value mod(const value& a, const value& b);
+[[nodiscard]] value mod(const value& a, const value& b);
 
-value unary_minus(const value& a);  ///< Унарный минус: -a
+[[nodiscard]] value unary_minus(const value& a);  ///< Унарный минус: -a
 
 /// @}
 
@@ -59,12 +58,12 @@ value unary_minus(const value& a);  ///< Унарный минус: -a
 /// @ingroup CoreOps
 /// @{
 
-value eq(const value& a, const value& b);   ///< Равно: a == b
-value neq(const value& a, const value& b);  ///< Не равно: a != b
-value lt(const value& a, const value& b);   ///< Меньше: a < b
-value le(const value& a, const value& b);   ///< Меньше или равно: a <= b
-value gt(const value& a, const value& b);   ///< Больше: a > b
-value ge(const value& a, const value& b);   ///< Больше или равно: a >= b
+[[nodiscard]] value eq(const value& a, const value& b);   ///< Равно: a == b
+[[nodiscard]] value neq(const value& a, const value& b);  ///< Не равно: a != b
+[[nodiscard]] value lt(const value& a, const value& b);   ///< Меньше: a < b
+[[nodiscard]] value le(const value& a, const value& b);   ///< Меньше или равно: a <= b
+[[nodiscard]] value gt(const value& a, const value& b);   ///< Больше: a > b
+[[nodiscard]] value ge(const value& a, const value& b);   ///< Больше или равно: a >= b
 
 /// @}
 
@@ -72,7 +71,7 @@ value ge(const value& a, const value& b);   ///< Больше или равно:
 /// @ingroup CoreOps
 /// @{
 
-value not_op(const value& a);  ///< Логическое НЕ: !a
+[[nodiscard]] value not_op(const value& a);  ///< Логическое НЕ: !a
 
 /// @}
 
@@ -80,23 +79,23 @@ value not_op(const value& a);  ///< Логическое НЕ: !a
 /// @ingroup CoreOps
 /// @{
 
-value bit_and(const value& a, const value& b);  ///< Побитовое И: a & b
-value bit_or(const value& a, const value& b);   ///< Побитовое ИЛИ: a | b
-value bit_xor(const value& a, const value& b);  ///< Побитовое исключающее ИЛИ: a ^ b
-value bit_not(const value& a);                  ///< Побитовое НЕ: ~a
+[[nodiscard]] value bit_and(const value& a, const value& b);  ///< Побитовое И: a & b
+[[nodiscard]] value bit_or(const value& a, const value& b);   ///< Побитовое ИЛИ: a | b
+[[nodiscard]] value bit_xor(const value& a, const value& b);  ///< Побитовое исключающее ИЛИ: a ^ b
+[[nodiscard]] value bit_not(const value& a);                  ///< Побитовое НЕ: ~a
 
-value shl(const value& a, const value& b);  ///< Сдвиг влево: a << b
-value shr(const value& a, const value& b);  ///< Сдвиг вправо: a >> b
+[[nodiscard]] value shl(const value& a, const value& b);  ///< Сдвиг влево: a << b
+[[nodiscard]] value shr(const value& a, const value& b);  ///< Сдвиг вправо: a >> b
 
 /// @}
 
 /// @name Операции инкремента/декремента
 /// @ingroup CoreOps
 /// @{
-value pre_increment(value& a);   ///< Преинкремент: ++a
-value pre_decrement(value& a);   ///< Предекремент: --a
-value post_increment(value& a);  ///< Постинкремент: a++
-value post_decrement(value& a);  ///< Постдекремент: a--
+[[nodiscard]] value pre_increment(value& a);   ///< Преинкремент: ++a
+[[nodiscard]] value pre_decrement(value& a);   ///< Предекремент: --a
+[[nodiscard]] value post_increment(value& a);  ///< Постинкремент: a++
+[[nodiscard]] value post_decrement(value& a);  ///< Постдекремент: a--
 
 /// @}
 

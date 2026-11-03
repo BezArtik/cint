@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <array>
 #include <iterator>
-#include <memory_resource>
+#include <ranges>
 #include <utility>
 #include <vector>
 
@@ -28,7 +28,7 @@ using t = core::type;
 using err = core::error_code;
 
 struct interpreter::execution_result {
-    enum class kind : uint8_t { normal, return_ };
+    enum class kind : std::uint8_t { normal, return_ };
 
     kind kind_{kind::normal};
     core::value value_;
@@ -48,12 +48,13 @@ void interpreter::interpret(std::span<const ast::statement> statements) {
 }
 
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
-    if (writer_.enabled(debug::trace_level::execution)) writer_.print(stmt);
+    if (writer_.enabled(debug::trace_level::execution)) [[unlikely]]
+        writer_.print(stmt);
     return stmt.visit([&](const auto& s) { return execute(s); });
 }
 
 interpreter::execution_result interpreter::execute(const ast::expression_stmt& stmt) {
-    evaluate(stmt.expr_);
+    std::ignore = evaluate(stmt.expr_);
     return execution_result::normal();
 }
 
@@ -78,9 +79,9 @@ interpreter::execution_result interpreter::execute(const ast::var_declaration_st
 
     values_.define(name, init_val);
 
-    if (writer_.enabled(debug::trace_level::execution)) {
+    if (writer_.enabled(debug::trace_level::execution)) [[unlikely]] {
         auto&& var = values_.get(name);
-        writer_.emit(std::format(" {} = {}\n", name, var->to_string()));
+        writer_.print_var(name, *var);
     }
     return execution_result::normal();
 }
@@ -126,7 +127,7 @@ interpreter::execution_result interpreter::execute(const ast::for_stmt& stmt) {
         auto&& result = execute(stmt.block_);
         if (result.is_return()) return result;
 
-        if (stmt.increment_) evaluate(*stmt.increment_);
+        if (stmt.increment_) std::ignore = evaluate(*stmt.increment_);
     }
     return execution_result::normal();
 }
@@ -150,7 +151,8 @@ interpreter::execution_result interpreter::execute(const ast::return_stmt& stmt)
 
 core::value interpreter::evaluate(const ast::expression& expr) {
     auto&& result = expr.visit([&](const auto& e) { return evaluate(e); });
-    if (writer_.enabled(debug::trace_level::execution)) writer_.print(expr, &result);
+    if (writer_.enabled(debug::trace_level::execution)) [[unlikely]]
+        writer_.print(expr, &result);
     return result;
 }
 
@@ -176,7 +178,7 @@ core::value& interpreter::evaluate_lvalue(const ast::index_expr& expr) {
     auto&& i = index_val.to_int();
     auto&& arr = obj.to_array();
 
-    if (i < 0 || i >= static_cast<core::value::int_t>(arr.size()))
+    if (i < 0 || i >= static_cast<core::value::int_t>(arr.size())) [[unlikely]]
         reporter_.runtime_error(expr.loc_, err::index_out_of_bounds);
 
     return arr[i];
@@ -290,16 +292,14 @@ core::value interpreter::evaluate(const ast::initializer_list_expr& expr) {
     auto elements = std::vector<core::value>{};
     elements.reserve(expr.elements_.size());
     std::ranges::transform(expr.elements_, std::back_inserter(elements), [&](auto&& elem) { return evaluate(elem); });
-
-    if (elements.empty()) return std::vector<core::value>{};
-
     return elements;
 }
 
 core::value interpreter::evaluate(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
-    if (recursion_depth_ >= MAX_RECURSION_DEPTH) reporter_.runtime_error(expr.callee_.loc_, err::stack_overflow);
+    if (recursion_depth_ >= MAX_RECURSION_DEPTH) [[unlikely]]
+        reporter_.runtime_error(expr.callee_.loc_, err::stack_overflow);
     recursion_depth_++;
 
     struct depth_guard {
@@ -325,7 +325,8 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
 core::value interpreter::call(core::symbol_registry::builtin_func_ptr builtin, std::span<const core::value> args,
                               std::string_view name) {
     auto&& result = builtin->impl_(args);
-    if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result);
+    if (writer_.enabled(debug::trace_level::returns)) [[unlikely]]
+        writer_.print_return(name, result);
     return result;
 }
 
@@ -333,19 +334,21 @@ core::value interpreter::call(core::symbol_registry::func_ptr body, std::span<co
                               std::string_view name) {
     auto guard = core::scope_guard{values_};
     auto&& params = body->type_.param_infos();
-    for (size_t i = 0; i < params.size(); ++i) values_.define(params[i].first, args[i]);
+    for (auto&& [param, arg] : std::views::zip(params, args)) values_.define(param.first, arg);
 
     auto&& block = body->block_.get<ast::block_stmt>();
     for (auto&& s : block.statements_) {
         auto&& result = execute(s);
         if (result.is_return()) {
-            if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result.value_);
+            if (writer_.enabled(debug::trace_level::returns)) [[unlikely]]
+                writer_.print_return(name, result.value_);
             return result.value_;
         }
     }
 
     auto&& result = core::value::default_value(body->type_.return_type());
-    if (writer_.enabled(debug::trace_level::returns)) writer_.print_return(name, result);
+    if (writer_.enabled(debug::trace_level::returns)) [[unlikely]]
+        writer_.print_return(name, result);
     return result;
 }
 

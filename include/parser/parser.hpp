@@ -22,7 +22,7 @@ namespace cint {
  * @brief Синтаксический анализатор, строящий AST из
  * входной последовательности токенов
  */
-class parser {
+class [[nodiscard]] parser {
 public:
     /**
      * @brief Конструктор синтаксического анализатора.
@@ -30,14 +30,12 @@ public:
      * @param tokens   Список токенов от лексера (должен завершаться END_OF_FILE)
      * @param reporter Обработчик ошибок
      * @param arena    Арена для размещения узлов AST
-     * @param mr       Memory resource для контейнеров списков
      *
      * @note Парсер не копирует токены, а хранит span на переданный список.
      *       Вызывающий код должен гарантировать время жизни списка токенов.
      */
-    parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena,
-           core::arena_memory_resource& mr)
-        : tokens_{tokens}, reporter_{reporter}, arena_{arena}, mr_{mr} {}
+    parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena)
+        : tokens_{tokens}, reporter_{reporter}, arena_{arena} {}
 
     /**
      * @brief Выполняет синтаксический разбор программы.
@@ -367,7 +365,6 @@ private:
     core::error_reporter& reporter_;       ///< Обработчик ошибок
     size_t current_ = 0;                   ///< Индекс текущего токена
     core::arena& arena_;                   ///< Арена для размещения узлов AST
-    core::arena_memory_resource& mr_;      ///< Memory resource для списков
 };
 
 }  // namespace cint

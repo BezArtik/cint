@@ -36,7 +36,7 @@ namespace cint::core {
  *
  */
 template <typename T>
-class scoped_map {
+class [[nodiscard]] scoped_map {
 public:
     scoped_map() = default;
 
@@ -80,8 +80,11 @@ public:
      * @param name Имя переменной
      * @return Указатель на значение или nullptr, если переменная не найдена.
      */
-    T* get(std::string_view name) noexcept { return get_impl(*this, name); }
-    const T* get(std::string_view name) const noexcept { return get_impl(*this, name); }
+    template <typename Self>
+    auto get(this Self&& self, std::string_view name) {
+        auto&& it = std::ranges::find(self.entries_.rbegin(), self.entries_.rend(), name, &entry::name_);
+        return it != self.entries_.rend() ? &it->value_ : nullptr;
+    }
 
     /**
      * @brief Проверяет, объявлена ли переменная в текущей области.
@@ -93,11 +96,8 @@ public:
      * @return true, если переменная уже объявлена в текущем блоке.
      */
     bool contains_in_current_scope(std::string_view name) const noexcept {
-        for (auto it = entries_.rbegin(), endit = entries_.rend(); it != endit; ++it) {
-            if (it->scope_depth_ < current_depth_) break;
-            if (it->name_ == name) return true;
-        }
-        return false;
+        return std::ranges::any_of(entries_.rbegin(), entries_.rend(),
+                                   [&](auto&& e) { return e.scope_depth_ >= current_depth_ && e.name_ == name; });
     }
 
 private:
@@ -116,13 +116,6 @@ private:
     std::pmr::monotonic_buffer_resource mr_{buffer_.data(), buffer_.size()};  ///< mr для передачи в pmr::vector
     std::pmr::vector<entry> entries_{&mr_};  ///< Все записи (от глобальных к локальным)
     size_t current_depth_ = 0;               ///< Текущая глубина (0 — глобальная)
-
-    template <typename Self>
-    static auto* get_impl(Self& self, std::string_view name) noexcept {
-        auto&& it = std::find_if(self.entries_.rbegin(), self.entries_.rend(),
-                                 [&](auto&& entry) { return entry.name_ == name; });
-        return it != self.entries_.rend() ? &it->value_ : nullptr;
-    }
 };
 
 /**

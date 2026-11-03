@@ -12,7 +12,7 @@ namespace cint::tests {
 using t = core::type;
 
 TEST(parser_test, empty_program) {
-    pipeline_harness h{""};
+    auto h = pipeline_harness{""};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     EXPECT_TRUE(h.ast().empty());
@@ -30,7 +30,7 @@ class var_decl_test : public ::testing::TestWithParam<var_decl_case> {};
 
 TEST_P(var_decl_test, parsed) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -71,7 +71,7 @@ class binary_expr_test : public ::testing::TestWithParam<expr_case> {};
 
 TEST_P(binary_expr_test, parsed) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -116,7 +116,7 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 // clang-format on
 TEST(parser_test, assignment_expression) {
-    pipeline_harness h{"int x; x = 42;"};
+    auto h = pipeline_harness{"int x; x = 42;"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_GE(h.ast().size(), 2);
@@ -139,7 +139,7 @@ TEST(parser_test, assignment_expression) {
 }
 
 TEST(parser_test, multiplication_before_addition) {
-    pipeline_harness h{"int r = 1 + 2 * 3;"};
+    auto h = pipeline_harness{"int r = 1 + 2 * 3;"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -162,7 +162,7 @@ TEST(parser_test, multiplication_before_addition) {
 }
 
 TEST(parser_test, grouping_overrides_precedence) {
-    pipeline_harness h{"int r = (1 + 2) * 3;"};
+    auto h = pipeline_harness{"int r = (1 + 2) * 3;"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -188,7 +188,7 @@ class unary_test : public ::testing::TestWithParam<unary_case> {};
 
 TEST_P(unary_test, parsed) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -224,7 +224,7 @@ class func_decl_test : public ::testing::TestWithParam<func_case> {};
 
 TEST_P(func_decl_test, parsed) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -256,7 +256,7 @@ class call_test : public ::testing::TestWithParam<call_case> {};
 
 TEST_P(call_test, parsed) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -286,7 +286,7 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 // clang-format on
 TEST(parser_test, if_statement) {
-    pipeline_harness h{"void f() { if (true) { return; } }"};
+    auto h = pipeline_harness{"void f() { if (true) { return; } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -309,7 +309,7 @@ TEST(parser_test, if_statement) {
 }
 
 TEST(parser_test, if_else_statement) {
-    pipeline_harness h{"void f() { if (x) { return 0; } else { return 1; } }"};
+    auto h = pipeline_harness{"void f() { if (x) { return 0; } else { return 1; } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -325,7 +325,7 @@ TEST(parser_test, if_else_statement) {
 }
 
 TEST(parser_test, while_statement) {
-    pipeline_harness h{"void f() { while (x < 10) { x = x + 1; } }"};
+    auto h = pipeline_harness{"void f() { while (x < 10) { x = x + 1; } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -340,7 +340,7 @@ TEST(parser_test, while_statement) {
 }
 
 TEST(parser_test, for_statement) {
-    pipeline_harness h{"void f() { for (int i = 0; i < 10; i = i + 1) { } }"};
+    auto h = pipeline_harness{"void f() { for (int i = 0; i < 10; i = i + 1) { } }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -358,7 +358,7 @@ TEST(parser_test, for_statement) {
 }
 
 TEST(parser_test, return_void) {
-    pipeline_harness h{"void f() { return; }"};
+    auto h = pipeline_harness{"void f() { return; }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -374,7 +374,7 @@ TEST(parser_test, return_void) {
 }
 
 TEST(parser_test, return_with_value) {
-    pipeline_harness h{"int f() { return 42; }"};
+    auto h = pipeline_harness{"int f() { return 42; }"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -403,7 +403,7 @@ class syntax_error_test : public ::testing::TestWithParam<syntax_error_case> {};
 
 TEST_P(syntax_error_test, reports_error) {
     auto&& tc = GetParam();
-    pipeline_harness h{tc.source_};
+    auto h = pipeline_harness{tc.source_};
     h.lex();
     h.parse();
     EXPECT_TRUE(h.had_error()) << "Expected error for: " << tc.description_;
@@ -419,7 +419,7 @@ INSTANTIATE_TEST_SUITE_P(
 ));
 // clang-format on
 TEST(parser_test, error_recovery) {
-    pipeline_harness h{"int x = ; int y = 42;"};
+    auto h = pipeline_harness{"int x = ; int y = 42;"};
     ASSERT_TRUE(h.lex());
     h.parse();
     EXPECT_TRUE(h.had_error());
@@ -431,7 +431,7 @@ TEST(parser_test, error_recovery) {
 }
 
 TEST(parser_test, array_declaration) {
-    pipeline_harness h{"int arr[10];"};
+    auto h = pipeline_harness{"int arr[10];"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -443,7 +443,7 @@ TEST(parser_test, array_declaration) {
 }
 
 TEST(parser_test, array_initializer) {
-    pipeline_harness h{"int arr[] = {1, 2, 3};"};
+    auto h = pipeline_harness{"int arr[] = {1, 2, 3};"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
 
@@ -457,7 +457,7 @@ TEST(parser_test, array_initializer) {
 }
 
 TEST(parser_test, struct_declaration_empty) {
-    pipeline_harness h{"struct Point { int x; int y; };"};
+    auto h = pipeline_harness{"struct Point { int x; int y; };"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);
@@ -473,7 +473,7 @@ TEST(parser_test, struct_declaration_empty) {
 }
 
 TEST(parser_test, struct_declaration_nested) {
-    pipeline_harness h{
+    auto h = pipeline_harness{
         "struct Point { int x; int y; };"
         "struct Rect { struct Point tl; struct Point br; };"};
     ASSERT_TRUE(h.lex());
@@ -489,7 +489,7 @@ TEST(parser_test, struct_declaration_nested) {
 }
 
 TEST(parser_test, struct_variable_declaration) {
-    pipeline_harness h{"struct Point { int x; int y; }; struct Point p;"};
+    auto h = pipeline_harness{"struct Point { int x; int y; }; struct Point p;"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 2);
@@ -503,7 +503,7 @@ TEST(parser_test, struct_variable_declaration) {
 }
 
 TEST(parser_test, member_access) {
-    pipeline_harness h{
+    auto h = pipeline_harness{
         "void foo(struct Point p) {"
         "  p.x = 10;"
         "}"};
@@ -531,7 +531,7 @@ TEST(parser_test, member_access) {
 }
 
 TEST(parser_test, nested_member_access) {
-    pipeline_harness h{
+    auto h = pipeline_harness{
         "void foo(struct Rect r) {"
         "  r.tl.x = 10;"
         "}"};
@@ -561,7 +561,7 @@ TEST(parser_test, nested_member_access) {
 }
 
 TEST(parser_test, struct_with_string_field) {
-    pipeline_harness h{"struct Person { string name; int age; };"};
+    auto h = pipeline_harness{"struct Person { string name; int age; };"};
     ASSERT_TRUE(h.lex());
     ASSERT_TRUE(h.parse());
     ASSERT_EQ(h.ast().size(), 1);

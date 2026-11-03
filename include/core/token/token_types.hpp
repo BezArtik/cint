@@ -115,7 +115,7 @@ namespace cint::core {
  * Генерируется X-макросом TOKEN_TYPES. Каждое значение соответствует
  * одной лексеме языка. Используется везде: лексером, парсером, отладкой.
  */
-enum class token_type : uint8_t {
+enum class token_type : std::uint8_t {
 #define X(name) name,
     TOKEN_TYPES(X)
 #undef X
