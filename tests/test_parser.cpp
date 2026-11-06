@@ -2,6 +2,7 @@
 
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
+#include "core/error/error_codes.hpp"
 #include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
@@ -10,6 +11,7 @@
 namespace cint::tests {
 
 using t = core::type;
+using err = core::error_code;
 
 TEST(parser_test, empty_program) {
     auto h = pipeline_harness{""};
@@ -217,7 +219,7 @@ struct func_case {
     std::string_view source_;
     std::string_view name_;
     t return_type_;
-    size_t param_count_;
+    std::size_t param_count_;
 };
 
 class func_decl_test : public ::testing::TestWithParam<func_case> {};
@@ -249,7 +251,7 @@ INSTANTIATE_TEST_SUITE_P(
 struct call_case {
     std::string_view source_;
     std::string_view callee_;
-    size_t arg_count_;
+    std::size_t arg_count_;
 };
 
 class call_test : public ::testing::TestWithParam<call_case> {};
@@ -396,6 +398,7 @@ TEST(parser_test, return_with_value) {
 
 struct syntax_error_case {
     std::string_view source_;
+    err expected_code_;
     std::string_view description_;
 };
 
@@ -406,23 +409,27 @@ TEST_P(syntax_error_test, reports_error) {
     auto h = pipeline_harness{tc.source_};
     h.lex();
     h.parse();
-    EXPECT_TRUE(h.had_error()) << "Expected error for: " << tc.description_;
+    if (!h.had_error(tc.expected_code_)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(tc.expected_code_)) << "for: " << tc.description_;
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
         all, syntax_error_test,
         ::testing::Values(
-            syntax_error_case{"int x = ;", "missing init expression"},
-            syntax_error_case{"int x", "missing semicolon"},
-            syntax_error_case{"(1 + 2", "unclosed paren"},
-            syntax_error_case{"int f( { }", "missing right paren in func"}
+            syntax_error_case{"int x = ;", err::expected_expression, "missing init expression"},
+            syntax_error_case{"int x", err::expected_semicolon, "missing semicolon"},
+            syntax_error_case{"(1 + 2", err::expected_right_paren, "unclosed paren"},
+            syntax_error_case{"int f( { }", err::expected_type, "missing right paren in func"}
 ));
 // clang-format on
+
 TEST(parser_test, error_recovery) {
     auto h = pipeline_harness{"int x = ; int y = 42;"};
     ASSERT_TRUE(h.lex());
     h.parse();
-    EXPECT_TRUE(h.had_error());
+    if (!h.had_error(err::expected_expression)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(err::expected_expression));
     ASSERT_EQ(h.ast().size(), 1);
 
     auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();

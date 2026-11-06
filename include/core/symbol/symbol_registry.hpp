@@ -8,7 +8,7 @@
 
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
-#include "core/error/error_report.hpp"
+#include "core/error/diagnostic.hpp"
 #include "core/type/type.hpp"
 #include "core/utils/variant.hpp"
 
@@ -54,10 +54,10 @@ public:
      * 2. Обходятся объявления верхнего уровня AST.
      *
      * @param ast      Список объявлений верхнего уровня
-     * @param reporter Обработчик ошибок
+     * @param sink     Сборщик ошибок
      * @return Готовый реестр символов.
      */
-    static symbol_registry build(std::span<const ast::statement> ast, error_reporter& reporter);
+    static symbol_registry build(std::span<const ast::statement> ast, diagnostic_sink& sink);
 
     /// @name Итераторы
     /// @{
@@ -108,7 +108,7 @@ private:
     /**
      * @brief Добавляет AST-объявление в реестр.
      */
-    void add_ast_entry(const ast::statement& stmt, error_reporter& reporter);
+    void add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink);
 
     type resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const;
 

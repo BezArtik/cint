@@ -11,7 +11,7 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
-#include "core/error/error_report.hpp"
+#include "core/error/diagnostic.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/utils/scoped_map.hpp"
 #include "core/value/value.hpp"
@@ -29,20 +29,6 @@ namespace cint {
  * без компиляции в промежуточный код. Каждому типу узла AST соответствует
  * метод execute_* (для инструкций) или evaluate_* (для выражений).
  *
- * Основные компоненты:
- * - **Области видимости**: core::scoped_map<core::value> для переменных.
- *   Автоматически создаются/уничтожаются при входе/выходе из блоков.
- * - **Вызов функций**: рекурсивный вызов с передачей аргументов по значению.
- *   Поддержка пользовательских функций и builtin-функций.
- * - **Контроль рекурсии**: ограничение глубины вызовов (MAX_RECURSION_DEPTH = 250).
- * - **Трассировка**: через debug_writer можно включить вывод состояния
- *   на каждом шаге выполнения.
- *
- * Обработка ошибок:
- * - Ошибки времени выполнения (деление на ноль, выход за границы массива)
- *   выбрасывают core::runtime_error и прекращают выполнение.
- *
- *
  * @note Интерпретатор **не проверяет типы** — предполагается, что
  *       семантический анализ (type_checker) уже выполнен успешно.
  *
@@ -58,8 +44,8 @@ public:
      * @param registry Реестр символов (функции, builtin-функции, структуры)
      * @param writer   Отладочный writer для трассировки выполнения.
      */
-    interpreter(core::error_reporter& reporter, const core::symbol_registry& registry, debug::debug_writer& writer)
-        : reporter_{reporter}, registry_{registry}, writer_{writer} {}
+    interpreter(core::diagnostic_sink& sink, const core::symbol_registry& registry, debug::debug_writer& writer)
+        : sink_{sink}, registry_{registry}, writer_{writer} {}
     /**
      * @brief Выполняет программу.
      *
@@ -108,29 +94,19 @@ private:
     core::value call(core::symbol_registry::func_ptr body, std::span<const core::value> args, std::string_view name);
     core::value call(core::symbol_registry::struct_ptr ptr, std::span<const core::value> args, std::string_view name);
 
-    /**
-     * @brief Вычисляет lvalue-ссылку на переменную.
-     *
-     * Используется для изменения значения по месту. В отличие от evaluate(),
-     * возвращает ссылку на value, хранящуюся в таблице переменных.
-     *
-     * @param expr lvalue-выражение
-     * @return Ссылка на значение переменной.
-     * @throws core::runtime_error если выражение не является lvalue.
-     */
     core::value& evaluate_lvalue(const ast::expression& expr);
     core::value& evaluate_lvalue(const ast::variable_expr& expr);
     core::value& evaluate_lvalue(const ast::index_expr& expr);
     core::value& evaluate_lvalue(const ast::member_access_expr& expr);
 
-    core::error_reporter& reporter_;         ///< Обработчик ошибок
+    core::diagnostic_sink& sink_;            ///< Сборщик ошибок
     const core::symbol_registry& registry_;  ///< Реестр функций
     debug::debug_writer& writer_;            ///< Отладочный вывод
     core::scoped_map<core::value> values_;   ///< Таблица переменных (стек областей видимости)
-    uint32_t recursion_depth_ = 0;           ///< Текущая глубина рекурсии
+    std::uint32_t recursion_depth_{};        ///< Текущая глубина рекурсии
 
     /// Максимально допустимая глубина рекурсивных вызовов.
-    static constexpr uint32_t MAX_RECURSION_DEPTH = 250;
+    static constexpr std::uint32_t MAX_RECURSION_DEPTH = 250;
 };
 
 }  // namespace cint

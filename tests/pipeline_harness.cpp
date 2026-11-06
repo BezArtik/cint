@@ -8,33 +8,31 @@
 #include "runtime/interpreter.hpp"
 #include "semantics/type_check.hpp"
 
-#include <iostream>
-
 namespace cint::tests {
 
 bool pipeline_harness::lex() {
-    auto lex = lexer{source_code_, reporter_, arena_};
+    auto lex = lexer{source_code_, sink_, arena_};
     tokens_ = lex.scan_tokens();
-    return !reporter_.has_error();
+    return !sink_.has_errors();
 }
 
 bool pipeline_harness::parse() {
-    auto p = parser{tokens_, reporter_, arena_};
+    auto p = parser{tokens_, sink_, arena_};
     ast_ = p.parse();
-    if (!reporter_.has_error()) registry_.emplace(core::symbol_registry::build(ast_, reporter_));
-    return !reporter_.has_error();
+    registry_.emplace(core::symbol_registry::build(ast_, sink_));
+    return !sink_.has_errors();
 }
 
 bool pipeline_harness::check_semantics() {
-    auto checker = type_checker{reporter_, *registry_};
-    return checker.check(ast_) && !reporter_.has_error();
+    auto checker = type_checker{sink_, *registry_};
+    return checker.check(ast_) && !sink_.has_errors();
 }
 
 bool pipeline_harness::interpret() {
-    auto writer = debug::debug_writer{std::cerr, debug::trace_level::none};
-    auto interp = interpreter{reporter_, *registry_, writer};
+    auto writer = debug::debug_writer{debug::trace_level::none};
+    auto interp = interpreter{sink_, *registry_, writer};
     interp.interpret(ast_);
-    return !reporter_.has_error();
+    return !sink_.has_errors();
 }
 
 }  // namespace cint::tests

@@ -3,8 +3,8 @@
 
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
+#include "core/error/diagnostic.hpp"
 #include "core/error/error_codes.hpp"
-#include "core/error/error_report.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>
@@ -19,26 +19,26 @@ type symbol_registry::get_type(const_iterator it) const {
     return it->info_.visit([](const auto& ptr) { return ptr->type_; } );
 }
 // clang-format on
-symbol_registry symbol_registry::build(std::span<const ast::statement> ast, error_reporter& reporter) {
+symbol_registry symbol_registry::build(std::span<const ast::statement> ast, diagnostic_sink& sink) {
     symbol_registry registry;
     registry.entries_.reserve(builtins.size() + ast.size());
 
     for (auto&& b : builtins) registry.entries_.emplace_back(b.type_.function_name(), &b);
 
-    for (auto&& stmt : ast) registry.add_ast_entry(stmt, reporter);
+    for (auto&& stmt : ast) registry.add_ast_entry(stmt, sink);
 
     std::ranges::sort(registry.entries_, {}, &entry::name_);
 
     return registry;
 }
 // clang-format off
-void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& reporter) {
+void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink) {
     stmt.visit(overloaded{
             [&](const ast::func_declaration_stmt& func) {
                 const auto name = func.type_.function_name();
                 const auto it = std::ranges::find(entries_, name, &entry::name_);
                 if (it != end()) {
-                    reporter.error(func.loc_, error_code::redeclaration, name);
+                    sink.report(func.loc_, error_code::redeclaration, name);
                     return;
                 }
                 entries_.emplace_back(name, &func);
@@ -47,7 +47,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& 
                 const auto name = strct.type_.struct_name();
                 const auto it = std::ranges::find(entries_, name, &entry::name_);
                 if (it != end()) {
-                    reporter.error(strct.loc_, error_code::redeclaration, name);
+                    sink.report(strct.loc_, error_code::redeclaration, name);
                     return;
                 }
                 entries_.emplace_back(name, &strct);
@@ -58,7 +58,8 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, error_reporter& 
 // clang-format on
 
 symbol_registry::const_iterator symbol_registry::find(std::string_view name) const noexcept {
-    return std::ranges::lower_bound(entries_, name, {}, &entry::name_);
+    auto it = std::ranges::lower_bound(entries_, name, {}, &entry::name_);
+    return (it != end() && it->name_ != name) ? end() : it;
 }
 
 type symbol_registry::resolve_type(const type& t) const {
@@ -92,9 +93,10 @@ type symbol_registry::resolve_type_impl(const type& t, std::unordered_set<std::s
         }
 
         const auto entry_it = find(struct_name);
-        return entry_it != end() && entry_it->info_.holds<struct_ptr>()
-                   ? resolve_type_impl(get_type(entry_it), resolving)
-                   : type::unknown_type();
+        if (entry_it == end() || !entry_it->info_.holds<struct_ptr>()) return type::unknown_type();
+        const auto def_type = get_type(entry_it);
+        if (def_type.struct_fields().empty()) return def_type;
+        return resolve_type_impl(def_type, resolving);
     }
 
     if (t.is_array()) {

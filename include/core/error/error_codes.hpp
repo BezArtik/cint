@@ -109,47 +109,4 @@ inline constexpr std::array error_table = {
 #undef X
 };
 
-/**
- * @brief Исключение: фатальная синтаксическая ошибка.
- *
- * Выбрасывается парсером, когда восстановление невозможно.
- * Перехватывается в parser::parse() для продолжения разбора
- * следующего объявления верхнего уровня.
- */
-struct parse_error : std::exception {
-    const char* what() const noexcept override { return "Syntax error"; }
-};
-
-/**
- * @brief Исключение: ошибка операции над значением.
- *
- * Выбрасывается операциями системы значений
- * при невозможности выполнить операцию: деление на ноль, неверное
- * преобразование типа и т.д.
- *
- * Не зависит от интерпретатора — может возникнуть на любом этапе,
- * где вычисляются значения (лексер при парсинге чисел, builtin-функции).
- */
-struct value_error : std::exception {
-    error_code code_;
-
-    value_error(error_code c) noexcept : code_{c} {}
-    const char* what() const noexcept override { return "Value error"; }
-};
-
-/**
- * @brief Исключение: ошибка времени выполнения интерпретатора.
- *
- * Выбрасывается интерпретатором.
- *
- * Отличается от value_error тем, что возникает в контексте выполнения
- * конкретной инструкции/выражения, а не абстрактной операции над значением.
- */
-struct runtime_error : std::exception {
-    error_code code_;
-
-    runtime_error(error_code c) noexcept : code_{c} {}
-    const char* what() const noexcept override { return "Runtime error"; }
-};
-
 }  // namespace cint::core

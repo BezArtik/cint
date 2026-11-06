@@ -8,6 +8,7 @@
  */
 
 #pragma once
+#include "core/error/error_codes.hpp"
 #include "core/type/type.hpp"
 #include "core/utils/variant.hpp"
 
@@ -19,6 +20,23 @@
 #include <vector>
 
 namespace cint::core {
+
+/**
+ * @brief Исключение: ошибка операции над значением.
+ *
+ * Выбрасывается операциями системы значений
+ * при невозможности выполнить операцию: деление на ноль, неверное
+ * преобразование типа и т.д.
+ *
+ * Не зависит от интерпретатора — может возникнуть на любом этапе,
+ * где вычисляются значения.
+ */
+struct value_error : std::exception {
+    error_code code_;
+
+    value_error(error_code c) noexcept : code_{c} {}
+    const char* what() const noexcept override { return "Value error"; }
+};
 
 /**
  * @brief Универсальное значение времени выполнения.

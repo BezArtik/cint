@@ -10,7 +10,7 @@
 #pragma once
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
-#include "core/error/error_report.hpp"
+#include "core/error/diagnostic.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/utils/scoped_map.hpp"
 
@@ -44,20 +44,20 @@ public:
     /**
      * @brief Конструктор.
      *
-     * @param reporter Обработчик ошибок (должен существовать всё время жизни)
-     * @param registry Реестр символов, построенный symbol_registry::build()
+     * @param sink     Сборщик ошибок
+     * @param registry Реестр символов
      *
      * @note registry должен содержать информацию о всех функциях и структурах
      *       верхнего уровня, включая builtin-функции.
      */
-    type_checker(core::error_reporter& reporter, const core::symbol_registry& registry)
-        : reporter_{reporter}, registry_{registry} {}
+    type_checker(core::diagnostic_sink& sink, const core::symbol_registry& registry)
+        : sink_{sink}, registry_{registry} {}
 
     /**
      * @brief Выполняет полную проверку программы.
      *
      * Обходит все инструкции верхнего уровня и накапливает ошибки
-     * в reporter. Не останавливается на первой ошибке.
+     * в sink. Не останавливается на первой ошибке.
      *
      * @param statements Список AST-узлов верхнего уровня
      * @return true, если ошибок не обнаружено.
@@ -99,7 +99,7 @@ private:
      */
     bool is_lvalue(const ast::expression& expr);
 
-    core::error_reporter& reporter_;              ///< Обработчик ошибок
+    core::diagnostic_sink& sink_;                 ///< Сборщик ошибок
     const core::symbol_registry& registry_;       ///< Реестр объявленных символов
     core::scoped_map<core::type> symbols_;        ///< Таблица типов переменных в текущей области видимости
     std::optional<core::type> curr_return_type_;  ///< Ожидаемый тип возврата (внутри функции)

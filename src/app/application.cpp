@@ -1,6 +1,7 @@
 #include "app/application.hpp"
 
-#include "core/error/error_report.hpp"
+#include "core/error/diagnostic.hpp"
+#include "core/error/diagnostic_renderer.hpp"
 #include "core/memory/arena.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "debug/debug_writer.hpp"
@@ -73,7 +74,7 @@ int application::run(int argc, char** argv) {
 
         const auto source = std::string{std::istreambuf_iterator<char>{file}, {}};
 
-        auto writer = debug::debug_writer{std::cerr, trace_mask_};
+        auto writer = debug::debug_writer{trace_mask_};
 
         const auto start = std::chrono::steady_clock::now();
         const auto exit_code = run_pipeline(source, writer);
@@ -93,37 +94,40 @@ int application::run(int argc, char** argv) {
 
 int application::run_pipeline(std::string_view source, debug::debug_writer& writer) {
     auto arena = core::arena{};
-    auto reporter = core::error_reporter{source};
+    auto sink = core::diagnostic_sink{};
+    auto renderer = core::diagnostic_renderer{source};
 
-    auto lex = lexer{source, reporter, arena};
+    auto lex = lexer{source, sink, arena};
     const auto tokens = lex.scan_tokens();
-
     writer.print_tokens(tokens);
-    if (reporter.has_error()) {
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
         std::println(std::cerr, "Lexical errors found.");
         return EXIT_FAILURE;
     }
 
-    auto pr = parser{tokens, reporter, arena};
+    auto pr = parser{tokens, sink, arena};
     const auto ast = pr.parse();
-
     writer.print_ast(ast);
-    if (reporter.has_error()) {
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
         std::println(std::cerr, "Syntax errors found.");
         return EXIT_FAILURE;
     }
 
-    const auto registry = core::symbol_registry::build(ast, reporter);
-    auto checker = type_checker{reporter, registry};
+    const auto registry = core::symbol_registry::build(ast, sink);
+    auto checker = type_checker{sink, registry};
     if (!checker.check(ast)) {
+        renderer.render(sink.begin(), sink.end());
         std::println(std::cerr, "Semantic errors found.");
         return EXIT_FAILURE;
     }
 
-    auto interp = interpreter{reporter, registry, writer};
+    auto interp = interpreter{sink, registry, writer};
     interp.interpret(ast);
 
-    if (reporter.has_error()) {
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
         std::println(std::cerr, "Runtime errors found.");
         return EXIT_FAILURE;
     }

@@ -60,6 +60,15 @@ bool is_type_start(tt type) noexcept {
            type == tt::KW_VOID || type == tt::KW_STRUCT;
 }
 
+struct parse_error : std::exception {
+    const char* what() const noexcept override { return "Syntax error"; }
+};
+
+[[noreturn]] void raise_error(core::diagnostic_sink& sink, core::location loc, core::error_code code) {
+    sink.report(loc, code);
+    throw parse_error{};
+}
+
 }  // namespace
 
 ast::stmt_list parser::parse() {
@@ -79,7 +88,7 @@ bool parser::match(std::initializer_list<tt> types) noexcept {
 
 const core::token& parser::consume(tt type, err code) {
     if (check(type)) return advance();
-    reporter_.parse_error(peek().loc_, code);
+    raise_error(sink_, peek().loc_, code);
 }
 
 bool parser::check(tt type) const noexcept {
@@ -116,7 +125,7 @@ std::optional<ast::statement> parser::declaration() {
         }
         if (is_type_start(peek().type_)) return parse_decl(parse_type());
         return statement();
-    } catch (const core::parse_error&) {
+    } catch (const parse_error&) {
         synchronize();
         return std::nullopt;
     }
@@ -134,8 +143,8 @@ core::type parser::parse_array_dimensions(core::type base_type) {
             try {
                 auto&& val = core::value::from_string(size_token.lexeme_, false);
                 dim_size = val.to_int();
-            } catch (const core::value_error&) { reporter_.parse_error(size_token.loc_, err::unexpected_token); }
-            if (dim_size == 0) reporter_.parse_error(size_token.loc_, err::unexpected_token);
+            } catch (const core::value_error&) { raise_error(sink_, size_token.loc_, err::unexpected_token); }
+            if (dim_size == 0) raise_error(sink_, size_token.loc_, err::unexpected_token);
         }
         consume(tt::RIGHT_BRACKET, err::expected_right_bracket);
         dimensions.push_back(dim_size);
@@ -208,11 +217,11 @@ core::type parser::parse_type() {
     if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
         const auto kw = prev();
         const auto it = std::ranges::find(core::keywords, kw.type_, &core::keyword_info::type_);
-        if (it == core::keywords.end()) reporter_.parse_error(kw.loc_, err::expected_type);
+        if (it == core::keywords.end()) raise_error(sink_, kw.loc_, err::expected_type);
         return it->semantic_type_;
     }
 
-    reporter_.parse_error(peek().loc_, err::expected_type);
+    raise_error(sink_, peek().loc_, err::expected_type);
 }
 
 ast::statement parser::statement() {
@@ -311,7 +320,7 @@ ast::expression parser::assignment() {
     return left;
 }
 
-ast::expression parser::parse_expression(int8_t precedence) {
+ast::expression parser::parse_expression(std::int8_t precedence) {
     auto&& left = unary();
 
     while (true) {
@@ -376,7 +385,7 @@ std::string parser::process_escape_sequences(std::string_view raw, core::locatio
         if (*it == '\\') {
             auto&& next = std::next(it);
             if (next == end) {
-                reporter_.error(start_loc, err::unterminated_string);
+                raise_error(sink_, start_loc, err::unterminated_string);
                 break;
             }
             switch (*next) {
@@ -387,7 +396,7 @@ std::string parser::process_escape_sequences(std::string_view raw, core::locatio
                 case '"':  result.push_back('"');  break;
                 case '0':  result.push_back('\0'); break;
                 default:
-                    reporter_.error(start_loc, err::unexpected_character, *next);
+                    raise_error(sink_, start_loc, err::unexpected_character);
                     result.push_back(*next);
                     break;
             }
@@ -432,7 +441,7 @@ ast::expression parser::primary() {
 
     if (match({tt::LEFT_BRACE})) return initializer_list();
 
-    reporter_.parse_error(peek().loc_, err::expected_expression);
+    raise_error(sink_, peek().loc_, err::expected_expression);
 }
 
 ast::expression parser::finish_call(const core::token& callee) {

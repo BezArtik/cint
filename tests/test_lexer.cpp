@@ -1,5 +1,6 @@
 // tests/test_lexer.cpp
 
+#include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
 #include "pipeline_harness.hpp"
 
@@ -11,6 +12,7 @@
 namespace cint::tests {
 
 using tt = core::token_type;
+using err = core::error_code;
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
@@ -243,22 +245,25 @@ TEST(lexer_test, line_comment) {
     EXPECT_EQ(h.tokens()[2].type_, tt::END_OF_FILE);
 }
 
-TEST(LexerTest, unterminated_string) {
+TEST(lexer_test, unterminated_string) {
     auto h = pipeline_harness{"\"unterminated"};
     h.lex();
-    EXPECT_TRUE(h.had_error());
+    if (!h.had_error(err::unterminated_string)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(err::unterminated_string));
 }
 
 TEST(lexer_test, unexpected_character) {
     auto h = pipeline_harness{"@"};
     h.lex();
-    EXPECT_TRUE(h.had_error());
+    if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(err::unexpected_character));
 }
 
 TEST(lexer_test, unexpected_character_recovery) {
     auto h = pipeline_harness{"42 @ 43"};
     h.lex();
-    EXPECT_TRUE(h.had_error());
+    if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(err::unexpected_character));
     ASSERT_GE(h.tokens().size(), 3);
     expect_token(h.tokens()[0], tt::NUMBER, "42");
     expect_token(h.tokens()[1], tt::NUMBER, "43");

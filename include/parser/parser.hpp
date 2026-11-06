@@ -9,7 +9,8 @@
 
 #pragma once
 #include "ast/node.hpp"
-#include "core/error/error_report.hpp"
+#include "core/error/diagnostic.hpp"
+#include "core/error/error_codes.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
 #include "core/type/type.hpp"
@@ -28,14 +29,14 @@ public:
      * @brief Конструктор синтаксического анализатора.
      *
      * @param tokens   Список токенов от лексера (должен завершаться END_OF_FILE)
-     * @param reporter Обработчик ошибок
+     * @param sink     Сборщик ошибок
      * @param arena    Арена для размещения узлов AST
      *
      * @note Парсер не копирует токены, а хранит span на переданный список.
      *       Вызывающий код должен гарантировать время жизни списка токенов.
      */
-    parser(std::span<const core::token> tokens, core::error_reporter& reporter, core::arena& arena)
-        : tokens_{tokens}, reporter_{reporter}, arena_{arena} {}
+    parser(std::span<const core::token> tokens, core::diagnostic_sink& sink, core::arena& arena)
+        : tokens_{tokens}, sink_{sink}, arena_{arena} {}
 
     /**
      * @brief Выполняет синтаксический разбор программы.
@@ -229,7 +230,7 @@ private:
      * @param precedence Минимально допустимый приоритет оператора.
      * @return Разобранное выражение.
      */
-    ast::expression parse_expression(int8_t precedence);
+    ast::expression parse_expression(std::int8_t precedence);
 
     /**
      * @brief Разбирает присваивание или выражение.
@@ -362,8 +363,8 @@ private:
     void synchronize();
 
     std::span<const core::token> tokens_;  ///< Поток токенов от лексера
-    core::error_reporter& reporter_;       ///< Обработчик ошибок
-    size_t current_ = 0;                   ///< Индекс текущего токена
+    core::diagnostic_sink& sink_;          ///< Сборщик ошибок
+    std::size_t current_{};                ///< Индекс текущего токена
     core::arena& arena_;                   ///< Арена для размещения узлов AST
 };
 

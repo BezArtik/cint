@@ -23,6 +23,20 @@
 
 namespace cint {
 
+namespace {
+
+struct runtime_error : std::exception {
+    const char* what() const noexcept override { return "Runtime error"; }
+};
+
+template <typename... Args>
+[[noreturn]] void raise_error(core::diagnostic_sink& sink, core::location loc, core::error_code code, Args&&... args) {
+    sink.report(loc, code, std::forward<Args>(args)...);
+    throw runtime_error{};
+}
+
+}  // namespace
+
 using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
@@ -44,7 +58,7 @@ void interpreter::interpret(std::span<const ast::statement> statements) {
         for (auto&& stmt : statements) {
             if (!stmt.holds<ast::func_declaration_stmt>()) execute(stmt);
         }
-    } catch (const core::runtime_error&) {}
+    } catch (const runtime_error&) {}
 }
 
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
@@ -161,11 +175,11 @@ core::value interpreter::evaluate(const ast::literal_expr& expr) {
 }
 
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr) {
-    return expr.visit(core::overloaded{
-        [&](const ast::variable_expr& e) -> core::value& { return evaluate_lvalue(e); },
-        [&](const ast::index_expr& e) -> core::value& { return evaluate_lvalue(e); },
-        [&](const ast::member_access_expr& e) -> core::value& { return evaluate_lvalue(e); },
-        [](const auto&) -> core::value& { throw core::runtime_error{err::type_mismatch_assignment}; }});
+    return expr.visit(
+        core::overloaded{[&](const ast::variable_expr& e) -> core::value& { return evaluate_lvalue(e); },
+                         [&](const ast::index_expr& e) -> core::value& { return evaluate_lvalue(e); },
+                         [&](const ast::member_access_expr& e) -> core::value& { return evaluate_lvalue(e); },
+                         [](const auto&) -> core::value& { throw runtime_error{}; }});
 }
 
 core::value& interpreter::evaluate_lvalue(const ast::variable_expr& expr) {
@@ -179,7 +193,7 @@ core::value& interpreter::evaluate_lvalue(const ast::index_expr& expr) {
     auto&& arr = obj.to_array();
 
     if (i < 0 || i >= static_cast<core::value::int_t>(arr.size())) [[unlikely]]
-        reporter_.runtime_error(expr.loc_, err::index_out_of_bounds);
+        raise_error(sink_, expr.loc_, err::index_out_of_bounds);
 
     return arr[i];
 }
@@ -235,7 +249,7 @@ core::value interpreter::evaluate(const ast::binary_expr& expr) {
             case tt::SHR:           return core::shr(left, right);
             default:                return {};
         }
-    } catch (const core::value_error& e) { reporter_.runtime_error(expr.op_.loc_, e.code_, expr.op_.lexeme_); }
+    } catch (const core::value_error& e) { raise_error(sink_, expr.op_.loc_, e.code_, expr.op_.lexeme_); }
 }
 
 core::value interpreter::evaluate(const ast::assignment_expr& expr) {
@@ -299,7 +313,7 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
     auto&& name = expr.callee_.lexeme_;
 
     if (recursion_depth_ >= MAX_RECURSION_DEPTH) [[unlikely]]
-        reporter_.runtime_error(expr.callee_.loc_, err::stack_overflow);
+        raise_error(sink_, expr.callee_.loc_, err::stack_overflow);
     recursion_depth_++;
 
     struct depth_guard {
@@ -316,10 +330,7 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
     auto&& func = registry_.find(name);
     try {
         return func->info_.visit([&](const auto& ptr) { return call(ptr, args_vec, name); });
-    } catch (const core::value_error& e) {
-        reporter_.runtime_error(expr.callee_.loc_, e.code_, name);
-        return {};
-    }
+    } catch (const core::value_error& e) { raise_error(sink_, expr.callee_.loc_, e.code_, name); }
 }
 
 core::value interpreter::call(core::symbol_registry::builtin_func_ptr builtin, std::span<const core::value> args,
@@ -353,7 +364,7 @@ core::value interpreter::call(core::symbol_registry::func_ptr body, std::span<co
 }
 
 core::value interpreter::call(core::symbol_registry::struct_ptr, std::span<const core::value>, std::string_view) {
-    return {};
+    throw runtime_error{};
 }
 
 }  // namespace cint

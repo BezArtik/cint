@@ -3,7 +3,6 @@
 #include "lexer/lexer.hpp"
 
 #include "core/error/error_codes.hpp"
-#include "core/error/error_report.hpp"
 #include "core/token/keywords.hpp"
 #include "core/token/token.hpp"
 #include "core/token/token_types.hpp"
@@ -107,7 +106,7 @@ void lexer::scan_token() {
             } else if (std::isalpha(c) || c == '_') {
                 consume_identifier_or_keyword(start_loc);
             } else {
-                reporter_.error(start_loc, err::unexpected_character, c);
+                sink_.report(start_loc, err::unexpected_character, c);
             }
             break;
     }
@@ -143,7 +142,7 @@ void lexer::consume_string(core::location start_loc) {
     }
 
     if (is_at_end()) {
-        reporter_.error(start_loc, err::unterminated_string);
+        sink_.report(start_loc, err::unterminated_string);
         return;
     }
 

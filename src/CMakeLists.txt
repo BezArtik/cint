@@ -6,7 +6,7 @@ target_compile_features(interpreter-lib PUBLIC cxx_std_23)
 target_sources(interpreter-lib PRIVATE
     lexer/lexer.cpp
     parser/parser.cpp
-    core/error/error_report.cpp
+    core/error/diagnostic_renderer.cpp
     core/builtins/builtins.cpp
     core/symbol/symbol_registry.cpp
     core/memory/arena.cpp

@@ -4,6 +4,7 @@
 
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
+#include "core/error/diagnostic.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/token/token_types.hpp"
@@ -21,7 +22,7 @@ using err = core::error_code;
 
 bool type_checker::check(std::span<const ast::statement> statements) {
     for (auto&& stmt : statements) check(stmt);
-    return !reporter_.has_error();
+    return !sink_.has_errors();
 }
 
 void type_checker::check(const ast::statement& stmt) {
@@ -39,17 +40,17 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
     auto&& resolved_type = registry_.resolve_type(type);
 
     if (resolved_type.is_unknown()) {
-        if (type.is_struct()) reporter_.error(loc, err::undefined_type, type.struct_name());
+        if (type.is_struct()) sink_.report(loc, err::undefined_type, type.struct_name());
         return;
     }
 
     if (resolved_type.is_void()) {
-        reporter_.error(loc, err::void_variable);
+        sink_.report(loc, err::void_variable);
         return;
     }
 
     if (symbols_.contains_in_current_scope(name)) {
-        reporter_.error(loc, err::redeclaration, name);
+        sink_.report(loc, err::redeclaration, name);
         return;
     }
 
@@ -61,15 +62,15 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
             if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
                 auto&& fields = resolved_type.struct_fields();
                 if (list->elements_.size() > fields.size()) {
-                    reporter_.error(loc, err::argument_count_mismatch, "initializer", fields.size(),
-                                    list->elements_.size());
+                    sink_.report(loc, err::argument_count_mismatch, "initializer", fields.size(),
+                                 list->elements_.size());
                     return;
                 }
                 for (auto&& [element, field] : std::views::zip(list->elements_, fields)) {
                     auto&& elem_type = type_of(element);
                     if (elem_type.is_unknown()) continue;
                     if (field.second != elem_type) {
-                        reporter_.error(loc, err::type_mismatch_initialization, name);
+                        sink_.report(loc, err::type_mismatch_initialization, name);
                         return;
                     }
                 }
@@ -84,12 +85,12 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
                 symbols_.define(name, inferred_type);
                 return;
             }
-            reporter_.error(loc, err::type_mismatch_initialization, name);
+            sink_.report(loc, err::type_mismatch_initialization, name);
             return;
         }
 
         if (resolved_type != init_type) {
-            reporter_.error(loc, err::type_mismatch_initialization, name);
+            sink_.report(loc, err::type_mismatch_initialization, name);
             return;
         }
     }
@@ -105,7 +106,7 @@ void type_checker::check(const ast::block_stmt& stmt) {
 
 void type_checker::check(const ast::while_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
-    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "while");
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) sink_.report(stmt.loc_, err::condition_not_bool, "while");
 
     auto guard = core::scope_guard{symbols_};
     check(stmt.block_);
@@ -117,7 +118,7 @@ void type_checker::check(const ast::for_stmt& stmt) {
     if (stmt.initializer_) check(*stmt.initializer_);
     if (stmt.condition_) {
         auto&& cond_type = type_of(*stmt.condition_);
-        if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "for");
+        if (!cond_type.is_bool() && !cond_type.is_unknown()) sink_.report(stmt.loc_, err::condition_not_bool, "for");
     }
     if (stmt.increment_) std::ignore = type_of(*stmt.increment_);
     check(stmt.block_);
@@ -125,25 +126,25 @@ void type_checker::check(const ast::for_stmt& stmt) {
 
 void type_checker::check(const ast::if_stmt& stmt) {
     auto&& cond_type = type_of(stmt.condition_);
-    if (!cond_type.is_bool() && !cond_type.is_unknown()) reporter_.error(stmt.loc_, err::condition_not_bool, "if");
+    if (!cond_type.is_bool() && !cond_type.is_unknown()) sink_.report(stmt.loc_, err::condition_not_bool, "if");
     check(stmt.then_block_);
     if (stmt.else_block_) check(*stmt.else_block_);
 }
 
 void type_checker::check(const ast::return_stmt& stmt) {
     if (!curr_return_type_) {
-        reporter_.error(stmt.loc_, err::return_outside_function);
+        sink_.report(stmt.loc_, err::return_outside_function);
         return;
     }
 
     if (!stmt.value_) {
-        if (!curr_return_type_->is_void()) reporter_.error(stmt.loc_, err::return_missing_value);
+        if (!curr_return_type_->is_void()) sink_.report(stmt.loc_, err::return_missing_value);
         return;
     }
 
     auto&& return_type = type_of(*stmt.value_);
     if (return_type.is_unknown()) return;
-    if (*curr_return_type_ != return_type) reporter_.error(stmt.loc_, err::return_type_mismatch);
+    if (*curr_return_type_ != return_type) sink_.report(stmt.loc_, err::return_type_mismatch);
 }
 
 void type_checker::check(const ast::func_declaration_stmt& stmt) {
@@ -163,12 +164,11 @@ void type_checker::check(const ast::struct_declaration_stmt& stmt) {
     auto seen = std::unordered_set<std::string_view>{};
     for (auto&& [name, type] : stmt.type_.struct_fields()) {
         if (!seen.insert(name).second) {
-            reporter_.error(stmt.loc_, err::redeclaration, name);
+            sink_.report(stmt.loc_, err::redeclaration, name);
             return;
         }
         auto&& resolved = registry_.resolve_type(type);
-        if (resolved.is_unknown() && type.is_struct())
-            reporter_.error(stmt.loc_, err::undefined_type, type.struct_name());
+        if (resolved.is_unknown() && type.is_struct()) sink_.report(stmt.loc_, err::undefined_type, type.struct_name());
     }
 }
 
@@ -184,7 +184,7 @@ t type_checker::type_of(const ast::literal_expr& expr) {
     if (val.is_bool()) return t::bool_type();
     if (val.is_string()) return t::string_type();
 
-    reporter_.error(expr.loc_, err::unexpected_literal);
+    sink_.report(expr.loc_, err::unexpected_literal);
     return t::unknown_type();
 }
 
@@ -192,7 +192,7 @@ t type_checker::type_of(const ast::variable_expr& expr_) {
     auto&& name = expr_.name_.lexeme_;
     auto&& info = symbols_.get(name);
     if (!info) {
-        reporter_.error(expr_.name_.loc_, err::undefined_variable, name);
+        sink_.report(expr_.name_.loc_, err::undefined_variable, name);
         return t::unknown_type();
     }
     return *info;
@@ -212,7 +212,7 @@ t type_checker::type_of(const ast::binary_expr& expr) {
         case tt::SLASH:
         case tt::PERCENT:
             if (!left.is_numeric() || !right.is_numeric()) {
-                reporter_.error(loc, err::arithmetic_requires_numeric);
+                sink_.report(loc, err::arithmetic_requires_numeric);
                 break;
             }
             return (left.is_int() && right.is_int()) ? t::int_type() : t::double_type();
@@ -224,7 +224,7 @@ t type_checker::type_of(const ast::binary_expr& expr) {
         case tt::GREATER:
         case tt::GREATER_EQUAL:
             if (!left.is_numeric() || !right.is_numeric()) {
-                reporter_.error(loc, err::comparison_requires_numeric);
+                sink_.report(loc, err::comparison_requires_numeric);
                 break;
             }
             return t::bool_type();
@@ -235,7 +235,7 @@ t type_checker::type_of(const ast::binary_expr& expr) {
         case tt::SHL:
         case tt::SHR:
             if (!left.is_int() || !right.is_int()) {
-                reporter_.error(loc, err::arithmetic_requires_numeric);
+                sink_.report(loc, err::arithmetic_requires_numeric);
                 break;
             }
             return t::int_type();
@@ -243,13 +243,13 @@ t type_checker::type_of(const ast::binary_expr& expr) {
         case tt::LOGICAL_AND:
         case tt::LOGICAL_OR:
             if (!left.is_bool() || !right.is_bool()) {
-                reporter_.error(loc, err::logical_requires_bool);
+                sink_.report(loc, err::logical_requires_bool);
                 break;
             }
             return t::bool_type();
 
         default:
-            reporter_.error(loc, err::unsupported_binary_operator);
+            sink_.report(loc, err::unsupported_binary_operator);
             break;
     }
     return t::unknown_type();
@@ -264,18 +264,18 @@ t type_checker::type_of(const ast::assignment_expr& expr) {
 
     if (expr.op_.type_ == tt::EQUAL) {
         if (target_type != value_type || !is_lvalue(expr.target_)) {
-            reporter_.error(loc, err::type_mismatch_assignment);
+            sink_.report(loc, err::type_mismatch_assignment);
             return t::unknown_type();
         }
         return target_type;
     }
 
     if (!is_lvalue(expr.target_)) {
-        reporter_.error(loc, err::compound_requires_lvalue);
+        sink_.report(loc, err::compound_requires_lvalue);
         return t::unknown_type();
     }
     if (!target_type.is_numeric() || !value_type.is_numeric()) {
-        reporter_.error(loc, err::compound_requires_numeric);
+        sink_.report(loc, err::compound_requires_numeric);
         return t::unknown_type();
     }
     return target_type;
@@ -297,7 +297,7 @@ t type_checker::type_of(const ast::unary_expr& expr) {
     switch (expr.op_.type_) {
         case tt::MINUS:
             if (!operand_type.is_numeric()) {
-                reporter_.error(loc, err::unary_minus_requires_numeric);
+                sink_.report(loc, err::unary_minus_requires_numeric);
                 break;
             }
             return operand_type;
@@ -305,31 +305,31 @@ t type_checker::type_of(const ast::unary_expr& expr) {
         case tt::INCREMENT:
         case tt::DECREMENT:
             if (!operand_type.is_numeric()) {
-                reporter_.error(loc, err::increment_requires_numeric);
+                sink_.report(loc, err::increment_requires_numeric);
                 break;
             }
             if (!is_lvalue(expr.operand_)) {
-                reporter_.error(loc, err::increment_requires_lvalue);
+                sink_.report(loc, err::increment_requires_lvalue);
                 break;
             }
             return operand_type;
 
         case tt::BANG:
             if (!operand_type.is_bool()) {
-                reporter_.error(loc, err::not_requires_bool);
+                sink_.report(loc, err::not_requires_bool);
                 break;
             }
             return t::bool_type();
 
         case tt::BIT_NOT:
             if (!operand_type.is_int()) {
-                reporter_.error(loc, err::arithmetic_requires_numeric);
+                sink_.report(loc, err::arithmetic_requires_numeric);
                 break;
             }
             return t::int_type();
 
         default:
-            reporter_.error(loc, err::unsupported_unary_operator);
+            sink_.report(loc, err::unsupported_unary_operator);
             break;
     }
     return t::unknown_type();
@@ -342,11 +342,11 @@ t type_checker::type_of(const ast::postfix_expr& expr) {
     auto&& loc = expr.op_.loc_;
 
     if (!operand_type.is_numeric()) {
-        reporter_.error(loc, err::increment_requires_numeric);
+        sink_.report(loc, err::increment_requires_numeric);
         return t::unknown_type();
     }
     if (!is_lvalue(expr.operand_)) {
-        reporter_.error(loc, err::increment_requires_lvalue);
+        sink_.report(loc, err::increment_requires_lvalue);
         return t::unknown_type();
     }
     return operand_type;
@@ -359,12 +359,12 @@ t type_checker::type_of(const ast::call_expr& expr) {
     auto&& func = registry_.find(name);
 
     if (func == registry_.end()) {
-        reporter_.error(loc, err::undefined_function, name);
+        sink_.report(loc, err::undefined_function, name);
         return t::unknown_type();
     }
 
     if (func->info_.holds<core::symbol_registry::struct_ptr>()) {
-        reporter_.error(expr.callee_.loc_, err::not_a_function, name);
+        sink_.report(expr.callee_.loc_, err::not_a_function, name);
         return t::unknown_type();
     }
 
@@ -372,7 +372,7 @@ t type_checker::type_of(const ast::call_expr& expr) {
     auto&& params = func_type.param_infos();
 
     if (expr.args_.size() != params.size()) {
-        reporter_.error(loc, err::argument_count_mismatch, name, params.size(), expr.args_.size());
+        sink_.report(loc, err::argument_count_mismatch, name, params.size(), expr.args_.size());
         return t::unknown_type();
     }
 
@@ -380,7 +380,7 @@ t type_checker::type_of(const ast::call_expr& expr) {
         auto&& arg_type = type_of(arg);
         if (arg_type.is_unknown()) return t::unknown_type();
         if (param.second != arg_type) {
-            reporter_.error(loc, err::argument_type_mismatch, name);
+            sink_.report(loc, err::argument_type_mismatch, name);
             return t::unknown_type();
         }
     }
@@ -390,7 +390,7 @@ t type_checker::type_of(const ast::call_expr& expr) {
 
 t type_checker::type_of(const ast::initializer_list_expr& expr) {
     if (expr.elements_.empty()) {
-        reporter_.error(expr.loc_, err::empty_initializer_list);
+        sink_.report(expr.loc_, err::empty_initializer_list);
         return t::unknown_type();
     }
 
@@ -401,7 +401,7 @@ t type_checker::type_of(const ast::initializer_list_expr& expr) {
         auto&& el_type = type_of(elem);
         if (el_type.is_unknown()) return t::unknown_type();
         if (first_type != el_type) {
-            reporter_.error(expr.loc_, err::initializer_list_inconsistent_types);
+            sink_.report(expr.loc_, err::initializer_list_inconsistent_types);
             return t::unknown_type();
         }
     }
@@ -415,11 +415,11 @@ t type_checker::type_of(const ast::index_expr& expr) {
     if (object_type.is_unknown() || index_type.is_unknown()) return t::unknown_type();
 
     if (!object_type.is_array()) {
-        reporter_.error(expr.loc_, err::indexing_non_array);
+        sink_.report(expr.loc_, err::indexing_non_array);
         return t::unknown_type();
     }
     if (!index_type.is_int()) {
-        reporter_.error(expr.loc_, err::index_must_be_integer);
+        sink_.report(expr.loc_, err::index_must_be_integer);
         return t::unknown_type();
     }
     return object_type.element_type();
@@ -437,13 +437,13 @@ t type_checker::type_of(const ast::member_access_expr& expr) {
     auto&& lex = expr.member_.lexeme_;
 
     if (!obj_type.is_struct()) {
-        reporter_.error(loc, err::not_a_struct);
+        sink_.report(loc, err::not_a_struct);
         return t::unknown_type();
     }
 
     auto&& idx = obj_type.field_index(lex);
     if (!idx) {
-        reporter_.error(loc, err::no_such_field, obj_type.struct_name(), lex);
+        sink_.report(loc, err::no_such_field, obj_type.struct_name(), lex);
         return t::unknown_type();
     }
 

@@ -14,7 +14,7 @@
 #include "core/value/value.hpp"
 
 #include <cstdint>
-#include <ostream>
+#include <iostream>
 #include <span>
 #include <string_view>
 
@@ -74,7 +74,7 @@ public:
      * @param write Поток вывода
      * @param mask  Маска активных уровней трассировки
      */
-    debug_writer(std::ostream& os, trace_level mask) : os_{os}, mask_{mask} {}
+    debug_writer(trace_level mask, std::ostream& os = std::cerr) : mask_{mask}, os_{os} {}
 
     /**
      * @brief Проверяет, нужно ли выводить сообщение данного уровня.
@@ -177,9 +177,9 @@ private:
      */
     std::string indent() const;
 
-    std::ostream& os_;         ///< Поток вывода
-    trace_level mask_;         ///< Маска активных уровней
-    uint32_t curr_level_ = 0;  ///< Текущий уровень отступа
+    trace_level mask_;            ///< Маска активных уровней
+    std::ostream& os_;            ///< Поток вывода
+    std::uint32_t curr_level_{};  ///< Текущий уровень отступа
 };
 
 }  // namespace cint::debug

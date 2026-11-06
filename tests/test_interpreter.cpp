@@ -1,11 +1,14 @@
 // tests/test_interpreter.cpp
 
+#include "core/error/error_codes.hpp"
 #include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
 #include <string_view>
 
 namespace cint::tests {
+
+using err = core::error_code;
 
 struct valid_execution_case {
     std::string_view source_;
@@ -48,6 +51,8 @@ INSTANTIATE_TEST_SUITE_P(
         valid_execution_case{"void foo() { }", "empty void func"},
         valid_execution_case{"int foo(int a) { return a; }", "param return"},
         valid_execution_case{"int foo() { int x = 42; return x; }", "var init + return"},
+        valid_execution_case{"int x = 1; { int y = 2; int z = x + y; }", "block with shadowing"},
+        valid_execution_case{"int f(int a) { if (a > 0) { return a; } return -a; } int x = f(5) + f(-5);", "nested if + unary minus"},
         valid_execution_case{"int arr[] = {1, 2, 3}; int x = arr[0] + arr[1] + arr[2];", "array access"},
         valid_execution_case{"int m[2][2] = {{1,2}, {3,4}}; int x = m[0][0] + m[1][1];", "multidim array access"},
         valid_execution_case{"struct Point { int x; int y; };", "struct decl"},
@@ -91,6 +96,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 struct runtime_error_case {
     std::string_view source_;
+    err expected_code_;
     std::string_view description_;
 };
 
@@ -99,20 +105,51 @@ class runtime_error_test : public ::testing::TestWithParam<runtime_error_case> {
 TEST_P(runtime_error_test, reports_error) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    h.lex();
-    h.parse();
-    h.check_semantics();
-    h.interpret();
-    EXPECT_TRUE(h.had_error()) << "Expected runtime error for: " << tc.description_;
+    h.run_all();
+    if (!h.had_error(tc.expected_code_)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(tc.expected_code_)) << "for: " << tc.description_;
 }
 
 INSTANTIATE_TEST_SUITE_P(
     all, runtime_error_test,
     ::testing::Values(
-        runtime_error_case{"int x = 1/0;", "div by zero int"},
-        runtime_error_case{"double x = 1.0/0.0;", "div by zero double"},
-        runtime_error_case{"int x = 1%0;", "mod by zero"},
-        runtime_error_case{"int f() { return f(); } int x = f();", "stack overflow"}
+        runtime_error_case{"int x = 1/0;", err::division_by_zero, "div by zero int"},
+        runtime_error_case{"double x = 1.0/0.0;", err::division_by_zero, "div by zero double"},
+        runtime_error_case{"int x = 1%0;", err::modulo_by_zero, "mod by zero"},
+        runtime_error_case{"int f() { return f(); } int x = f();", err::stack_overflow, "stack overflow"},
+        runtime_error_case{"int arr[3] = {1, 2, 3}; int x = arr[100];", err::index_out_of_bounds, "array out of bounds"}
 ));
+
+TEST(interpreter_stress, short_circuit_and_skips_rhs) {
+    auto h = pipeline_harness{"int zero() { return 0; } "
+                              "bool f() { return false && (1 / zero() == 0); } "
+                              "f();"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(interpreter_stress, short_circuit_or_skips_rhs) {
+    auto h = pipeline_harness{"int zero() { return 0; } "
+                              "bool f() { return true || (1 / zero() == 0); } "
+                              "f();"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(interpreter_stress, return_from_nested_if) {
+    auto h = pipeline_harness{"int f() { if (true) { if (true) { return 42; } } return 0; } f();"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(interpreter_stress, return_from_while) {
+    auto h = pipeline_harness{"int f() { int i = 0; while (true) { if (i > 3) { return i; } ++i; } } f();"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
 // clang-format on
 }  // namespace cint::tests
