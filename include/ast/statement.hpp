@@ -140,7 +140,7 @@ struct struct_declaration_stmt {
  * @return Готовый statement с node<Stmt>.
  */
 template <typename Stmt, typename... Args>
-statement make_stmt(core::arena& arena, Args&&... args) {
+[[nodiscard]] statement make_stmt(core::arena& arena, Args&&... args) {
     return {core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};
 }
 

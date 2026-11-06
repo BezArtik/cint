@@ -24,7 +24,7 @@ namespace {
 
 struct infix_rule {
     tt type_;
-    int8_t precedence_;
+    std::int8_t precedence_;
 };
 
 // clang-format off
@@ -286,7 +286,7 @@ ast::statement parser::return_statement() {
 
 ast::statement parser::block_statement() {
     auto statements = ast::stmt_list{arena_};
-    auto&& has_decls = false;
+    auto has_decls = false;
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         auto&& stmt = declaration();
         if (stmt) {

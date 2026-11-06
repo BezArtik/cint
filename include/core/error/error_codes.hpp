@@ -13,7 +13,7 @@ namespace cint::core {
 // clang-format off
 #define ERROR(X)                                                                                \
     /* Lexer */                                                                                 \
-    X(unexpected_character,                  "Unexpected character")                            \
+    X(unexpected_character,                  "Unexpected character '{}'")                       \
     X(unterminated_string,                   "Unterminated string literal")                     \
     /* Parser */                                                                                \
     X(unexpected_token,                      "Unexpected token")                                \

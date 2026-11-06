@@ -168,7 +168,7 @@ private:
     using string_impl = std::shared_ptr<string_t>;
     using array_impl = std::shared_ptr<array_t>;
 
-    core::variant<int_t, double_t, bool_t, string_impl, array_impl, struct_t, std::monostate> data_;
+    core::variant<std::monostate, int_t, double_t, bool_t, string_impl, array_impl, struct_t> data_;
 };
 
 }  // namespace cint::core

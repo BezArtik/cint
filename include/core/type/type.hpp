@@ -173,7 +173,7 @@ private:
     using array_impl = std::shared_ptr<array_t>;
     using struct_impl = std::shared_ptr<struct_t>;
 
-    core::variant<int_t, double_t, bool_t, string_t, void_t, func_impl, array_impl, struct_impl, unknown_t> data_;
+    core::variant<unknown_t, int_t, double_t, bool_t, string_t, void_t, func_impl, array_impl, struct_impl> data_;
 
     /// @endcond
 };

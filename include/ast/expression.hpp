@@ -140,7 +140,7 @@ struct member_access_expr {
  * @return Готовый expression с arena_ptr<T>.
  */
 template <typename T, typename... Args>
-expression make_expr(core::arena& arena, Args&&... args) {
+[[nodiscard]] expression make_expr(core::arena& arena, Args&&... args) {
     return {core::make_arena<T>(arena, std::forward<Args>(args)...)};
 }
 

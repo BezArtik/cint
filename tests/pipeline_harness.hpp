@@ -15,7 +15,8 @@ namespace cint::tests {
 
 class pipeline_harness {
 public:
-    pipeline_harness(std::string_view source) : source_code_{source}, reporter_{source_code_} {}
+    pipeline_harness(std::string_view source)
+        : source_code_{source}, reporter_{source_code_}, tokens_{arena_}, ast_{arena_} {}
 
     bool lex();
     bool parse();

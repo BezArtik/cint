@@ -1,6 +1,6 @@
 /**
  * @file include/core/memory/arena.hpp
- * @brief Арена-аллокатор и адаптер для std::pmr.
+ * @brief Арена-аллокатор.
  * @ingroup Core
  *
  * @defgroup CoreUtils Утилиты
@@ -126,7 +126,6 @@ public:
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_swap = std::true_type;
 
-    arena_allocator() noexcept = default;
     arena_allocator(arena& a) noexcept : arena_{&a} {}
 
     template <typename U>

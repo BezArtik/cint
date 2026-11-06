@@ -116,8 +116,8 @@ value::string_t value::to_string() const {
             [](double_t v) { return std::format("{}", v); },
             [](bool_t v) { return std::format("{}", v ? "true" : "false"); },
             [](const string_impl& s) { return *s; },
-            [&](const array_impl& a) { return std::format("{{}}", to_string(*a)); },
-            [&](const struct_t& s) { return std::format("{{}}", to_string(s.fields_)); },
+            [&](const array_impl& a) { return std::format("{{{}}}", to_string(*a)); },
+            [&](const struct_t& s) { return std::format("{{{}}}", to_string(s.fields_)); },
             [](std::monostate) { return std::format("void"); }
         });
 }

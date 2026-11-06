@@ -1,5 +1,5 @@
 /**
- * @file include/core/utils/variant_wrapper.hpp
+ * @file include/core/utils/variant.hpp
  * @brief Универсальная обёртка над std::variant с проверкой полноты.
  * @ingroup CoreUtils
  */
