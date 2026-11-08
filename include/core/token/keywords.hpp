@@ -6,7 +6,6 @@
 
 #pragma once
 #include "core/token/token_types.hpp"
-#include "core/type/type.hpp"
 
 #include <array>
 #include <string_view>
@@ -19,10 +18,8 @@ namespace cint::core {
  *
  */
 struct keyword_info {
-    std::string_view lexeme_;   ///< Текст ключевого слова (напр. "if")
-    token_type type_;           ///< Тип токена (напр. KW_IF)
-    type semantic_type_;        ///< Семантический тип (для type-ключевых слов)
-    bool can_start_statement_;  ///< Может ли начинать инструкцию (if, while, for, ...)
+    std::string_view lexeme_;  ///< Текст ключевого слова (напр. "if")
+    token_type type_;          ///< Тип токена (напр. KW_IF)
 };
 
 /**
@@ -30,27 +27,27 @@ struct keyword_info {
  * @ingroup CoreToken
  *
  */
-inline const std::array keywords{
+inline constexpr std::array keywords{
     /// Управляющие конструкции
-    keyword_info{"if", token_type::KW_IF, type::void_type(), true},
-    keyword_info{"else", token_type::KW_ELSE, type::void_type(), false},
-    keyword_info{"while", token_type::KW_WHILE, type::void_type(), true},
-    keyword_info{"for", token_type::KW_FOR, type::void_type(), true},
-    keyword_info{"return", token_type::KW_RETURN, type::void_type(), true},
+    keyword_info{"if", token_type::KW_IF},
+    keyword_info{"else", token_type::KW_ELSE},
+    keyword_info{"while", token_type::KW_WHILE},
+    keyword_info{"for", token_type::KW_FOR},
+    keyword_info{"return", token_type::KW_RETURN},
 
     /// Спецификаторы типов
-    keyword_info{"int", token_type::KW_INT, type::int_type(), true},
-    keyword_info{"double", token_type::KW_DOUBLE, type::double_type(), true},
-    keyword_info{"bool", token_type::KW_BOOL, type::bool_type(), true},
-    keyword_info{"string", token_type::KW_STRING, type::string_type(), true},
-    keyword_info{"void", token_type::KW_VOID, type::void_type(), true},
+    keyword_info{"int", token_type::KW_INT},
+    keyword_info{"double", token_type::KW_DOUBLE},
+    keyword_info{"bool", token_type::KW_BOOL},
+    keyword_info{"string", token_type::KW_STRING},
+    keyword_info{"void", token_type::KW_VOID},
 
     /// Структуры
-    keyword_info{"struct", token_type::KW_STRUCT, type::void_type(), true},
+    keyword_info{"struct", token_type::KW_STRUCT},
 
     /// Литералы
-    keyword_info{"true", token_type::KW_TRUE, type::bool_type(), false},
-    keyword_info{"false", token_type::KW_FALSE, type::bool_type(), false},
+    keyword_info{"true", token_type::KW_TRUE},
+    keyword_info{"false", token_type::KW_FALSE},
 };
 
 }  // namespace cint::core

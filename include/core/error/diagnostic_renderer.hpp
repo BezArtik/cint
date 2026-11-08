@@ -7,6 +7,7 @@
 #pragma once
 #include "core/error/diagnostic.hpp"
 
+#include <concepts>
 #include <iostream>
 #include <iterator>
 #include <string_view>
@@ -25,6 +26,9 @@ public:
     }
 
     template <std::input_iterator It>
+        requires requires(It it) {
+            { *it } -> std::convertible_to<diagnostic>;
+        }
     void render(It first, It last) {
         for (; first != last; ++first) render(*first);
     }

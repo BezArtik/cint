@@ -20,6 +20,22 @@ using tt = core::token_type;
 using t = core::type;
 using err = core::error_code;
 
+namespace {
+
+t innermost_type(const t& ty) {
+    auto cur = ty;
+    while (cur.is_array()) cur = cur.element_type();
+    return cur;
+}
+
+bool contains_void(const t& ty) {
+    if (ty.is_void()) return true;
+    if (ty.is_array()) return contains_void(ty.element_type());
+    return false;
+}
+
+}  // namespace
+
 bool type_checker::check(std::span<const ast::statement> statements) {
     for (auto&& stmt : statements) check(stmt);
     return !sink_.has_errors();
@@ -40,11 +56,12 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
     auto&& resolved_type = registry_.resolve_type(type);
 
     if (resolved_type.is_unknown()) {
-        if (type.is_struct()) sink_.report(loc, err::undefined_type, type.struct_name());
+        auto&& leaf = innermost_type(type);
+        if (leaf.is_struct()) sink_.report(loc, err::undefined_type, leaf.struct_name());
         return;
     }
 
-    if (resolved_type.is_void()) {
+    if (contains_void(resolved_type)) {
         sink_.report(loc, err::void_variable);
         return;
     }
@@ -55,9 +72,6 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
     }
 
     if (stmt.initializer_) {
-        auto&& init_type = type_of(*stmt.initializer_);
-        if (init_type.is_unknown()) return;
-
         if (resolved_type.is_struct()) {
             if (auto&& list = stmt.initializer_->get_if<ast::initializer_list_expr>()) {
                 auto&& fields = resolved_type.struct_fields();
@@ -78,6 +92,9 @@ void type_checker::check(const ast::var_declaration_stmt& stmt) {
                 return;
             }
         }
+
+        auto&& init_type = type_of(*stmt.initializer_);
+        if (init_type.is_unknown()) return;
 
         if (resolved_type.is_array() && resolved_type.array_size() == 0 && init_type.is_array()) {
             if (resolved_type.element_type() == init_type.element_type()) {
@@ -149,7 +166,10 @@ void type_checker::check(const ast::return_stmt& stmt) {
 
 void type_checker::check(const ast::func_declaration_stmt& stmt) {
     auto guard = core::scope_guard{symbols_};
-    for (auto&& [name, type] : stmt.type_.param_infos()) symbols_.define(name, type);
+    for (auto&& [name, type] : stmt.type_.param_infos()) {
+        if (contains_void(type)) sink_.report(stmt.loc_, err::void_variable);
+        symbols_.define(name, type);
+    }
 
     auto&& prev_return_type = curr_return_type_;
     curr_return_type_ = stmt.type_.return_type();
@@ -167,8 +187,15 @@ void type_checker::check(const ast::struct_declaration_stmt& stmt) {
             sink_.report(stmt.loc_, err::redeclaration, name);
             return;
         }
+        if (contains_void(type)) {
+            sink_.report(stmt.loc_, err::void_variable);
+            continue;
+        }
         auto&& resolved = registry_.resolve_type(type);
-        if (resolved.is_unknown() && type.is_struct()) sink_.report(stmt.loc_, err::undefined_type, type.struct_name());
+        if (resolved.is_unknown()) {
+            auto&& leaf = innermost_type(type);
+            if (leaf.is_struct()) sink_.report(stmt.loc_, err::undefined_type, leaf.struct_name());
+        }
     }
 }
 
@@ -219,6 +246,9 @@ t type_checker::type_of(const ast::binary_expr& expr) {
 
         case tt::EQUAL_EQUAL:
         case tt::BANG_EQUAL:
+            if ((left.is_numeric() && right.is_numeric()) || (left.is_bool() && right.is_bool())) return t::bool_type();
+            sink_.report(loc, err::comparison_requires_numeric);
+            break;
         case tt::LESS:
         case tt::LESS_EQUAL:
         case tt::GREATER:

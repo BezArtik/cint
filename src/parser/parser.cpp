@@ -5,7 +5,6 @@
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
-#include "core/token/keywords.hpp"
 #include "core/token/token_types.hpp"
 
 #include <algorithm>
@@ -58,6 +57,11 @@ constexpr std::array infix_table = {
 bool is_type_start(tt type) noexcept {
     return type == tt::KW_INT || type == tt::KW_DOUBLE || type == tt::KW_BOOL || type == tt::KW_STRING ||
            type == tt::KW_VOID || type == tt::KW_STRUCT;
+}
+
+bool is_statement_start(tt type) noexcept {
+    return is_type_start(type) || type == tt::KW_IF || type == tt::KW_WHILE || type == tt::KW_FOR ||
+           type == tt::KW_RETURN;
 }
 
 struct parse_error : std::exception {
@@ -213,15 +217,17 @@ core::type parser::parse_type() {
         auto&& name = consume(tt::IDENTIFIER, err::expected_identifier);
         return core::type::struct_type(name.lexeme_, {});
     }
-
-    if (match({tt::KW_INT, tt::KW_DOUBLE, tt::KW_BOOL, tt::KW_STRING, tt::KW_VOID})) {
-        const auto kw = prev();
-        const auto it = std::ranges::find(core::keywords, kw.type_, &core::keyword_info::type_);
-        if (it == core::keywords.end()) raise_error(sink_, kw.loc_, err::expected_type);
-        return it->semantic_type_;
+    // clang-format off
+    const auto kw = peek();
+    switch (kw.type_) {
+        case tt::KW_INT: advance(); return core::type::int_type();
+        case tt::KW_DOUBLE: advance(); return core::type::double_type();
+        case tt::KW_BOOL: advance(); return core::type::bool_type();
+        case tt::KW_STRING: advance(); return core::type::string_type();
+        case tt::KW_VOID: advance(); return core::type::void_type();
+        default: raise_error(sink_, kw.loc_, err::expected_type);
     }
-
-    raise_error(sink_, peek().loc_, err::expected_type);
+    // clang-format on
 }
 
 ast::statement parser::statement() {
@@ -488,8 +494,7 @@ void parser::synchronize() {
 
         if (brace_depth == 0) {
             if (prev().type_ == tt::SEMICOLON || type == tt::LEFT_BRACE) return;
-            const auto it = std::ranges::find(core::keywords, type, &core::keyword_info::type_);
-            if (it != core::keywords.end() && it->can_start_statement_ && prev().type_ == tt::RIGHT_BRACE) return;
+            if (is_statement_start(type) && prev().type_ == tt::RIGHT_BRACE) return;
         }
 
         advance();

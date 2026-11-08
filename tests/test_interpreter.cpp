@@ -151,5 +151,36 @@ TEST(interpreter_stress, return_from_while) {
     if (h.had_error()) h.render_diagnostics();
     EXPECT_FALSE(h.had_error());
 }
+
+TEST(interpreter_stress, prefix_inc_does_not_double_evaluate) {
+    auto h = pipeline_harness{
+        "int i = 0; "
+        "int arr[2] = {0, 0}; "
+        "++arr[i++]; "
+        "if (i != 1) { int z = 0; int bad = 1 / z; } "
+        "if (arr[0] != 1) { int z = 0; int bad = 1 / z; }"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
+
+TEST(interpreter_stress, struct_init_with_more_values_than_fields) {
+    auto h = pipeline_harness{
+        "struct P { int x; }; "
+        "struct P p = {1, 2};"};
+    h.run_all();
+    if (!h.had_error(core::error_code::argument_count_mismatch)) h.render_diagnostics();
+    EXPECT_TRUE(h.had_error(core::error_code::argument_count_mismatch));
+}
+
+TEST(interpreter_stress, bool_equality_runtime) {
+    auto h = pipeline_harness{
+        "bool a = true; bool b = false; "
+        "bool c = a == b; bool d = a == a;"};
+    h.run_all();
+    if (h.had_error()) h.render_diagnostics();
+    EXPECT_FALSE(h.had_error());
+}
+
 // clang-format on
 }  // namespace cint::tests

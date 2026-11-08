@@ -274,28 +274,23 @@ core::value interpreter::evaluate(const ast::assignment_expr& expr) {
 
     return target;
 }
-// clang-format on
 
 core::value interpreter::evaluate(const ast::unary_expr& expr) {
+    switch (expr.op_.type_) {
+        case tt::INCREMENT: return core::pre_increment(evaluate_lvalue(expr.operand_));
+        case tt::DECREMENT: return core::pre_decrement(evaluate_lvalue(expr.operand_));
+        default: break;
+    }
+
     auto&& operand = evaluate(expr.operand_);
-    auto&& op = expr.op_.type_;
-
-    switch (op) {
-        case tt::MINUS:
-            return core::unary_minus(operand);
-        case tt::BANG:
-            return core::not_op(operand);
-        case tt::BIT_NOT:
-            return core::bit_not(operand);
-        case tt::INCREMENT:
-            return core::pre_increment(evaluate_lvalue(expr.operand_));
-        case tt::DECREMENT:
-            return core::pre_decrement(evaluate_lvalue(expr.operand_));
-
-        default:
-            return {};
+    switch (expr.op_.type_) {
+        case tt::MINUS:   return core::unary_minus(operand);
+        case tt::BANG:    return core::not_op(operand);
+        case tt::BIT_NOT: return core::bit_not(operand);
+        default:          return {};
     }
 }
+// clang-format on
 
 core::value interpreter::evaluate(const ast::postfix_expr& expr) {
     return expr.op_.type_ == tt::INCREMENT ? core::post_increment(evaluate_lvalue(expr.operand_))
