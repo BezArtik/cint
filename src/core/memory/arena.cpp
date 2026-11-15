@@ -4,6 +4,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -22,6 +23,8 @@ std::byte* align_ptr(std::byte* ptr, std::size_t alignment) noexcept {
 void* arena::allocate_raw(std::size_t size, std::size_t alignment) {
     if (size == 0) size = 1;
     if (alignment == 0) alignment = 1;
+
+    if (size > std::numeric_limits<std::size_t>::max() - alignment + 1) throw std::bad_alloc{};
 
     if (size + alignment - 1 > BLOCK_SIZE) {
         auto block = std::make_unique_for_overwrite<std::byte[]>(size + alignment - 1);

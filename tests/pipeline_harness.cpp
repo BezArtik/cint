@@ -6,33 +6,41 @@
 #include "debug/debug_writer.hpp"
 #include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
-#include "semantics/type_check.hpp"
 
 namespace cint::tests {
 
-bool pipeline_harness::lex() {
+void pipeline_harness::lex() {
+    if (lexed_) return;
     auto lex = lexer{source_code_, sink_, arena_};
     tokens_ = lex.scan_tokens();
-    return !sink_.has_errors();
+    lexed_ = true;
 }
 
-bool pipeline_harness::parse() {
+void pipeline_harness::parse() {
+    lex();
+    if (parsed_) return;
     auto p = parser{tokens_, sink_, arena_};
     ast_ = p.parse();
-    registry_.emplace(core::symbol_registry::build(ast_, sink_));
-    return !sink_.has_errors();
+    parsed_ = true;
 }
 
-bool pipeline_harness::check_semantics() {
-    auto checker = type_checker{sink_, *registry_};
-    return checker.check(ast_) && !sink_.has_errors();
-}
-
-bool pipeline_harness::interpret() {
+void pipeline_harness::interpret() {
+    parse();
+    if (sink_.has_errors()) return;
+    const auto registry = core::symbol_registry{ast_, sink_};
     auto writer = debug::debug_writer{debug::trace_level::none};
-    auto interp = interpreter{sink_, *registry_, writer};
-    interp.interpret(ast_);
-    return !sink_.has_errors();
+    try {
+        const auto interp = interpreter{ast_, registry, writer};
+    } catch (const runtime_error& e) { sink_.report_formatted(e.loc_, e.code_, e.message_); }
+}
+
+bool pipeline_harness::run_all() {
+    lex();
+    if (had_error()) return false;
+    parse();
+    if (had_error()) return false;
+    interpret();
+    return !had_error();
 }
 
 }  // namespace cint::tests

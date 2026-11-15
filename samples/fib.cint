@@ -1,0 +1,19 @@
+// samples/fib.cint
+
+fn fib(n) {
+    if n < 2 { return n; }
+    let a = 0;
+    let b = 1;
+    for (let i = 2; i <= n; ++i) {
+        let t = a + b;
+        a = b;
+        b = t;
+    }
+    return b;
+}
+
+print("Fibonacci numbers:");
+for (let i = 0; i < 30; ++i) {
+    print(fib(i));
+}
+

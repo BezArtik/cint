@@ -2,14 +2,13 @@
 
 #pragma once
 
+#include "ast/node.hpp"
 #include "core/error/diagnostic.hpp"
 #include "core/error/diagnostic_renderer.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/memory/arena.hpp"
-#include "core/symbol/symbol_registry.hpp"
 #include "lexer/lexer.hpp"
 
-#include <optional>
 #include <string>
 #include <string_view>
 
@@ -19,12 +18,11 @@ class pipeline_harness {
 public:
     pipeline_harness(std::string_view source)
         : source_code_{source}, renderer_{source_code_}, tokens_{arena_}, ast_{arena_} {}
-    bool lex();
-    bool parse();
-    bool check_semantics();
-    bool interpret();
 
-    bool run_all() { return lex() && parse() && check_semantics() && interpret(); }
+    void lex();
+    void parse();
+    void interpret();
+    bool run_all();
 
     const lexer::token_list& tokens() const noexcept { return tokens_; }
     const ast::stmt_list& ast() const noexcept { return ast_; }
@@ -39,7 +37,8 @@ private:
     core::arena arena_;
     lexer::token_list tokens_;
     ast::stmt_list ast_;
-    std::optional<core::symbol_registry> registry_;
+    bool lexed_{};
+    bool parsed_{};
 };
 
 }  // namespace cint::tests

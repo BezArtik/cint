@@ -2,57 +2,41 @@
 #include "core/symbol/symbol_registry.hpp"
 
 #include "ast/statement.hpp"
-#include "core/builtins/builtins.hpp"
-#include "core/error/diagnostic.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
 
 #include <algorithm>
-#include <string_view>
-#include <unordered_set>
-#include <utility>
-#include <vector>
 
 namespace cint::core {
-// clang-format off
-type symbol_registry::get_type(const_iterator it) const {
-    return it->info_.visit([](const auto& ptr) { return ptr->type_; } );
-}
-// clang-format on
-symbol_registry symbol_registry::build(std::span<const ast::statement> ast, diagnostic_sink& sink) {
-    symbol_registry registry;
-    registry.entries_.reserve(builtins.size() + ast.size());
 
-    for (auto&& b : builtins) registry.entries_.emplace_back(b.type_.function_name(), &b);
+symbol_registry::symbol_registry(std::span<const ast::statement> ast, diagnostic_sink& sink) {
+    entries_.reserve(builtins.size() + ast.size());
 
-    for (auto&& stmt : ast) registry.add_ast_entry(stmt, sink);
+    for (auto&& b : builtins) entries_.emplace_back(b.name_, &b);
+    for (auto&& stmt : ast) add_ast_entry(stmt, sink);
 
-    std::ranges::sort(registry.entries_, {}, &entry::name_);
-
-    return registry;
+    std::ranges::sort(entries_, {}, &entry::name_);
 }
 // clang-format off
 void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink) {
     stmt.visit(overloaded{
-            [&](const ast::func_declaration_stmt& func) {
-                const auto name = func.type_.function_name();
-                const auto it = std::ranges::find(entries_, name, &entry::name_);
-                if (it != end()) {
-                    sink.report(func.loc_, error_code::redeclaration, name);
-                    return;
-                }
-                entries_.emplace_back(name, &func);
-            },
-            [&](const ast::struct_declaration_stmt& strct) {
-                const auto name = strct.type_.struct_name();
-                const auto it = std::ranges::find(entries_, name, &entry::name_);
-                if (it != end()) {
-                    sink.report(strct.loc_, error_code::redeclaration, name);
-                    return;
-                }
-                entries_.emplace_back(name, &strct);
-            },
-            [](const auto&) {}
+        [&](const core::arena_ptr<ast::func_declaration_stmt>& func) {
+            auto name = func->name_.lexeme_;
+            if (std::ranges::find(entries_, name, &entry::name_) != entries_.end()) {
+                sink.report(func->loc_, error_code::redeclaration, name);
+                return;
+            }
+            entries_.emplace_back(name, func.get());
+        },
+        [&](const core::arena_ptr<ast::struct_declaration_stmt>& strct) {
+            auto name = strct->type_.name_;
+            if (std::ranges::find(entries_, name, &entry::name_) != entries_.end()) {
+                sink.report(strct->loc_, error_code::redeclaration, name);
+                return;
+            }
+            entries_.emplace_back(name, strct.get());
+        },
+        [](const auto&) {}
     });
 }
 // clang-format on
@@ -60,52 +44,6 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink&
 symbol_registry::const_iterator symbol_registry::find(std::string_view name) const noexcept {
     auto it = std::ranges::lower_bound(entries_, name, {}, &entry::name_);
     return (it != end() && it->name_ != name) ? end() : it;
-}
-
-type symbol_registry::resolve_type(const type& t) const {
-    std::unordered_set<std::string_view> resolving;
-    return resolve_type_impl(t, resolving);
-}
-
-type symbol_registry::resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const {
-    if (t.is_struct()) {
-        auto&& struct_name = t.struct_name();
-        auto&& fields = t.struct_fields();
-
-        if (!fields.empty()) {
-            if (resolving.contains(struct_name)) return type::unknown_type();
-            resolving.insert(struct_name);
-
-            auto resolved_fields = std::vector<type::field_t>{};
-            resolved_fields.reserve(fields.size());
-
-            for (auto&& [name, field_type] : fields) {
-                auto&& resolved_field = resolve_type_impl(field_type, resolving);
-                if (resolved_field.is_unknown() && field_type.is_struct()) {
-                    resolving.erase(struct_name);
-                    return type::unknown_type();
-                }
-                resolved_fields.emplace_back(name, resolved_field);
-            }
-
-            resolving.erase(struct_name);
-            return type::struct_type(struct_name, std::move(resolved_fields));
-        }
-
-        const auto entry_it = find(struct_name);
-        if (entry_it == end() || !entry_it->info_.holds<struct_ptr>()) return type::unknown_type();
-        const auto def_type = get_type(entry_it);
-        if (def_type.struct_fields().empty()) return def_type;
-        return resolve_type_impl(def_type, resolving);
-    }
-
-    if (t.is_array()) {
-        auto&& elem_type = resolve_type_impl(t.element_type(), resolving);
-        if (elem_type.is_unknown() && t.element_type().is_struct()) return type::unknown_type();
-        return type::array_type(elem_type, t.array_size());
-    }
-
-    return t;
 }
 
 }  // namespace cint::core

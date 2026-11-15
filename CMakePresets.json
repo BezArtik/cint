@@ -43,17 +43,6 @@
         "BUILD_TESTS": "OFF",
         "BUILD_DOCS": "OFF" 
       }
-    },
-    {
-      "name": "clang-docs",
-      "displayName": "GCC Documentation Only",
-      "description": "Generate documentation without building the project",
-      "inherits": "clang-base",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "BUILD_TESTS": "OFF",
-        "BUILD_DOCS": "ON" 
-      }
     }
   ],
 
@@ -67,12 +56,6 @@
       "name": "clang-release",
       "configurePreset": "clang-release",
       "displayName": "Build Clang Release"
-    },
-    {
-      "name": "clang-docs",
-      "configurePreset": "clang-docs",
-      "displayName": "Build Documentation",
-      "targets": ["doc"]
     }
   ],
 

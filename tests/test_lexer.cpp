@@ -1,5 +1,3 @@
-// tests/test_lexer.cpp
-
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
 #include "pipeline_harness.hpp"
@@ -16,9 +14,8 @@ using err = core::error_code;
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
     EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
-    if (!lexeme.empty()) {
-        EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<uint8_t>(type);
-    }
+    if (!lexeme.empty())
+        EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<std::uint8_t>(type);
 }
 
 struct single_token_case {
@@ -27,54 +24,56 @@ struct single_token_case {
     std::string_view expected_lexeme_{};
 };
 
-class single_token_test : public ::testing::TestWithParam<single_token_case> {};
+struct single_token_test : ::testing::TestWithParam<single_token_case> {};
 
 TEST_P(single_token_test, recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_GE(h.tokens().size(), 2) << "Expected at least token + EOF for source: " << tc.source_;
+    h.lex();
+    ASSERT_FALSE(h.had_error());
+    ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
     ops_and_punct, single_token_test,
     ::testing::Values(
-        single_token_case{"(", tt::LEFT_PAREN}, 
+        single_token_case{"(", tt::LEFT_PAREN},
         single_token_case{")", tt::RIGHT_PAREN},
-        single_token_case{"{", tt::LEFT_BRACE}, 
+        single_token_case{"{", tt::LEFT_BRACE},
         single_token_case{"}", tt::RIGHT_BRACE},
-        single_token_case{",", tt::COMMA}, 
+        single_token_case{",", tt::COMMA},
         single_token_case{".", tt::DOT},
         single_token_case{";", tt::SEMICOLON},
 
-        single_token_case{"+", tt::PLUS}, 
+        single_token_case{"+", tt::PLUS},
         single_token_case{"-", tt::MINUS},
-        single_token_case{"*", tt::STAR}, 
+        single_token_case{"*", tt::STAR},
         single_token_case{"/", tt::SLASH},
         single_token_case{"%", tt::PERCENT},
 
-        single_token_case{"!", tt::BANG}, 
+        single_token_case{"!", tt::BANG},
         single_token_case{"=", tt::EQUAL},
 
-        single_token_case{"==", tt::EQUAL_EQUAL}, 
+        single_token_case{"==", tt::EQUAL_EQUAL},
         single_token_case{"!=", tt::BANG_EQUAL},
-        single_token_case{"<", tt::LESS}, 
+        single_token_case{"<", tt::LESS},
         single_token_case{"<=", tt::LESS_EQUAL},
-        single_token_case{">", tt::GREATER}, 
+        single_token_case{">", tt::GREATER},
         single_token_case{">=", tt::GREATER_EQUAL},
 
-        single_token_case{"++", tt::INCREMENT}, 
+        single_token_case{"++", tt::INCREMENT},
         single_token_case{"--", tt::DECREMENT},
 
-        single_token_case{"+=", tt::PLUS_EQUAL}, 
+        single_token_case{"+=", tt::PLUS_EQUAL},
         single_token_case{"-=", tt::MINUS_EQUAL},
-        single_token_case{"*=", tt::STAR_EQUAL}, 
+        single_token_case{"*=", tt::STAR_EQUAL},
         single_token_case{"/=", tt::SLASH_EQUAL},
         single_token_case{"%=", tt::PERCENT_EQUAL},
 
-        single_token_case{"&&", tt::LOGICAL_AND}, 
+        single_token_case{"&&", tt::LOGICAL_AND},
         single_token_case{"||", tt::LOGICAL_OR}
 ));
 
@@ -83,12 +82,13 @@ struct keyword_case {
     std::string_view lexeme_;
 };
 
-class keyword_test : public ::testing::TestWithParam<keyword_case> {};
+struct keyword_test : ::testing::TestWithParam<keyword_case> {};
 
 TEST_P(keyword_test, recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_GE(h.tokens().size(), 2);
     EXPECT_NE(h.tokens()[0].type_, tt::IDENTIFIER);
     EXPECT_EQ(h.tokens()[0].lexeme_, tc.lexeme_);
@@ -98,17 +98,14 @@ TEST_P(keyword_test, recognized) {
 INSTANTIATE_TEST_SUITE_P(
         all_keywords, keyword_test,
         ::testing::Values(
-            keyword_case{"int", "int"}, 
-            keyword_case{"double", "double"},
-            keyword_case{"bool", "bool"}, 
-            keyword_case{"string", "string"},
-            keyword_case{"struct", "struct"}, 
-            keyword_case{"void", "void"},
-            keyword_case{"if", "if"}, 
+            keyword_case{"struct", "struct"},
+            keyword_case{"if", "if"},
             keyword_case{"else", "else"},
-            keyword_case{"while", "while"}, 
+            keyword_case{"while", "while"},
             keyword_case{"for", "for"},
-            keyword_case{"return", "return"}, 
+            keyword_case{"return", "return"},
+            keyword_case{"let", "let"},
+            keyword_case{"fn", "fn"},
             keyword_case{"true", "true"},
             keyword_case{"false", "false"}
 ));
@@ -118,12 +115,13 @@ struct number_case {
     std::string_view lexeme_;
 };
 
-class number_test : public ::testing::TestWithParam<number_case> {};
+struct number_test : ::testing::TestWithParam<number_case> {};
 
 TEST_P(number_test, recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::NUMBER, tc.lexeme_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
@@ -132,7 +130,7 @@ TEST_P(number_test, recognized) {
 INSTANTIATE_TEST_SUITE_P(
         numbers, number_test,
         ::testing::Values(
-            number_case{"0", "0"}, 
+            number_case{"0", "0"},
             number_case{"42", "42"},
             number_case{"999", "999"},
             number_case{"3.14", "3.14"},
@@ -144,12 +142,13 @@ struct bool_case {
     core::token_type expected_type_;
 };
 
-class bool_test : public ::testing::TestWithParam<bool_case> {};
+struct bool_test : ::testing::TestWithParam<bool_case> {};
 
 TEST_P(bool_test, recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tc.expected_type_, tc.source_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
@@ -166,12 +165,13 @@ struct string_case {
     std::string_view expected_lexeme_;
 };
 
-class string_test : public ::testing::TestWithParam<string_case> {};
+struct string_test : ::testing::TestWithParam<string_case> {};
 
 TEST_P(string_test, recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::STRING, tc.expected_lexeme_);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
@@ -180,17 +180,18 @@ TEST_P(string_test, recognized) {
 INSTANTIATE_TEST_SUITE_P(
         valid_strings, string_test,
         ::testing::Values(
-            string_case{"\"hello\"", "\"hello\""}, 
+            string_case{"\"hello\"", "\"hello\""},
             string_case{"\"\"", "\"\""},
-            string_case{"\"a b c\"", "\"a b c\""}, 
+            string_case{"\"a b c\"", "\"a b c\""},
             string_case{"\"123\"", "\"123\""}));
 
-class identifier_test : public ::testing::TestWithParam<std::string_view> {};
+struct identifier_test : ::testing::TestWithParam<std::string_view> {};
 
 TEST_P(identifier_test, recognized) {
     auto&& id = GetParam();
     auto h = pipeline_harness{id};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_GE(h.tokens().size(), 2);
     expect_token(h.tokens()[0], tt::IDENTIFIER, id);
     EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
@@ -206,39 +207,46 @@ struct token_sequence {
     std::vector<std::string_view> expected_lexemes_;
 };
 
-class sequence_test : public ::testing::TestWithParam<token_sequence> {};
+struct sequence_test : ::testing::TestWithParam<token_sequence> {};
 
 TEST_P(sequence_test, Recognized) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
 
-    ASSERT_EQ(h.tokens().size(), tc.expected_types_.size() + 1) << "Unexpected token count for source: " << tc.source_;
+    ASSERT_EQ(h.tokens().size(), tc.expected_types_.size() + 1)
+        << "Unexpected token count for source: " << tc.source_;
 
     auto&& zip = std::views::zip(h.tokens(), tc.expected_types_, tc.expected_lexemes_);
     for (auto&& [token, type, lexem] : zip) expect_token(token, type, lexem);
-    
+
     EXPECT_EQ(h.tokens()[tc.expected_types_.size()].type_, tt::END_OF_FILE);
 }
 
 INSTANTIATE_TEST_SUITE_P(
     declarations, sequence_test,
     ::testing::Values(
-        token_sequence{"int x = 42;",
-                       {tt::KW_INT, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
-                       {"int", "x", "=", "42", ";"}},
-        token_sequence{"double pi = 3.14;",
-                       {tt::KW_DOUBLE, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
-                       {"double", "pi", "=", "3.14", ";"}},
-        token_sequence{"if (x < 10) { }",
-                       {tt::KW_IF, tt::LEFT_PAREN, tt::IDENTIFIER, tt::LESS, tt::NUMBER,
+        token_sequence{"let x = 42;",
+                       {tt::KW_LET, tt::IDENTIFIER, tt::EQUAL, tt::NUMBER, tt::SEMICOLON},
+                       {"let", "x", "=", "42", ";"}},
+        token_sequence{"fn add(a, b) { }",
+                       {tt::KW_FN, tt::IDENTIFIER, tt::LEFT_PAREN,
+                        tt::IDENTIFIER, tt::COMMA, tt::IDENTIFIER,
                         tt::RIGHT_PAREN, tt::LEFT_BRACE, tt::RIGHT_BRACE},
-                       {"if", "(", "x", "<", "10", ")", "{", "}"}}));
+                       {"fn", "add", "(", "a", ",", "b", ")", "{", "}"}},
+        token_sequence{"struct Point { x, y }",
+                       {tt::KW_STRUCT, tt::IDENTIFIER, tt::LEFT_BRACE,
+                        tt::IDENTIFIER, tt::COMMA, tt::IDENTIFIER,
+                        tt::RIGHT_BRACE},
+                       {"struct", "Point", "{", "x", ",", "y", "}"}}
+));
 // clang-format on
 
 TEST(lexer_test, line_comment) {
     auto h = pipeline_harness{"42 // comment\n43"};
-    ASSERT_TRUE(h.lex());
+    h.lex();
+    ASSERT_FALSE(h.had_error());
     ASSERT_EQ(h.tokens().size(), 3);
     expect_token(h.tokens()[0], tt::NUMBER, "42");
     expect_token(h.tokens()[1], tt::NUMBER, "43");

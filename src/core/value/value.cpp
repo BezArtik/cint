@@ -1,63 +1,61 @@
-// core/value/value.cpp
-
 #include "core/value/value.hpp"
 
-#include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
 
+#include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <format>
+#include <limits>
+#include <print>
 #include <ranges>
-#include <variant>
+#include <sstream>
 
 namespace cint::core {
 
 namespace {
 
 [[noreturn]] void invalid_conversion() {
-    throw core::value_error{core::error_code::invalid_conversion};
+    throw value_error{error_code::invalid_conversion};
 }
 
 value::int_t parse_int(std::string_view text) {
     auto result = value::int_t{};
-    auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
+    auto [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
     if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
     return result;
 }
 
 value::double_t parse_double(std::string_view text) {
     auto result = value::double_t{};
-    auto&& [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
+    auto [ptr, ec] = std::from_chars(text.begin(), text.end(), result);
     if (ec != std::errc{} || ptr != text.end()) invalid_conversion();
     return result;
 }
 
-}  // namespace
-
-value value::default_value(const core::type& t) {
-    if (t.is_int()) return int_t{};
-    if (t.is_double()) return double_t{};
-    if (t.is_bool()) return bool_t{};
-    if (t.is_string()) return string_t{};
-    if (t.is_void()) return {};
-    if (t.is_unknown()) return {};
-
-    if (t.is_array()) {
-        auto elements = array_t{};
-        elements.reserve(t.array_size());
-        for (auto _ : std::views::iota(0ul, t.array_size())) elements.push_back(default_value(t.element_type()));
-        return elements;
-    }
-
-    if (t.is_struct()) {
-        auto fields = std::vector<value>{};
-        fields.reserve(t.struct_fields().size());
-        for (auto&& [_, field_type] : t.struct_fields()) fields.push_back(default_value(field_type));
-        return struct_t{t, std::move(fields)};
-    }
-
-    return {};
+bool is_numeric(const value& v) noexcept {
+    return v.is_int() || v.is_double();
 }
+
+value::double_t as_double(const value& v) {
+    if (v.is_int()) return static_cast<value::double_t>(v.to_int());
+    if (v.is_double()) return v.to_double();
+    invalid_conversion();
+}
+
+std::string format_struct(const value::struct_t& s) {
+    std::ostringstream os;
+    std::print(os, "{}", s.type_->name_);
+    std::print(os, "(");
+    for (std::size_t i = 0; i < s.fields_.size(); ++i) {
+        if (i) std::print(os, ", ");
+        std::print(os, "{}: {}", s.type_->field_names_[i], s.fields_[i].to_string());
+    }
+    std::print(os, ")");
+    return os.str();
+}
+
+}  // namespace
 
 value value::from_string(std::string_view text, bool is_double) {
     if (is_double) return parse_double(text);
@@ -65,102 +63,254 @@ value value::from_string(std::string_view text, bool is_double) {
 }
 
 // clang-format off
-
 value::int_t value::to_int() const {
+    if (auto p = data_.get_if<int_t>()) return *p;
     return data_.visit(
-        overloaded{
-            [](int_t v) { return v; },
-            [](double_t v) { return static_cast<int_t>(v); },
-            [](bool_t v) { return static_cast<int_t>(v); },
-            [](const string_impl& v) { return parse_int(*v); },
-            [](const auto&) -> int_t { invalid_conversion(); }
-        });
+            overloaded{
+            [](double_t v) -> int_t {
+                if (!std::isfinite(v) || v < static_cast<double_t>(std::numeric_limits<int_t>::min()) ||
+                                         v > static_cast<double_t>(std::numeric_limits<int_t>::max()))
+                    invalid_conversion();
+                return static_cast<int_t>(v);
+            },
+            [](bool_t v) { return static_cast<int_t>(v); }, 
+            [](const string_t& s) { return parse_int(s); },
+            [](const auto&) -> int_t { invalid_conversion(); }});
 }
 
 value::double_t value::to_double() const {
+    if (auto p = data_.get_if<double_t>()) return *p;
     return data_.visit(
-        overloaded{
-            [](int_t v) { return static_cast<double_t>(v); },
-            [](double_t v) { return v; },
-            [](const string_impl& v) { return parse_double(*v); },
-            [](const auto&) -> double_t { invalid_conversion(); }
-        });
+            overloaded{
+            [](int_t v) { return static_cast<double_t>(v); }, 
+            [](bool_t v) { return static_cast<double_t>(v); },
+            [](const string_t& s) { return parse_double(s); },
+            [](const auto&) -> double_t { invalid_conversion(); }});
 }
 
 value::bool_t value::to_bool() const {
+    if (auto p = data_.get_if<bool_t>()) return *p;
     return data_.visit(
-        overloaded{
-            [](int_t v) { return static_cast<bool_t>(v); },
-            [](double_t v) { return static_cast<bool_t>(v); },
-            [](bool_t v) { return v; },
-            [](const auto&) -> bool_t { invalid_conversion(); }
-        });
+            overloaded{
+            [](int_t v) { return v != 0; }, 
+            [](double_t v) { return v != 0.0; },
+            [](bool_t v) { return v; }, 
+            [](const string_t& s) { return !s.empty(); },
+            [](const struct_impl&) { return true; }, 
+            [](std::monostate) { return false; }});
 }
 
 value::string_t value::to_string() const {
-    auto&& to_string = [&](std::ranges::input_range auto&& cnt) {
-        string_t res;
-        auto it = cnt.cbegin(), end = cnt.cend();
-        if (it == end) return res;
-        res.reserve(cnt.size() * 2);
-        res += std::format("{}", it->to_string()); ++it;
-        for(; it != end; ++it) {
-            res += ", ";
-            res += std::format("{}", it->to_string());
-        }
-        return res;
-    };
+    if (auto p = data_.get_if<string_t>()) return *p;
     return data_.visit(
-        overloaded{
-            [](int_t v) { return std::format("{}", v); },
+            overloaded{
+            [](int_t v) { return std::format("{}", v); }, 
             [](double_t v) { return std::format("{}", v); },
-            [](bool_t v) { return std::format("{}", v ? "true" : "false"); },
-            [](const string_impl& s) { return *s; },
-            [&](const array_impl& a) { return std::format("{{{}}}", to_string(*a)); },
-            [&](const struct_t& s) { return std::format("{{{}}}", to_string(s.fields_)); },
-            [](std::monostate) { return std::format("void"); }
-        });
-}
-
-const value::array_t& value::to_array() const {
-    return data_.visit(
-        overloaded{
-            [](const array_impl& arr) -> const array_t& { return *arr; },
-            [](const auto&) -> const array_t& { invalid_conversion(); }
-        });
-}
-
-value::array_t& value::to_array() {
-    return data_.visit(
-        overloaded{
-            [](array_impl& arr) -> array_t& { return *arr; },
-            [](const auto&) -> array_t& { invalid_conversion(); }
-        });
+            [](bool_t v) { return std::format("{}", v); }, 
+            [](const string_t& s) { return s; },
+            [](const struct_impl& s) { return format_struct(*s); }, 
+            [](std::monostate) { return std::string{"void"}; }});
 }
 
 const value::struct_t& value::to_struct() const {
-    return data_.visit(
-        overloaded{
-            [](const struct_t& st) -> const struct_t& { return st; },
-            [](const auto&) -> const struct_t& { invalid_conversion(); }
-        });
+    if (auto p = data_.get_if<struct_impl>()) return **p;
+    invalid_conversion();
 }
 
 value::struct_t& value::to_struct() {
-    return data_.visit(
-        overloaded{
-            [](struct_t& st) -> struct_t& { return st; },
-            [](const auto&) -> struct_t& { invalid_conversion(); }
-        });
+    if (auto p = data_.get_if<struct_impl>()) return **p;
+    invalid_conversion();
+}
+// clang-format on
+
+bool value::is_int() const noexcept {
+    return data_.holds<int_t>();
+}
+bool value::is_double() const noexcept {
+    return data_.holds<double_t>();
+}
+bool value::is_bool() const noexcept {
+    return data_.holds<bool_t>();
+}
+bool value::is_string() const noexcept {
+    return data_.holds<string_t>();
+}
+bool value::is_struct() const noexcept {
+    return data_.holds<struct_impl>();
+}
+bool value::is_void() const noexcept {
+    return data_.holds<std::monostate>();
 }
 
-bool value::is_int() const noexcept { return data_.holds<int_t>(); }
-bool value::is_double() const noexcept { return data_.holds<double_t>(); }
-bool value::is_bool() const noexcept { return data_.holds<bool_t>(); }
-bool value::is_string() const noexcept { return data_.holds<string_impl>(); }
-bool value::is_array() const noexcept { return data_.holds<array_impl>(); }
-bool value::is_struct() const noexcept { return data_.holds<struct_t>(); }
-bool value::is_void() const noexcept { return data_.holds<std::monostate>(); }
-// clang-format on
+void value::make_unique_struct() {
+    auto p = data_.get_if<struct_impl>();
+    if (p && p->use_count() > 1) *p = std::make_shared<struct_t>(**p);
+}
+
+bool operator==(const value& a, const value& b) noexcept {
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) == as_double(b);
+    if (a.is_bool() && b.is_bool()) return a.to_bool() == b.to_bool();
+
+    if (a.is_string() && b.is_string()) return a.to_string() == b.to_string();
+
+    if (a.is_struct() && b.is_struct()) {
+        auto& sa = a.to_struct();
+        auto& sb = b.to_struct();
+        if (sa.type_ != sb.type_) return false;
+        return std::ranges::equal(sa.fields_, sb.fields_);
+    }
+
+    if (a.is_void() && b.is_void()) return true;
+
+    return false;
+}
+
+bool operator!=(const value& a, const value& b) noexcept {
+    return !(a == b);
+}
+
+bool operator<(const value& a, const value& b) {
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) < as_double(b);
+    if (a.is_string() && b.is_string()) return a.to_string() < b.to_string();
+    invalid_conversion();
+}
+bool operator<=(const value& a, const value& b) {
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) <= as_double(b);
+    if (a.is_string() && b.is_string()) return a.to_string() <= b.to_string();
+    invalid_conversion();
+}
+bool operator>(const value& a, const value& b) {
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) > as_double(b);
+    if (a.is_string() && b.is_string()) return a.to_string() > b.to_string();
+    invalid_conversion();
+}
+bool operator>=(const value& a, const value& b) {
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) >= as_double(b);
+    if (a.is_string() && b.is_string()) return a.to_string() >= b.to_string();
+    invalid_conversion();
+}
+
+value operator+(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() + b.to_int();
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) + as_double(b);
+    if (a.is_string() && b.is_string()) return a.to_string() + b.to_string();
+    invalid_conversion();
+}
+
+value operator-(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() - b.to_int();
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) - as_double(b);
+    invalid_conversion();
+}
+
+value operator*(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() * b.to_int();
+    if (is_numeric(a) && is_numeric(b)) return as_double(a) * as_double(b);
+
+    if (a.is_string() && b.is_int()) {
+        auto&& n = b.to_int();
+        if (n < 0) invalid_conversion();
+        auto&& s = a.to_string();
+        std::string out;
+        out.reserve(s.size() * static_cast<std::size_t>(n));
+        for (const auto _ : std::views::iota(0, n)) out += s;
+        return out;
+    }
+    if (a.is_int() && b.is_string()) return b * a;
+    invalid_conversion();
+}
+
+value operator/(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) {
+        if (b.to_int() == 0) throw value_error{error_code::division_by_zero};
+        return a.to_int() / b.to_int();
+    }
+    if (is_numeric(a) && is_numeric(b)) {
+        auto d = as_double(b);
+        if (d == 0.0) throw value_error{error_code::division_by_zero};
+        return as_double(a) / d;
+    }
+    invalid_conversion();
+}
+
+value operator%(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) {
+        if (b.to_int() == 0) throw value_error{error_code::modulo_by_zero};
+        return a.to_int() % b.to_int();
+    }
+    invalid_conversion();
+}
+
+value operator-(const value& a) {
+    if (a.is_int()) return -a.to_int();
+    if (a.is_double()) return -a.to_double();
+    invalid_conversion();
+}
+
+value operator~(const value& a) {
+    if (a.is_int()) return ~a.to_int();
+    invalid_conversion();
+}
+
+bool operator!(const value& a) noexcept {
+    return !a.to_bool();
+}
+
+value operator&(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() & b.to_int();
+    invalid_conversion();
+}
+value operator|(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() | b.to_int();
+    invalid_conversion();
+}
+value operator^(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() ^ b.to_int();
+    invalid_conversion();
+}
+value operator<<(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() << b.to_int();
+    invalid_conversion();
+}
+value operator>>(const value& a, const value& b) {
+    if (a.is_int() && b.is_int()) return a.to_int() >> b.to_int();
+    invalid_conversion();
+}
+
+value& value::operator++() {
+    if (is_int()) {
+        data_.get<int_t>()++;
+        return *this;
+    }
+    if (is_double()) {
+        data_.get<double_t>() += 1.0;
+        return *this;
+    }
+    invalid_conversion();
+}
+
+value& value::operator--() {
+    if (is_int()) {
+        data_.get<int_t>()--;
+        return *this;
+    }
+    if (is_double()) {
+        data_.get<double_t>() -= 1.0;
+        return *this;
+    }
+    invalid_conversion();
+}
+
+value value::operator++(int) {
+    auto old = *this;
+    ++*this;
+    return old;
+}
+
+value value::operator--(int) {
+    auto old = *this;
+    --*this;
+    return old;
+}
 
 }  // namespace cint::core

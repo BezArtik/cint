@@ -1,118 +1,48 @@
-/**
- * @file include/core/symbol/symbol_registry.hpp
- * @brief Реестр символов — функции, builtin-функции, структуры.
- * @ingroup CoreUtils
- */
-
+// core/symbol/symbol_registry.hpp
 #pragma once
-
-#include "ast/statement.hpp"
+#include "ast/node.hpp"
 #include "core/builtins/builtins.hpp"
 #include "core/error/diagnostic.hpp"
-#include "core/type/type.hpp"
 #include "core/utils/variant.hpp"
 
+#include <array>
+#include <cstddef>
+#include <memory_resource>
 #include <span>
 #include <string_view>
-#include <unordered_set>
 #include <vector>
 
 namespace cint::core {
 
-/**
- * @brief Реестр всех объявленных символов программы.
- * @ingroup CoreUtils
- *
- * Содержит информацию о каждом именованном символе верхнего уровня:
- * - **Пользовательские функции** (func_declaration)
- * - **Builtin-функции** (встроенные в интерпретатор)
- * - **Структуры** (struct_declaration)
- *
- */
-class [[nodiscard]] symbol_registry {
+class symbol_registry {
     struct entry;
-    /// Тип списка записей.
-    using entries_t = std::vector<entry>;
-    /// Итератор на запись внутри списка.
+    using entries_t = std::pmr::vector<entry>;
     using const_iterator = typename entries_t::const_iterator;
 
 public:
-    /// Указатель на узел пользовательской функции в AST.
-    using func_ptr = const ast::func_declaration_stmt*;
-
-    /// Указатель на узел структуры в AST.
-    using struct_ptr = const ast::struct_declaration_stmt*;
-
-    /// Указатель на builtin-def.
+    using func_ptr = ast::func_declaration_stmt*;
+    using struct_ptr = ast::struct_declaration_stmt*;
     using builtin_func_ptr = const core::builtin_def*;
 
-    /**
-     * @brief Строит реестр из AST и списка builtin-функций.
-     *
-     * Порядок построения:
-     * 1. Добавляются все builtin-функции.
-     * 2. Обходятся объявления верхнего уровня AST.
-     *
-     * @param ast      Список объявлений верхнего уровня
-     * @param sink     Сборщик ошибок
-     * @return Готовый реестр символов.
-     */
-    static symbol_registry build(std::span<const ast::statement> ast, diagnostic_sink& sink);
+    symbol_registry() = default;
+    symbol_registry(std::span<const ast::statement> ast, diagnostic_sink& sink);
 
-    /// @name Итераторы
-    /// @{
+    [[nodiscard]] auto begin() const noexcept { return entries_.begin(); }
+    [[nodiscard]] auto end() const noexcept { return entries_.end(); }
 
-    auto begin() const noexcept { return entries_.begin(); }
-    auto end() const noexcept { return entries_.end(); }
-
-    /// @}
-
-    /**
-     * @brief Находит запись по имени.
-     * @param name Имя символа
-     * @return Итератор на запись или end(), если не найдена.
-     */
-    const_iterator find(std::string_view name) const noexcept;
-
-    /**
-     * @brief Разрешает тип, заменяя упоминания структур их определениями.
-     *
-     * Рекурсивно обходит тип и для каждого struct-типа ищет
-     * его полное определение в реестре. Если определение не найдено —
-     * возвращает unknown_type.
-     *
-     * @param t Тип для разрешения (может содержать неполные struct-типы)
-     * @return Полный тип с разрешёнными структурами или unknown_type при ошибке.
-     */
-    type resolve_type(const type& t) const;
-
-    /*
-     * @brief Получить тип символа по итератору.
-     *
-     * @param it Итератор на запись.
-     * @return Тип символа.
-     */
-    type get_type(const_iterator it) const;
+    [[nodiscard]] const_iterator find(std::string_view name) const noexcept;
 
 private:
-    /**
-     * @brief Запись реестра: имя, тип, информация о реализации.
-     */
     struct entry {
-        std::string_view name_;                                       ///< Имя символа
-        core::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;  ///< Информация о реализации
+        std::string_view name_;
+        core::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;
     };
 
-    symbol_registry() = default;
-
-    /**
-     * @brief Добавляет AST-объявление в реестр.
-     */
     void add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink);
 
-    type resolve_type_impl(const type& t, std::unordered_set<std::string_view>& resolving) const;
-
-    entries_t entries_;
+    std::array<std::byte, 2048> buffer_;
+    std::pmr::monotonic_buffer_resource mr_{buffer_.data(), buffer_.size()};
+    entries_t entries_{&mr_};
 };
 
 }  // namespace cint::core

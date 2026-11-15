@@ -12,7 +12,6 @@ add_executable(tests
     test_interpreter.cpp
     test_lexer.cpp
     test_parser.cpp
-    test_semantics.cpp
     test_value.cpp
 )
 

@@ -1,69 +1,35 @@
-/**
- * @file include/runtime/interpreter.hpp
- * @brief Интерпретатор времени выполнения — исполнение AST.
- * @ingroup Runtime
- *
- * @defgroup Runtime Выполнение программы
- * @brief Исполнение AST после статического анализа.
- */
-
+// runtime/interpreter.hpp
 #pragma once
 #include "ast/expression.hpp"
+#include "ast/node.hpp"
 #include "ast/statement.hpp"
-#include "core/builtins/builtins.hpp"
-#include "core/error/diagnostic.hpp"
 #include "core/symbol/symbol_registry.hpp"
-#include "core/utils/scoped_map.hpp"
+#include "core/token/token.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
 
+#include <limits>
 #include <span>
 
 namespace cint {
 
-/**
- * @brief Интерпретатор, выполняющий программу путём обхода AST.
- * @ingroup Runtime
- *
- * Реализует **пошаговое выполнение** абстрактного синтаксического дерева
- * без компиляции в промежуточный код. Каждому типу узла AST соответствует
- * метод execute_* (для инструкций) или evaluate_* (для выражений).
- *
- * @note Интерпретатор **не проверяет типы** — предполагается, что
- *       семантический анализ (type_checker) уже выполнен успешно.
- *
- * @invariant После interpret() значения переменных не сохраняются.
- *            Каждый вызов интерпретатора начинает выполнение с чистого состояния.
- */
-class [[nodiscard]] interpreter {
+struct runtime_error : std::exception {
+    core::error_code code_;
+    core::location loc_;
+    std::string message_;
+
+    runtime_error(core::error_code c, core::location l, std::string m)
+        : code_{c}, loc_{std::move(l)}, message_{std::move(m)} {}
+
+    [[nodiscard]] const char* what() const noexcept override { return message_.c_str(); }
+};
+
+class interpreter {
 public:
-    /**
-     * @brief Конструктор.
-     *
-     * @param reporter Обработчик ошибок времени выполнения
-     * @param registry Реестр символов (функции, builtin-функции, структуры)
-     * @param writer   Отладочный writer для трассировки выполнения.
-     */
-    interpreter(core::diagnostic_sink& sink, const core::symbol_registry& registry, debug::debug_writer& writer)
-        : sink_{sink}, registry_{registry}, writer_{writer} {}
-    /**
-     * @brief Выполняет программу.
-     *
-     * Последовательно исполняет все инструкции верхнего уровня.
-     * Пропускает объявления функций (func_declaration) — они выполняются
-     * только при вызове.
-     *
-     * @param statements Список AST-узлов верхнего уровня
-     *
-     * @throws core::runtime_error при фатальной ошибке времени выполнения.
-     *
-     * @note Не вызывает функции автоматически. Точка входа — первая
-     *       исполняемая инструкция верхнего уровня (не func_declaration).
-     */
-    void interpret(std::span<const ast::statement> statements);
+    interpreter(std::span<const ast::statement> statements, const core::symbol_registry& registry,
+                debug::debug_writer& writer);
 
 private:
-    /// @brief Результат выполнения инструкции.
     struct execution_result;
 
     execution_result execute(const ast::statement& stmt);
@@ -78,35 +44,32 @@ private:
     execution_result execute(const ast::return_stmt& stmt);
 
     core::value evaluate(const ast::expression& expr);
-    core::value evaluate(const ast::variable_expr& expr);
-    core::value evaluate(const ast::literal_expr& expr);
-    core::value evaluate(const ast::assignment_expr& expr);
     core::value evaluate(const ast::binary_expr& expr);
+    core::value evaluate(const ast::assignment_expr& expr);
     core::value evaluate(const ast::unary_expr& expr);
     core::value evaluate(const ast::postfix_expr& expr);
-    core::value evaluate(const ast::index_expr& expr);
-    core::value evaluate(const ast::member_access_expr& expr);
-    core::value evaluate(const ast::initializer_list_expr& expr);
     core::value evaluate(const ast::call_expr& expr);
+    core::value evaluate(const ast::method_call_expr& expr);
 
-    core::value call(core::symbol_registry::builtin_func_ptr builtin, std::span<const core::value> args,
-                     std::string_view name);
-    core::value call(core::symbol_registry::func_ptr body, std::span<const core::value> args, std::string_view name);
-    core::value call(core::symbol_registry::struct_ptr ptr, std::span<const core::value> args, std::string_view name);
+    core::value& evaluate_lvalue(const ast::expression& expr, core::location loc, bool for_write);
 
-    core::value& evaluate_lvalue(const ast::expression& expr);
-    core::value& evaluate_lvalue(const ast::variable_expr& expr);
-    core::value& evaluate_lvalue(const ast::index_expr& expr);
-    core::value& evaluate_lvalue(const ast::member_access_expr& expr);
+    bool is_lvalue(const ast::expression& e);
 
-    core::diagnostic_sink& sink_;            ///< Сборщик ошибок
-    const core::symbol_registry& registry_;  ///< Реестр функций
-    debug::debug_writer& writer_;            ///< Отладочный вывод
-    core::scoped_map<core::value> values_;   ///< Таблица переменных (стек областей видимости)
-    std::uint32_t recursion_depth_{};        ///< Текущая глубина рекурсии
+    core::value call(core::symbol_registry::builtin_func_ptr ptr, std::span<const core::value> args);
+    core::value call(core::symbol_registry::func_ptr ptr, std::span<const core::value> args);
+    core::value call(core::symbol_registry::struct_ptr ptr, std::span<const core::value> args);
 
-    /// Максимально допустимая глубина рекурсивных вызовов.
-    static constexpr std::uint32_t MAX_RECURSION_DEPTH = 250;
+    const core::symbol_registry& registry_;
+    debug::debug_writer& writer_;
+    const bool exec_enabled_debug_{};
+    const bool ret_enabled_debug_{};
+    std::vector<core::value> slots_;
+    std::size_t frame_base_{};
+    std::size_t this_idx_{MAX_THIS_IDX};
+    std::uint32_t recursion_depth_{};
+
+    static constexpr std::uint32_t MAX_RECURSION_DEPTH{250};
+    static constexpr std::size_t MAX_THIS_IDX{std::numeric_limits<std::size_t>::max()};
 };
 
 }  // namespace cint

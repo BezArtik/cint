@@ -1,9 +1,4 @@
-/**
- * @file include/core/error/diagnostic_renderer.hpp
- * @brief Рендеринг диагностических сообщений с визуализацией.
- * @ingroup CoreError
- */
-
+// core/error/diagnostic_renderer.hpp
 #pragma once
 #include "core/error/diagnostic.hpp"
 
@@ -15,10 +10,6 @@
 
 namespace cint::core {
 
-/**
- * @brief Отображает диагностики: шапка + строка исходника + маркер.
- *
- */
 class diagnostic_renderer {
 public:
     diagnostic_renderer(std::string_view source, std::ostream& out = std::cerr) : source_{source}, out_{out} {
@@ -26,9 +17,7 @@ public:
     }
 
     template <std::input_iterator It>
-        requires requires(It it) {
-            { *it } -> std::convertible_to<diagnostic>;
-        }
+        requires std::convertible_to<std::iter_reference_t<It>, diagnostic>
     void render(It first, It last) {
         for (; first != last; ++first) render(*first);
     }

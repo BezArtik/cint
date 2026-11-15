@@ -23,7 +23,7 @@ void diagnostic_renderer::build_line_cache() {
 }
 
 void diagnostic_renderer::render(const diagnostic& d) {
-    std::println(out_, "[line {}:{}] Error: {}", d.loc_.line_, d.loc_.column_, d.message_);
+    std::println(out_, "{} Error: {}", d.loc_, d.message_);
 
     if (lines_.empty()) return;
     if (d.loc_.line_ == 0 || d.loc_.line_ - 1 >= lines_.size()) return;

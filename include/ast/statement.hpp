@@ -1,144 +1,72 @@
-/**
- * @file include/ast/statement.hpp
- * @brief Узлы инструкций и объявлений AST.
- * @ingroup AST
- */
-
+// ast/statement.hpp
 #pragma once
 
 #include "ast/node.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/type/type.hpp"
+#include "core/type/struct_type.hpp"
 
+#include <cstdint>
 #include <optional>
 #include <utility>
 
 namespace cint::ast {
 
-/**
- * @brief Инструкция-выражение: `expr;`.
- *
- * Вычисляет выражение и отбрасывает результат.
- * Примеры: вызов функции, присваивание.
- */
 struct expression_stmt {
-    expression expr_;  ///< Выражение для вычисления
+    expression expr_;
 };
 
-/**
- * @brief Объявление переменной: `type name [= init];`.
- *
- * Может иметь инициализатор. Тип проверяется на этапе type checking.
- * Поддерживает автоматический вывод размера массива из инициализатора.
- */
 struct var_declaration_stmt {
-    core::type type_;                        ///< Тип переменной
-    core::token name_;                       ///< Токен имени
-    std::optional<expression> initializer_;  ///< Инициализатор
+    core::token name_;
+    std::uint32_t slot_;
+    expression initializer_;
 };
 
-/**
- * @brief Блок инструкций: `{ statements... }`.
- *
- * Создаёт новую область видимости для переменных, объявленных внутри.
- * Флаг has_declarations используется для оптимизации: если в блоке
- * нет объявлений, scope при выполнении не создаётся.
- */
 struct block_stmt {
-    stmt_list statements_;   ///< Список инструкций блока
-    bool has_declarations_;  ///< Флаг для оптимизации
-    core::location loc_;     ///< Позиция в исходном коде
+    stmt_list statements_;
+    core::location loc_;
 };
 
-/**
- * @brief Цикл while: `while (condition) body`.
- *
- * Условие вычисляется на каждой итерации. Если ложно — цикл завершается.
- * Тело может быть любой инструкцией, не только блоком.
- */
 struct while_stmt {
-    expression condition_;  ///< Условие продолжения цикла
-    statement block_;       ///< Тело цикла
-    core::location loc_;    ///< Позиция в исходном коде
+    expression condition_;
+    statement block_;
+    core::location loc_;
 };
 
-/**
- * @brief Цикл for: `for (init; condition; increment) body`.
- *
- * Все три части опциональны. Порядок выполнения:
- * 1. init (один раз)
- * 2. condition (если есть и false — выход)
- * 3. body
- * 4. increment
- * 5. переход к п.2
- */
 struct for_stmt {
-    std::optional<statement> initializer_;  ///< Инициализатор
-    std::optional<expression> condition_;   ///< Условие продолжения
-    std::optional<expression> increment_;   ///< Выражение инкремента
-    statement block_;                       ///< Тело цикла
-    core::location loc_;                    ///< Позиция в исходном коде
+    std::optional<statement> initializer_;
+    std::optional<expression> condition_;
+    std::optional<expression> increment_;
+    statement block_;
+    core::location loc_;
 };
 
-/**
- * @brief Условная инструкция: `if (condition) then [else else_branch]`.
- *
- * Ветка else опциональна. Обе ветки выполняются в своих областях видимости.
- */
 struct if_stmt {
-    expression condition_;                 ///< Условие (должно быть bool)
-    statement then_block_;                 ///< Ветка then
-    std::optional<statement> else_block_;  ///< Ветка else
-    core::location loc_;                   ///< Позиция в исходном коде
+    expression condition_;
+    statement then_block_;
+    std::optional<statement> else_block_;
+    core::location loc_;
 };
 
-/**
- * @brief Инструкция возврата: `return [value];`.
- *
- * Может возвращать значение (в не-void функциях) или ничего (в void-функциях).
- * Проверка соответствия типов выполняется на этапе type checking.
- */
 struct return_stmt {
-    std::optional<expression> value_;  ///< Возвращаемое значение
-    core::location loc_;               ///< Позиция в исходном коде
+    std::optional<expression> value_;
+    core::location loc_;
 };
 
-/**
- * @brief Объявление функции: `return_type name(params) { body }`.
- *
- * Содержит полную сигнатуру в типе и тело. Параметры образуют новую область
- * видимости. Функция может быть вызвана рекурсивно (в пределах MAX_RECURSION_DEPTH).
- */
 struct func_declaration_stmt {
-    core::type type_;     ///< Тип функции (имя, тип возврата, информация о параметрах)
-    statement block_;     ///< Тело функции
-    core::location loc_;  ///< Позиция в исходном коде
+    core::token name_;
+    core::arena_vector<core::token> params_;
+    stmt_list body_;
+    std::uint32_t max_slots_;
+    core::location loc_;
 };
 
-/**
- * @brief Объявление структуры: `struct name { fields... };`.
- *
- * Определяет новый структурный тип с именованными полями.
- * Тип сохраняется в symbol_registry для дальнейшего использования.
- */
 struct struct_declaration_stmt {
-    core::type type_;     ///< Тип структуры (с полной информацией о полях)
-    core::location loc_;  ///< Позиция в исходном коде
+    core::struct_type type_;
+    core::arena_vector<ast::func_declaration_stmt> methods_;
+    core::location loc_;
 };
 
-/**
- * @brief Создаёт узел инструкции в арене.
- *
- * Размещает объект типа Stmt в переданной арене и возвращает
- * statement, содержащий node<Stmt>.
- *
- * @tparam Stmt Тип узла инструкции
- * @tparam Args Типы аргументов конструктора
- * @param arena  Арена для размещения
- * @param args   Аргументы конструктора
- * @return Готовый statement с node<Stmt>.
- */
 template <typename Stmt, typename... Args>
 [[nodiscard]] statement make_stmt(core::arena& arena, Args&&... args) {
     return {core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};

@@ -1,35 +1,24 @@
 // core/builtins/builtins.cpp
-
 #include "core/builtins/builtins.hpp"
 
 #include "core/value/value.hpp"
 
 #include <cmath>
 #include <iostream>
+#include <print>
 #include <random>
+#include <ranges>
 #include <span>
+#include <string>
 
 namespace cint::core::detail {
 
-auto& out = std::cout;
-
-value print_int(std::span<const value> args) {
-    out << args[0].to_int();
-    return {};
-}
-
-value print_dbl(std::span<const value> args) {
-    out << args[0].to_double();
-    return {};
-}
-
-value print_bool(std::span<const value> args) {
-    out << args[0].to_string();
-    return {};
-}
-
-value print_str(std::span<const value> args) {
-    out << args[0].to_string();
+value print(std::span<const value> args) {
+    for (auto&& [pos, arg] : std::views::enumerate(args)) {
+        if (pos) std::print(" ");
+        std::print("{}", arg.to_string());
+    }
+    std::println();
     return {};
 }
 
@@ -51,31 +40,20 @@ value exp(std::span<const value> args) {
     return std::exp(args[0].to_double());
 }
 
-value dtoi(std::span<const value> args) {
-    return args[0].to_int();
-}
+namespace {
 
-value stoi(std::span<const value> args) {
-    return args[0].to_int();
-}
-
-value itod(std::span<const value> args) {
-    return args[0].to_double();
-}
-
-value stod(std::span<const value> args) {
-    return args[0].to_double();
-}
-
-static auto& generator() {
+auto& generator() {
     static std::mt19937_64 gen(std::random_device{}());
     return gen;
 }
 
+}  // namespace
+
 value srand(std::span<const value> args) {
-    generator().seed(static_cast<uint64_t>(args[0].to_int()));
+    generator().seed(args[0].to_int());
     return {};
 }
+
 value rand_int(std::span<const value> args) {
     std::uniform_int_distribution dist(args[0].to_int(), args[1].to_int());
     return dist(generator());
@@ -84,6 +62,14 @@ value rand_int(std::span<const value> args) {
 value rand_dbl(std::span<const value> args) {
     std::uniform_real_distribution dist(args[0].to_double(), args[1].to_double());
     return dist(generator());
+}
+
+value abs(std::span<const value> args) {
+    return std::abs(args[0].to_int());
+}
+
+value gcd(std::span<const value> args) {
+    return std::gcd(args[0].to_int(), args[1].to_int());
 }
 
 }  // namespace cint::core::detail

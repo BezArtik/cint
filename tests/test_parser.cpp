@@ -1,399 +1,436 @@
-// tests/test_parser.cpp
-
 #include "ast/expression.hpp"
 #include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "pipeline_harness.hpp"
 
 #include <gtest/gtest.h>
+#include <stdexcept>
 #include <string_view>
+#include <typeinfo>
 
 namespace cint::tests {
 
-using t = core::type;
+namespace {
+
+template <typename T>
+const T* as(const ast::statement& s) noexcept {
+    const auto p = s.get_if<core::arena_ptr<T>>();
+    return p ? p->get() : nullptr;
+}
+
+template <typename T>
+const T* as(const ast::expression& e) noexcept {
+    const auto p = e.get_if<core::arena_ptr<T>>();
+    return p ? p->get() : nullptr;
+}
+
+template <typename T>
+const T* must(const ast::statement& s) {
+    const auto p = as<T>(s);
+    if (!p) {
+        ADD_FAILURE() << "expected " << typeid(T).name() << " (statement)";
+        throw std::runtime_error{"must<T>: wrong AST node type"};
+    }
+    return p;
+}
+
+template <typename T>
+const T* must(const ast::expression& e) {
+    const auto p = as<T>(e);
+    if (!p) {
+        ADD_FAILURE() << "expected " << typeid(T).name() << " (expression)";
+        throw std::runtime_error{"must<T>: wrong AST node type"};
+    }
+    return p;
+}
+
+}  // namespace
+
 using err = core::error_code;
 
 TEST(parser_test, empty_program) {
     auto h = pipeline_harness{""};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
     EXPECT_TRUE(h.ast().empty());
-    EXPECT_FALSE(h.had_error());
 }
 
 struct var_decl_case {
     std::string_view source_;
     std::string_view expected_name_;
-    t expected_type_;
-    bool has_initializer_;
 };
 
-class var_decl_test : public ::testing::TestWithParam<var_decl_case> {};
+struct var_decl_test : ::testing::TestWithParam<var_decl_case> {};
 
 TEST_P(var_decl_test, parsed) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
     ASSERT_EQ(h.ast().size(), 1);
 
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
+    const auto decl = must<ast::var_declaration_stmt>(h.ast()[0]);
     EXPECT_EQ(decl->name_.lexeme_, tc.expected_name_);
-    EXPECT_EQ(decl->type_, tc.expected_type_);
-    EXPECT_EQ(decl->initializer_.has_value(), tc.has_initializer_);
-    EXPECT_FALSE(h.had_error());
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
-        without_init, var_decl_test,
+        various, var_decl_test,
         ::testing::Values(
-            var_decl_case{"int x;", "x", t::int_type(), false},
-            var_decl_case{"double pi;", "pi", t::double_type(), false},
-            var_decl_case{"bool flag;", "flag", t::bool_type(), false},
-            var_decl_case{"string s;", "s", t::string_type(), false}
-));
-
-INSTANTIATE_TEST_SUITE_P(
-        with_init, var_decl_test,
-        ::testing::Values(
-            var_decl_case{"int x = 42;", "x", t::int_type(), true},
-            var_decl_case{"double pi = 3.14;", "pi", t::double_type(), true},
-            var_decl_case{"bool f = true;", "f", t::bool_type(), true}
+            var_decl_case{"let x = 42;", "x"}, 
+            var_decl_case{"let pi = 3.14;", "pi"},
+            var_decl_case{"let flag = true;", "flag"},
+            var_decl_case{"let s = \"hi\";", "s"}
 ));
 // clang-format on
+
 struct expr_case {
     std::string_view source_;
     std::string_view op_lexeme_;
     std::string_view left_name_;
-    std::string_view right_lexeme_;
 };
 
-class binary_expr_test : public ::testing::TestWithParam<expr_case> {};
+struct binary_expr_test : ::testing::TestWithParam<expr_case> {};
 
 TEST_P(binary_expr_test, parsed) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+    ASSERT_EQ(h.ast().size(), 2);
 
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    ASSERT_TRUE(decl->initializer_);
-
-    auto&& bin = decl->initializer_->get_if<ast::binary_expr>();
-    ASSERT_TRUE(bin);
+    const auto decl = must<ast::var_declaration_stmt>(h.ast().back());
+    const auto bin = must<ast::binary_expr>(decl->initializer_);
     EXPECT_EQ(bin->op_.lexeme_, tc.op_lexeme_);
 
-    auto&& left = bin->left_.get_if<ast::variable_expr>();
-    ASSERT_TRUE(left);
+    const auto left = must<ast::variable_expr>(bin->left_);
     EXPECT_EQ(left->name_.lexeme_, tc.left_name_);
-
-    auto&& right = bin->right_.get_if<ast::literal_expr>();
-    ASSERT_TRUE(right);
-    EXPECT_TRUE(right->value_.is_int());
-    EXPECT_EQ(right->value_.to_int(), std::stoll(std::string(tc.right_lexeme_)));
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
         arithmetic, binary_expr_test,
         ::testing::Values(
-            expr_case{"int r = x + 1;", "+", "x", "1"},
-            expr_case{"int r = x - 1;", "-", "x", "1"},
-            expr_case{"int r = x * 2;", "*", "x", "2"},
-            expr_case{"int r = x / 2;", "/", "x", "2"},
-            expr_case{"int r = x % 3;", "%", "x", "3"}
+            expr_case{"let x = 0; let r = x + 1;", "+", "x"},
+            expr_case{"let x = 0; let r = x - 1;", "-", "x"},
+            expr_case{"let x = 0; let r = x * 2;", "*", "x"},
+            expr_case{"let x = 0; let r = x / 2;", "/", "x"},
+            expr_case{"let x = 0; let r = x % 3;", "%", "x"}
 ));
 
 INSTANTIATE_TEST_SUITE_P(
         comparison, binary_expr_test,
         ::testing::Values(
-            expr_case{"bool r = x == 0;", "==", "x", "0"}, 
-            expr_case{"bool r = x != 0;", "!=", "x", "0"},
-            expr_case{"bool r = x < 0;", "<", "x", "0"}, 
-            expr_case{"bool r = x <= 0;", "<=", "x", "0"},
-            expr_case{"bool r = x > 0;", ">", "x", "0"}, 
-            expr_case{"bool r = x >= 0;", ">=", "x", "0"}
+            expr_case{"let x = 0; let r = x == 0;", "==", "x"},
+            expr_case{"let x = 0; let r = x != 0;", "!=", "x"},
+            expr_case{"let x = 0; let r = x < 0;", "<", "x"},
+            expr_case{"let x = 0; let r = x <= 0;", "<=", "x"},
+            expr_case{"let x = 0; let r = x > 0;", ">", "x"},
+            expr_case{"let x = 0; let r = x >= 0;", ">=", "x"}
 ));
 // clang-format on
-TEST(parser_test, assignment_expression) {
-    auto h = pipeline_harness{"int x; x = 42;"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_GE(h.ast().size(), 2);
-
-    auto&& es = h.ast()[1].get_if<ast::expression_stmt>();
-    ASSERT_TRUE(es);
-
-    auto&& assign = es->expr_.get_if<ast::assignment_expr>();
-    ASSERT_TRUE(assign);
-    EXPECT_EQ(assign->op_.lexeme_, "=");
-
-    auto&& var = assign->target_.get_if<ast::variable_expr>();
-    ASSERT_TRUE(var);
-    EXPECT_EQ(var->name_.lexeme_, "x");
-
-    auto&& lit = assign->value_.get_if<ast::literal_expr>();
-    ASSERT_TRUE(lit);
-    EXPECT_TRUE(lit->value_.is_int());
-    EXPECT_EQ(lit->value_.to_int(), 42);
-}
-
-TEST(parser_test, multiplication_before_addition) {
-    auto h = pipeline_harness{"int r = 1 + 2 * 3;"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
-
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-
-    auto&& bin = decl->initializer_->get_if<ast::binary_expr>();
-    ASSERT_TRUE(bin);
-    EXPECT_EQ(bin->op_.lexeme_, "+");
-
-    auto&& left = bin->left_.get_if<ast::literal_expr>();
-    ASSERT_TRUE(left);
-    EXPECT_TRUE(left->value_.is_int());
-    EXPECT_EQ(left->value_.to_int(), 1);
-
-    auto&& right = bin->right_.get_if<ast::binary_expr>();
-    ASSERT_TRUE(right);
-    EXPECT_EQ(right->op_.lexeme_, "*");
-}
-
-TEST(parser_test, grouping_overrides_precedence) {
-    auto h = pipeline_harness{"int r = (1 + 2) * 3;"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-
-    auto&& bin = decl->initializer_->get_if<ast::binary_expr>();
-    ASSERT_TRUE(bin);
-    EXPECT_EQ(bin->op_.lexeme_, "*");
-
-    auto&& left = bin->left_.get_if<ast::binary_expr>();
-    ASSERT_TRUE(left);
-    EXPECT_EQ(left->op_.lexeme_, "+");
-}
 
 struct unary_case {
     std::string_view source_;
     std::string_view op_lexeme_;
-    std::string_view operand_name_;
 };
 
-class unary_test : public ::testing::TestWithParam<unary_case> {};
+struct unary_test : ::testing::TestWithParam<unary_case> {};
 
 TEST_P(unary_test, parsed) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-
-    auto&& un = decl->initializer_->get_if<ast::unary_expr>();
-    ASSERT_TRUE(un);
+    const auto decl = must<ast::var_declaration_stmt>(h.ast().back());
+    const auto un = must<ast::unary_expr>(decl->initializer_);
     EXPECT_EQ(un->op_.lexeme_, tc.op_lexeme_);
-
-    auto&& var = un->operand_.get_if<ast::variable_expr>();
-    ASSERT_TRUE(var);
-    EXPECT_EQ(var->name_.lexeme_, tc.operand_name_);
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
         prefix, unary_test,
         ::testing::Values(
-            unary_case{"int r = -x;", "-", "x"}, 
-            unary_case{"int r = !x;", "!", "x"},
-            unary_case{"int r = ++x;", "++", "x"},
-            unary_case{"int r = --x;", "--", "x"}
+            unary_case{"let x = 0; let r = -x;", "-"},
+            unary_case{"let x = true; let r = !x;", "!"},
+            unary_case{"let x = 0; let r = ++x;", "++"},
+            unary_case{"let x = 0; let r = --x;", "--"}
 ));
 // clang-format on
+
 struct func_case {
     std::string_view source_;
     std::string_view name_;
-    t return_type_;
     std::size_t param_count_;
 };
 
-class func_decl_test : public ::testing::TestWithParam<func_case> {};
+struct func_decl_test : ::testing::TestWithParam<func_case> {};
 
 TEST_P(func_decl_test, parsed) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
     ASSERT_EQ(h.ast().size(), 1);
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
-    auto&& type = func->type_;
-    EXPECT_EQ(type.function_name(), tc.name_);
-    EXPECT_EQ(type.return_type(), tc.return_type_);
-    EXPECT_EQ(type.param_infos().size(), tc.param_count_);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    EXPECT_EQ(func->name_.lexeme_, tc.name_);
+    EXPECT_EQ(func->params_.size(), tc.param_count_);
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
         various, func_decl_test,
         ::testing::Values(
-            func_case{"int main() { return 0; }", "main", t::int_type(), 0},
-            func_case{"void foo() { }", "foo", t::void_type(), 0},
-            func_case{"int add(int a, int b) { }", "add", t::int_type(), 2},
-            func_case{"double f(int x, double y) { }", "f", t::double_type(), 2}
+            func_case{"fn main() { return 0; }", "main", 0},
+            func_case{"fn foo() { }", "foo", 0}, 
+            func_case{"fn add(a, b) { }", "add", 2},
+            func_case{"fn f(x, y) { }", "f", 2}
 ));
 // clang-format on
+
+TEST(parser_test, func_body_is_flat_stmt_list) {
+    auto h = pipeline_harness{"fn f() { let x = 1; let y = 2; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+    ASSERT_EQ(h.ast().size(), 1);
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    EXPECT_EQ(func->body_.size(), 2);
+}
+
+TEST(parser_test, func_params_capture_identifiers) {
+    auto h = pipeline_harness{"fn add(a, b) { return 1; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_EQ(func->params_.size(), 2);
+    EXPECT_EQ(func->params_[0].lexeme_, "a");
+    EXPECT_EQ(func->params_[1].lexeme_, "b");
+}
+
 struct call_case {
     std::string_view source_;
     std::string_view callee_;
     std::size_t arg_count_;
 };
 
-class call_test : public ::testing::TestWithParam<call_case> {};
+struct call_test : ::testing::TestWithParam<call_case> {};
 
 TEST_P(call_test, parsed) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_GE(func->body_.size(), 1);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-    ASSERT_GE(block->statements_.size(), 1);
-
-    auto&& es = block->statements_[0].get_if<ast::expression_stmt>();
-    ASSERT_TRUE(es);
-
-    auto&& call = es->expr_.get_if<ast::call_expr>();
-    ASSERT_TRUE(call);
+    const auto es = must<ast::expression_stmt>(func->body_.back());
+    const auto call = must<ast::call_expr>(es->expr_);
     EXPECT_EQ(call->callee_.lexeme_, tc.callee_);
     EXPECT_EQ(call->args_.size(), tc.arg_count_);
 }
+
 // clang-format off
 INSTANTIATE_TEST_SUITE_P(
-        various, call_test,
-        ::testing::Values(
-            call_case{"void f() { print(); }", "print", 0},
-            call_case{"void f() { print_int(42); }", "print_int", 1},
-            call_case{"void f() { add(1, 2); }", "add", 2},
-            call_case{"void f() { foo(a, b, c); }", "foo", 3}
+    various, call_test,
+    ::testing::Values(
+        call_case{"fn f() { print(); }", "print", 0}, 
+        call_case{"fn f() { print(42); }", "print", 1},
+        call_case{"fn f() { add(1, 2); }", "add", 2},
+        call_case{"fn f() { let a = 0; let b = 0; let c = 0; foo(a, b, c); }", "foo", 3}
 ));
 // clang-format on
+
 TEST(parser_test, if_statement) {
-    auto h = pipeline_harness{"void f() { if (true) { return; } }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
+    auto h = pipeline_harness{"fn f() { if true { return; } }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_EQ(func->body_.size(), 1);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-    ASSERT_EQ(block->statements_.size(), 1);
-
-    auto&& ifs = block->statements_[0].get_if<ast::if_stmt>();
-    ASSERT_TRUE(ifs);
-
-    auto&& cond = ifs->condition_.get_if<ast::literal_expr>();
-    ASSERT_TRUE(cond);
+    const auto ifs = must<ast::if_stmt>(func->body_[0]);
+    const auto cond = must<ast::literal_expr>(ifs->condition_);
     EXPECT_TRUE(cond->value_.is_bool());
     EXPECT_EQ(cond->value_.to_bool(), true);
     EXPECT_FALSE(ifs->else_block_);
 }
 
 TEST(parser_test, if_else_statement) {
-    auto h = pipeline_harness{"void f() { if (x) { return 0; } else { return 1; } }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    auto h = pipeline_harness{"fn f() { if true { return 0; } else { return 1; } }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_EQ(func->body_.size(), 1);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& ifs = block->statements_[0].get_if<ast::if_stmt>();
-    ASSERT_TRUE(ifs);
+    const auto ifs = must<ast::if_stmt>(func->body_[0]);
     EXPECT_TRUE(ifs->else_block_);
 }
 
 TEST(parser_test, while_statement) {
-    auto h = pipeline_harness{"void f() { while (x < 10) { x = x + 1; } }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    auto h = pipeline_harness{"fn f() { while true { } }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_EQ(func->body_.size(), 1);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& ws = block->statements_[0].get_if<ast::while_stmt>();
-    ASSERT_TRUE(ws);
+    [[maybe_unused]] const auto ws = must<ast::while_stmt>(func->body_[0]);
 }
 
 TEST(parser_test, for_statement) {
-    auto h = pipeline_harness{"void f() { for (int i = 0; i < 10; i = i + 1) { } }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    auto h = pipeline_harness{"fn f() { for (let i = 0; i < 10; i = i + 1) { } }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    ASSERT_EQ(func->body_.size(), 1);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& fs = block->statements_[0].get_if<ast::for_stmt>();
-    ASSERT_TRUE(fs);
+    const auto fs = must<ast::for_stmt>(func->body_[0]);
     EXPECT_TRUE(fs->initializer_);
     EXPECT_TRUE(fs->condition_);
     EXPECT_TRUE(fs->increment_);
 }
 
 TEST(parser_test, return_void) {
-    auto h = pipeline_harness{"void f() { return; }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    auto h = pipeline_harness{"fn f() { return; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
-
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& ret = block->statements_[0].get_if<ast::return_stmt>();
-    ASSERT_TRUE(ret);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto ret = must<ast::return_stmt>(func->body_[0]);
     EXPECT_FALSE(ret->value_);
 }
 
 TEST(parser_test, return_with_value) {
-    auto h = pipeline_harness{"int f() { return 42; }"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
+    auto h = pipeline_harness{"fn f() { return 42; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
 
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto ret = must<ast::return_stmt>(func->body_[0]);
+    ASSERT_TRUE(ret->value_);
 
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& ret = block->statements_[0].get_if<ast::return_stmt>();
-    ASSERT_TRUE(ret);
-    EXPECT_TRUE(ret->value_);
-
-    auto&& lit = ret->value_->get_if<ast::literal_expr>();
-    ASSERT_TRUE(lit);
-    EXPECT_TRUE(lit->value_.is_int());
+    const auto lit = must<ast::literal_expr>(*ret->value_);
     EXPECT_EQ(lit->value_.to_int(), 42);
+}
+
+TEST(parser_test, struct_two_fields) {
+    auto h = pipeline_harness{"struct Point { x, y }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+    ASSERT_EQ(h.ast().size(), 1);
+
+    const auto decl = must<ast::struct_declaration_stmt>(h.ast()[0]);
+    EXPECT_EQ(decl->type_.name_, "Point");
+    ASSERT_EQ(decl->type_.field_names_.size(), 2);
+    EXPECT_EQ(decl->type_.field_names_[0], "x");
+    EXPECT_EQ(decl->type_.field_names_[1], "y");
+    EXPECT_TRUE(decl->methods_.empty());
+}
+
+TEST(parser_test, struct_with_method) {
+    auto h = pipeline_harness{"struct Counter { value, fn get() { return 0; } }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto decl = must<ast::struct_declaration_stmt>(h.ast()[0]);
+    EXPECT_EQ(decl->type_.name_, "Counter");
+    ASSERT_EQ(decl->type_.field_names_.size(), 1);
+    ASSERT_EQ(decl->methods_.size(), 1);
+    EXPECT_EQ(decl->methods_[0].name_.lexeme_, "get");
+}
+
+TEST(parser_test, member_access) {
+    auto h = pipeline_harness{"fn foo(p) { p.x = 10; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto es = must<ast::expression_stmt>(func->body_[0]);
+    const auto assign = must<ast::assignment_expr>(es->expr_);
+    const auto member = must<ast::member_access_expr>(assign->target_);
+    EXPECT_EQ(member->member_.lexeme_, "x");
+}
+
+TEST(parser_test, nested_member_access) {
+    auto h = pipeline_harness{"fn foo(r) { r.tl.x = 10; }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto es = must<ast::expression_stmt>(func->body_[0]);
+    const auto assign = must<ast::assignment_expr>(es->expr_);
+    const auto outer = must<ast::member_access_expr>(assign->target_);
+    EXPECT_EQ(outer->member_.lexeme_, "x");
+
+    const auto inner = must<ast::member_access_expr>(outer->object_);
+    EXPECT_EQ(inner->member_.lexeme_, "tl");
+}
+
+TEST(parser_test, method_call_no_args) {
+    auto h = pipeline_harness{"fn f(p) { p.inc(); }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto es = must<ast::expression_stmt>(func->body_[0]);
+    const auto mc = must<ast::method_call_expr>(es->expr_);
+    EXPECT_EQ(mc->method_.lexeme_, "inc");
+    EXPECT_TRUE(mc->args_.empty());
+}
+
+TEST(parser_test, method_call_chained) {
+    auto h = pipeline_harness{"fn f(p) { p.inner.method(); }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto es = must<ast::expression_stmt>(func->body_[0]);
+    const auto mc = must<ast::method_call_expr>(es->expr_);
+    EXPECT_EQ(mc->method_.lexeme_, "method");
+
+    const auto inner = must<ast::member_access_expr>(mc->object_);
+    EXPECT_EQ(inner->member_.lexeme_, "inner");
+}
+
+TEST(parser_test, method_call_on_call_result) {
+    auto h = pipeline_harness{"fn f() { make_point().distance(); }"};
+    h.lex();
+    h.parse();
+    ASSERT_FALSE(h.had_error());
+
+    const auto func = must<ast::func_declaration_stmt>(h.ast()[0]);
+    const auto es = must<ast::expression_stmt>(func->body_[0]);
+    const auto mc = must<ast::method_call_expr>(es->expr_);
+    EXPECT_EQ(mc->method_.lexeme_, "distance");
+
+    EXPECT_TRUE(as<ast::call_expr>(mc->object_));
 }
 
 struct syntax_error_case {
@@ -402,13 +439,14 @@ struct syntax_error_case {
     std::string_view description_;
 };
 
-class syntax_error_test : public ::testing::TestWithParam<syntax_error_case> {};
+struct syntax_error_test : ::testing::TestWithParam<syntax_error_case> {};
 
 TEST_P(syntax_error_test, reports_error) {
     auto&& tc = GetParam();
     auto h = pipeline_harness{tc.source_};
     h.lex();
     h.parse();
+    ASSERT_TRUE(h.had_error());
     if (!h.had_error(tc.expected_code_)) h.render_diagnostics();
     EXPECT_TRUE(h.had_error(tc.expected_code_)) << "for: " << tc.description_;
 }
@@ -417,167 +455,23 @@ TEST_P(syntax_error_test, reports_error) {
 INSTANTIATE_TEST_SUITE_P(
         all, syntax_error_test,
         ::testing::Values(
-            syntax_error_case{"int x = ;", err::expected_expression, "missing init expression"},
-            syntax_error_case{"int x", err::expected_semicolon, "missing semicolon"},
-            syntax_error_case{"(1 + 2", err::expected_right_paren, "unclosed paren"},
-            syntax_error_case{"int f( { }", err::expected_type, "missing right paren in func"}
+            syntax_error_case{"let x = ;", err::expected_expression, "missing init expression"},
+            syntax_error_case{"let x", err::expected_equal, "missing '='"},
+            syntax_error_case{"(1 + 2", err::expected_right_paren, "unclosed paren"}
 ));
 // clang-format on
 
 TEST(parser_test, error_recovery) {
-    auto h = pipeline_harness{"int x = ; int y = 42;"};
-    ASSERT_TRUE(h.lex());
+    auto h = pipeline_harness{"let x = ; let y = 42;"};
+    h.lex();
     h.parse();
+    ASSERT_TRUE(h.had_error());
     if (!h.had_error(err::expected_expression)) h.render_diagnostics();
     EXPECT_TRUE(h.had_error(err::expected_expression));
     ASSERT_EQ(h.ast().size(), 1);
 
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
+    const auto decl = must<ast::var_declaration_stmt>(h.ast()[0]);
     EXPECT_EQ(decl->name_.lexeme_, "y");
-}
-
-TEST(parser_test, array_declaration) {
-    auto h = pipeline_harness{"int arr[10];"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    EXPECT_TRUE(decl->type_.is_array());
-    EXPECT_EQ(decl->type_.array_size(), 10);
-    EXPECT_TRUE(decl->type_.element_type().is_int());
-}
-
-TEST(parser_test, array_initializer) {
-    auto h = pipeline_harness{"int arr[] = {1, 2, 3};"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-
-    auto&& decl = h.ast()[0].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    ASSERT_TRUE(decl->initializer_);
-
-    auto&& list = decl->initializer_->get_if<ast::initializer_list_expr>();
-    ASSERT_TRUE(list);
-    EXPECT_EQ(list->elements_.size(), 3);
-}
-
-TEST(parser_test, struct_declaration_empty) {
-    auto h = pipeline_harness{"struct Point { int x; int y; };"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
-
-    auto&& decl = h.ast()[0].get_if<ast::struct_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    auto&& type = decl->type_;
-    EXPECT_EQ(type.struct_name(), "Point");
-    EXPECT_EQ(type.struct_fields().size(), 2);
-    EXPECT_EQ(type.struct_fields()[0].first, "x");
-    EXPECT_EQ(type.struct_fields()[1].first, "y");
-    EXPECT_FALSE(h.had_error());
-}
-
-TEST(parser_test, struct_declaration_nested) {
-    auto h = pipeline_harness{
-        "struct Point { int x; int y; };"
-        "struct Rect { struct Point tl; struct Point br; };"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 2);
-
-    auto&& rect = h.ast()[1].get_if<ast::struct_declaration_stmt>();
-    ASSERT_TRUE(rect);
-    auto&& type = rect->type_;
-    EXPECT_EQ(type.struct_name(), "Rect");
-    EXPECT_EQ(type.struct_fields().size(), 2);
-    EXPECT_FALSE(h.had_error());
-}
-
-TEST(parser_test, struct_variable_declaration) {
-    auto h = pipeline_harness{"struct Point { int x; int y; }; struct Point p;"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 2);
-
-    auto&& decl = h.ast()[1].get_if<ast::var_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    EXPECT_EQ(decl->name_.lexeme_, "p");
-    EXPECT_TRUE(decl->type_.is_struct());
-    EXPECT_EQ(decl->type_.struct_name(), "Point");
-    EXPECT_FALSE(h.had_error());
-}
-
-TEST(parser_test, member_access) {
-    auto h = pipeline_harness{
-        "void foo(struct Point p) {"
-        "  p.x = 10;"
-        "}"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
-
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
-
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-    ASSERT_EQ(block->statements_.size(), 1);
-
-    auto&& es = block->statements_[0].get_if<ast::expression_stmt>();
-    ASSERT_TRUE(es);
-
-    auto&& assign = es->expr_.get_if<ast::assignment_expr>();
-    ASSERT_TRUE(assign);
-
-    auto&& member = assign->target_.get_if<ast::member_access_expr>();
-    ASSERT_TRUE(member);
-    EXPECT_EQ(member->member_.lexeme_, "x");
-    EXPECT_FALSE(h.had_error());
-}
-
-TEST(parser_test, nested_member_access) {
-    auto h = pipeline_harness{
-        "void foo(struct Rect r) {"
-        "  r.tl.x = 10;"
-        "}"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-
-    auto&& func = h.ast()[0].get_if<ast::func_declaration_stmt>();
-    ASSERT_TRUE(func);
-
-    auto&& block = func->block_.get_if<ast::block_stmt>();
-    ASSERT_TRUE(block);
-
-    auto&& es = block->statements_[0].get_if<ast::expression_stmt>();
-    ASSERT_TRUE(es);
-
-    auto&& assign = es->expr_.get_if<ast::assignment_expr>();
-    ASSERT_TRUE(assign);
-
-    auto&& outer = assign->target_.get_if<ast::member_access_expr>();
-    ASSERT_TRUE(outer);
-    EXPECT_EQ(outer->member_.lexeme_, "x");
-
-    auto&& inner = outer->object_.get_if<ast::member_access_expr>();
-    ASSERT_TRUE(inner);
-    EXPECT_EQ(inner->member_.lexeme_, "tl");
-    EXPECT_FALSE(h.had_error());
-}
-
-TEST(parser_test, struct_with_string_field) {
-    auto h = pipeline_harness{"struct Person { string name; int age; };"};
-    ASSERT_TRUE(h.lex());
-    ASSERT_TRUE(h.parse());
-    ASSERT_EQ(h.ast().size(), 1);
-
-    auto&& decl = h.ast()[0].get_if<ast::struct_declaration_stmt>();
-    ASSERT_TRUE(decl);
-    EXPECT_EQ(decl->type_.struct_fields().size(), 2);
-    EXPECT_TRUE(decl->type_.struct_fields()[0].second.is_string());
-    EXPECT_FALSE(h.had_error());
 }
 
 }  // namespace cint::tests

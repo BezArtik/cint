@@ -1,3 +1,4 @@
+// app/application.cpp
 #include "app/application.hpp"
 
 #include "core/error/diagnostic.hpp"
@@ -8,7 +9,6 @@
 #include "lexer/lexer.hpp"
 #include "parser/parser.hpp"
 #include "runtime/interpreter.hpp"
-#include "semantics/type_check.hpp"
 
 #include <CLI/CLI.hpp>
 #include <array>
@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <print>
+#include <ranges>
 #include <string>
 #include <string_view>
 
@@ -29,7 +30,6 @@ struct trace_info {
     debug::trace_level level_;
 };
 
-/// Сопоставление строковых имён уровней трассировки со значениями enum.
 // clang-format off
 constexpr std::array trace_levels = {
     trace_info{"tokens", debug::trace_level::tokens},  
@@ -42,7 +42,45 @@ constexpr std::array trace_levels = {
 
 auto trace_level_of(std::string_view name) {
     const auto it = std::ranges::find(trace_levels, name, &trace_info::name_);
-    return it != trace_levels.end() ? it->level_ : debug::trace_level::none;
+    return it->level_;
+}
+
+int run_pipeline(std::string_view source, debug::debug_writer& writer) {
+    auto arena = core::arena{};
+    auto sink = core::diagnostic_sink{};
+    auto renderer = core::diagnostic_renderer{source};
+
+    auto lex = lexer{source, sink, arena};
+    const auto tokens = lex.scan_tokens();
+    writer.print_tokens(tokens);
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
+        return EXIT_FAILURE;
+    }
+
+    auto pr = parser{tokens, sink, arena};
+    const auto ast = pr.parse();
+    writer.print_ast(ast);
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
+        return EXIT_FAILURE;
+    }
+
+    const auto registry = core::symbol_registry(ast, sink);
+    if (sink.has_errors()) {
+        renderer.render(sink.begin(), sink.end());
+        return EXIT_FAILURE;
+    }
+
+    try {
+        const auto interp = interpreter{ast, registry, writer};
+    } catch (const runtime_error& e) {
+        const auto d = core::diagnostic{e.code_, e.loc_, e.message_};
+        const auto single_error = std::views::single(d);
+        renderer.render(single_error.begin(), single_error.end());
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
 
 }  // namespace
@@ -81,7 +119,7 @@ int application::run(int argc, char** argv) {
         const auto finish = std::chrono::steady_clock::now();
 
         const auto elapsed = std::chrono::duration<double>{finish - start};
-        std::print("\nProgram execution time ({})\n", elapsed);
+        std::print(std::cerr, "\nProgram execution time ({})\n", elapsed);
 
         if (exit_code == EXIT_SUCCESS) std::println("Program finished successfully.");
         return exit_code;
@@ -90,48 +128,6 @@ int application::run(int argc, char** argv) {
         std::println(std::cerr, "Fatal error: {}", e.what());
         return EXIT_FAILURE;
     }
-}
-
-int application::run_pipeline(std::string_view source, debug::debug_writer& writer) {
-    auto arena = core::arena{};
-    auto sink = core::diagnostic_sink{};
-    auto renderer = core::diagnostic_renderer{source};
-
-    auto lex = lexer{source, sink, arena};
-    const auto tokens = lex.scan_tokens();
-    writer.print_tokens(tokens);
-    if (sink.has_errors()) {
-        renderer.render(sink.begin(), sink.end());
-        std::println(std::cerr, "Lexical errors found.");
-        return EXIT_FAILURE;
-    }
-
-    auto pr = parser{tokens, sink, arena};
-    const auto ast = pr.parse();
-    writer.print_ast(ast);
-    if (sink.has_errors()) {
-        renderer.render(sink.begin(), sink.end());
-        std::println(std::cerr, "Syntax errors found.");
-        return EXIT_FAILURE;
-    }
-
-    const auto registry = core::symbol_registry::build(ast, sink);
-    auto checker = type_checker{sink, registry};
-    if (!checker.check(ast)) {
-        renderer.render(sink.begin(), sink.end());
-        std::println(std::cerr, "Semantic errors found.");
-        return EXIT_FAILURE;
-    }
-
-    auto interp = interpreter{sink, registry, writer};
-    interp.interpret(ast);
-
-    if (sink.has_errors()) {
-        renderer.render(sink.begin(), sink.end());
-        std::println(std::cerr, "Runtime errors found.");
-        return EXIT_FAILURE;
-    }
-    return EXIT_SUCCESS;
 }
 
 }  // namespace cint::app

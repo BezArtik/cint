@@ -1,12 +1,4 @@
-/**
- * @file include/lexer/lexer.hpp
- * @brief Лексический анализатор — первый этап конвейера обработки исходного кода.
- * @ingroup Lexer
- *
- * @defgroup Lexer Лексический анализ
- * @brief Преобразование исходного текста в последовательность токенов.
- */
-
+// lexer/lexer.hpp
 #pragma once
 #include "core/error/diagnostic.hpp"
 #include "core/memory/arena.hpp"
@@ -17,144 +9,36 @@
 
 namespace cint {
 
-/**
- * @brief Лексический анализатор, выполняющий обработку
- * входной строки исходного кода.
- */
-class [[nodiscard]] lexer {
+class lexer {
 public:
-    /**
-     * @brief Тип контейнера для хранения токенов.
-     */
     using token_list = core::arena_vector<core::token>;
 
-    /**
-     * @brief Конструктор лексического анализатора.
-     *
-     * @param source   Исходный код программы
-     * @param sink     Сборщик ошибок
-     * @param arena    Arena для размещения токенов
-     *
-     * @note Лексер не копирует исходную строку, а хранит на неё
-     *       string_view. Вызывающий код должен гарантировать,
-     *       что строка существует всё время сканирования.
-     */
     lexer(std::string_view source, core::diagnostic_sink& sink, core::arena& arena)
         : source_{source}, sink_{sink}, arena_{arena}, tokens_{arena_} {}
-    /**
-     * @brief Выполняет полный проход по исходному тексту.
-     *
-     * Это основная точка входа в лексический анализатор.
-     * Выполняет однопроходное сканирование и возвращает готовый
-     * список токенов.
-     *
-     * @return Список токенов, завершающийся токеном END_OF_FILE.
-     *         При фатальных ошибках возвращает частичный список.
-     *
-     */
-    token_list scan_tokens();
+
+    [[nodiscard]] token_list scan_tokens();
 
 private:
-    /**
-     * @brief Проверяет, достигнут ли конец исходного текста.
-     * @return true, если все символы обработаны.
-     */
     bool is_at_end() const noexcept;
-
-    /**
-     * @brief Считывает текущий символ и продвигает позицию.
-     *
-     * Обновляет счётчик колонки. При переходе на новую строку
-     * вызывающий код должен обновить line_ вручную.
-     *
-     * @return Считанный символ.
-     */
     char advance() noexcept;
-
-    /**
-     * @brief Возвращает текущий символ без продвижения.
-     * @return Текущий символ или '\\0', если достигнут конец.
-     */
     char peek() const noexcept;
-
-    /**
-     * @brief Возвращает следующий символ без продвижения.
-     *
-     * Используется для просмотра вперёд (например, при обработке '//').
-     *
-     * @return Следующий символ или '\\0', если он за границей текста.
-     */
     char peek_next() const noexcept;
-
-    /**
-     * @brief Проверяет и потребляет ожидаемый символ.
-     *
-     * Если текущий символ совпадает с ожидаемым, продвигает позицию.
-     * Используется для разбора составных операторов (>=, <=, !=, +=).
-     *
-     * @param expected Ожидаемый символ
-     * @return true, если символ совпал и был потреблён.
-     */
     bool match(char expected) noexcept;
-
-    /**
-     * @brief Сканирует следующую лексему и добавляет токен в список.
-     *
-     * Диспетчеризует вызовы к специализированным методам в зависимости
-     * от первого символа лексемы:
-     * - Буква / '_'  → consume_identifier_or_keyword()
-     * - Цифра        → consume_number()
-     * - '"'          → consume_string()
-     * - Операторы    → обрабатываются на месте
-     * - Пробелы      → пропускаются
-     */
     void scan_token();
+    void add_token(core::token_type type);
+    void consume_string();
+    void consume_number();
+    void consume_identifier_or_keyword();
 
-    /**
-     * @brief Добавляет токен с указанной позицией.
-     * @param type Тип токена.
-     * @param loc  Позиция в исходном коде.
-     */
-    void add_token(core::token_type type, core::location loc);
+    std::string_view source_;
+    core::diagnostic_sink& sink_;
+    core::arena& arena_;
+    token_list tokens_;
 
-    /**
-     * @brief Обрабатывает строковый литерал.
-     *
-     * Считывает символы от открывающей до закрывающей кавычки,
-     * обрабатывает escape-последовательности.
-     * При обнаружении незакрытой строки сообщает об ошибке.
-     *
-     * @param start_loc Позиция открывающей кавычки.
-     */
-    void consume_string(core::location start_loc);
-
-    /**
-     * @brief Обрабатывает числовой литерал (целый или с плавающей точкой).
-     *
-     * Поддерживает целые числа (42) и числа с плавающей точкой (3.14).
-     *
-     * @param start_loc Позиция начала числа.
-     */
-    void consume_number(core::location start_loc);
-
-    /**
-     * @brief Обрабатывает идентификатор или ключевое слово.
-     *
-     * Считывает последовательность букв/цифр/_, затем проверяет
-     * по таблице ключевых слов. Создаёт токен соответствующего типа.
-     *
-     * @param start_loc Позиция начала идентификатора.
-     */
-    void consume_identifier_or_keyword(core::location start_loc);
-
-    std::string_view source_;      ///< Исходный код программы
-    core::diagnostic_sink& sink_;  ///< Сборщик ошибок
-    core::arena& arena_;           ///< Arena для токенов
-    token_list tokens_;            ///< Результирующий список токенов
-
-    std::uint32_t start_{};     ///< Начало текущей лексемы
-    std::uint32_t current_{};   ///< Текущая позиция в тексте
-    core::location loc_{1, 1};  ///< Текущая позиция (строка:колонка)};
+    std::uint32_t start_{};
+    std::uint32_t current_{};
+    core::location loc_{1, 1};
+    core::location start_loc_{1, 1};
 };
 
 }  // namespace cint

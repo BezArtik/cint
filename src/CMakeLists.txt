@@ -6,14 +6,12 @@ target_compile_features(interpreter-lib PUBLIC cxx_std_23)
 target_sources(interpreter-lib PRIVATE
     lexer/lexer.cpp
     parser/parser.cpp
+    parser/slot_allocator.cpp
     core/error/diagnostic_renderer.cpp
     core/builtins/builtins.cpp
     core/symbol/symbol_registry.cpp
     core/memory/arena.cpp
-    core/type/type.cpp
     core/value/value.cpp
-    core/value/operations.cpp
-    semantics/type_check.cpp
     runtime/interpreter.cpp
     debug/debug_writer.cpp
     app/application.cpp

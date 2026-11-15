@@ -1,50 +1,36 @@
-/**
- * @file include/core/token/token.hpp
- * @brief Структуры токена и позиции в исходном коде.
- * @ingroup Core
- *
- * @defgroup CoreToken Токены
- * @brief Представление лексем — минимальных единиц исходного кода.
- */
-
+// core/token/token.hpp
 #pragma once
 
 #include "core/token/token_types.hpp"
 
 #include <cstdint>
+#include <format>
 #include <string_view>
 
 namespace cint::core {
 
-/**
- * @brief Позиция в исходном коде (строка и колонка).
- * @ingroup CoreToken
- *
- * Нумерация строк и колонок начинается с 1.
- * Используется для сообщений об ошибках и отладки.
- */
 struct location {
-    std::uint32_t line_;    ///< Номер строки (начиная с 1)
-    std::uint32_t column_;  ///< Номер колонки (начиная с 1)
+    std::uint32_t line_;
+    std::uint32_t column_;
 };
 
-/**
- * @brief Токен — минимальная значимая единица исходного кода.
- * @ingroup CoreToken
- *
- * Формируется лексером на этапе лексического анализа.
- * Каждый токен содержит:
- * - **Тип** — классификация лексемы (число, оператор, ключевое слово, ...)
- * - **Лексему** — исходный текст (string_view в исходную строку)
- * - **Позицию** — местоположение в исходном коде
- *
- * @note Лексема (lexeme_) ссылается на исходную строку программы —
- *       время жизни токена ограничено временем жизни исходного кода.
- */
 struct token {
-    token_type type_;          ///< Тип токена
-    std::string_view lexeme_;  ///< Исходный текст лексемы
-    location loc_;             ///< Позиция в исходном коде
+    token_type type_;
+    std::string_view lexeme_;
+    location loc_;
 };
 
 }  // namespace cint::core
+
+namespace std {
+
+template <>
+struct formatter<cint::core::location> {
+    constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
+
+    auto format(const cint::core::location loc, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), " [line {}:{}]", loc.line_, loc.column_);
+    }
+};
+
+}  // namespace std

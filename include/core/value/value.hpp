@@ -1,192 +1,95 @@
-/**
- * @file include/core/value/value.hpp
- * @brief Универсальный тип значения времени выполнения.
- * @ingroup Core
- *
- * @defgroup CoreValue Система значений
- * @brief Типы данных и операции времени выполнения интерпретатора.
- */
-
+// core/value/value.hpp
 #pragma once
 #include "core/error/error_codes.hpp"
-#include "core/type/type.hpp"
+#include "core/type/struct_type.hpp"
 #include "core/utils/variant.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 
 namespace cint::core {
 
-/**
- * @brief Исключение: ошибка операции над значением.
- *
- * Выбрасывается операциями системы значений
- * при невозможности выполнить операцию: деление на ноль, неверное
- * преобразование типа и т.д.
- *
- * Не зависит от интерпретатора — может возникнуть на любом этапе,
- * где вычисляются значения.
- */
 struct value_error : std::exception {
     error_code code_;
 
     value_error(error_code c) noexcept : code_{c} {}
-    const char* what() const noexcept override { return "Value error"; }
+    [[nodiscard]] const char* what() const noexcept override { return "Value error"; }
 };
 
-/**
- * @brief Универсальное значение времени выполнения.
- * @ingroup CoreValue
- *
- * Представляет любое значение, с которым работает интерпретатор:
- * числа, строки, булевы значения, массивы, структуры, void.
- *
- * Реализовано как **type-erased обёртка** над std::variant.
- *
- * @invariant Значение всегда содержит один из допустимых альтернативных типов.
- *            Конструктор по умолчанию создаёт void-значение (monostate).
- *
- */
-class [[nodiscard]] value {
-    /// @cond INTERNAL
-    struct struct_data;
-    /// @endcond
-
+class value {
 public:
-    using int_t = int64_t;               ///< Целочисленный тип (64 бита)
-    using double_t = double;             ///< Тип с плавающей точкой
-    using bool_t = bool;                 ///< Булев тип
-    using string_t = std::string;        ///< Строка (пользовательский тип)
-    using array_t = std::vector<value>;  ///< Массив значений (пользовательский тип)
-    using struct_t = struct_data;        ///< Структура (значение + тип)
+    using int_t = std::int64_t;
+    using double_t = double;
+    using bool_t = bool;
+    using string_t = std::string;
+    struct struct_t {
+        const core::struct_type* type_;
+        std::vector<value> fields_;
+    };
 
-    /// Создает void-значение
-    value() : data_{std::monostate{}} {}
-
-    /// Создают примитивные типы.
+    value() = default;
     value(int_t v) : data_{std::move(v)} {}
     value(double_t v) : data_{std::move(v)} {}
     value(bool_t v) : data_{std::move(v)} {}
+    value(string_t v) : data_{std::move(v)} {}
+    value(struct_t v) : data_{std::make_shared<struct_t>(std::move(v))} {}
 
-    /// Создаёт строковое значение.
-    value(string_t v) : data_{std::make_shared<string_t>(std::move(v))} {}
+    [[nodiscard]] static value from_string(std::string_view text, bool is_double);
 
-    /// Создаёт массив.
-    value(array_t v) : data_{std::make_shared<array_t>(std::move(v))} {}
+    [[nodiscard]] int_t to_int() const;
+    [[nodiscard]] double_t to_double() const;
+    [[nodiscard]] bool_t to_bool() const;
+    [[nodiscard]] string_t to_string() const;
+    [[nodiscard]] const struct_t& to_struct() const;
+    [[nodiscard]] struct_t& to_struct();
 
-    /// Создает структуру
-    value(struct_t v) : data_{std::move(v)} {}
+    [[nodiscard]] bool is_int() const noexcept;
+    [[nodiscard]] bool is_double() const noexcept;
+    [[nodiscard]] bool is_bool() const noexcept;
+    [[nodiscard]] bool is_string() const noexcept;
+    [[nodiscard]] bool is_list() const noexcept;
+    [[nodiscard]] bool is_struct() const noexcept;
+    [[nodiscard]] bool is_void() const noexcept;
 
-    /**
-     * @brief Возвращает значение по умолчанию для указанного типа.
-     *
-     * - Числа: 0
-     * - bool: false
-     * - Строка: ""
-     * - Массив: массив заданного размера с default-элементами
-     * - Структура: структура с default-полями
-     * - Void: monostate
-     *
-     * @param t Тип, для которого нужно значение по умолчанию.
-     * @return Инициализированное значение.
-     */
-    static value default_value(const core::type& t);
+    void make_unique_struct();
 
-    /**
-     * @brief Парсит строковое представление числа.
-     *
-     *
-     * @param text      Строковое представление числа
-     * @param is_double true — парсить как double, false — как int
-     * @return Распарсенное значение.
-     * @throws core::value_error, если строка не является числом.
-     */
-    static value from_string(std::string_view text, bool is_double);
+    friend bool operator==(const value& a, const value& b) noexcept;
+    friend bool operator!=(const value& a, const value& b) noexcept;
+    friend bool operator<(const value& a, const value& b);
+    friend bool operator<=(const value& a, const value& b);
+    friend bool operator>(const value& a, const value& b);
+    friend bool operator>=(const value& a, const value& b);
 
-    /// @name Преобразования к примитивным типам
-    /// @{
+    friend value operator+(const value& a, const value& b);
+    friend value operator-(const value& a, const value& b);
+    friend value operator*(const value& a, const value& b);
+    friend value operator/(const value& a, const value& b);
+    friend value operator%(const value& a, const value& b);
 
-    /**
-     * @brief Преобразует значение к value::int_t.
-     * @throws core::value_error, если преобразование невозможно.
-     */
-    int_t to_int() const;
+    friend value operator-(const value& a);
+    friend value operator~(const value& a);
+    friend bool operator!(const value& a) noexcept;
 
-    /**
-     * @brief Преобразует значение к value::double_t.
-     * @throws core::value_error, если преобразование невозможно.
-     */
-    double_t to_double() const;
+    friend value operator&(const value& a, const value& b);
+    friend value operator|(const value& a, const value& b);
+    friend value operator^(const value& a, const value& b);
+    friend value operator<<(const value& a, const value& b);
+    friend value operator>>(const value& a, const value& b);
 
-    /**
-     * @brief Преобразует значение к value::bool_t.
-     * @throws core::value_error, если преобразование невозможно.
-     */
-    bool_t to_bool() const;
-
-    /**
-     * @brief Преобразует значение к value::string_t.
-     * @throws core::value_error, если преобразование невозможно.
-     */
-    string_t to_string() const;
-
-    /// @}
-
-    /// @name Доступ к составным типам
-    /// @{
-
-    /**
-     * @brief Получить ссылку на массив.
-     *
-     * @return Ссылка на вектор значений.
-     * @throws core::value_error, если значение не является массивом.
-     */
-    const array_t& to_array() const;
-    array_t& to_array();
-
-    /**
-     * @brief Получить ссылку на структуру.
-     *
-     * @return Ссылка на данные структуры.
-     * @throws core::value_error, если значение не является структурой.
-     */
-    const struct_t& to_struct() const;
-    struct_t& to_struct();
-
-    /// @}
-
-    /// @name Проверка на существование значения.
-    /// @{
-
-    bool is_int() const noexcept;
-    bool is_double() const noexcept;
-    bool is_bool() const noexcept;
-    bool is_string() const noexcept;
-    bool is_array() const noexcept;
-    bool is_struct() const noexcept;
-    bool is_void() const noexcept;
-
-    /// @}
+    value& operator++();
+    value& operator--();
+    value operator++(int);
+    value operator--(int);
 
 private:
-    /**
-     * @brief Данные структурного типа.
-     *
-     * Хранит тип структуры (для доступа к полям по имени) и вектор значений полей.
-     */
-    struct struct_data {
-        core::type type_;            ///< Тип структуры (с информацией о полях)
-        std::vector<value> fields_;  ///< Значения полей (в порядке объявления)
-    };
+    using struct_impl = std::shared_ptr<struct_t>;
 
-    using string_impl = std::shared_ptr<string_t>;
-    using array_impl = std::shared_ptr<array_t>;
-
-    core::variant<std::monostate, int_t, double_t, bool_t, string_impl, array_impl, struct_t> data_;
+    core::variant<std::monostate, int_t, double_t, bool_t, string_t, struct_impl> data_;
 };
 
 }  // namespace cint::core
