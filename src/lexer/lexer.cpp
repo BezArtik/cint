@@ -58,7 +58,7 @@ lexer::token_list lexer::scan_tokens() {
         scan_token();
     }
 
-    tokens_.emplace_back(tt::END_OF_FILE, "", loc_);
+    tokens_.emplace_back(tt::END_OF_FILE, "EOF", loc_);
     return tokens_;
 }
 

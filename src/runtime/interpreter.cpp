@@ -56,14 +56,14 @@ interpreter::interpreter(std::span<const ast::statement> statements, const core:
       exec_enabled_debug_{writer.enabled(debug::trace_level::execution)},
       ret_enabled_debug_{writer.enabled(debug::trace_level::returns)} {
     for (auto&& stmt : statements) {
-        if (!stmt.holds<core::arena_ptr<ast::func_declaration_stmt>>()) execute(stmt);
+        if (!std::holds_alternative<core::arena_ptr<ast::func_declaration_stmt>>(stmt)) execute(stmt);
     }
 }
 
 interpreter::execution_result interpreter::execute(const ast::statement& stmt) {
     if (exec_enabled_debug_) [[unlikely]]
         writer_.print(stmt);
-    return stmt.visit([&](const auto& s) { return execute(*s); });
+    return std::visit([&](const auto& s) { return execute(*s); }, stmt);
 }
 
 interpreter::execution_result interpreter::execute(const ast::expression_stmt& stmt) {
@@ -137,14 +137,15 @@ interpreter::execution_result interpreter::execute(const ast::return_stmt& stmt)
 
 // clang-format off
 bool interpreter::is_lvalue(const ast::expression& e) {
-    return e.visit(core::overloaded{
+    return std::visit(core::overloaded{
         [](const core::arena_ptr<ast::variable_expr>&) { return true; },
         [&](const core::arena_ptr<ast::member_access_expr>& m) { return is_lvalue(m->object_); },
-        [](const auto&) { return false; }});
+        [](const auto&) { return false; }
+    }, e);
 }
 
 core::value& interpreter::evaluate_lvalue(const ast::expression& expr, core::location loc, bool for_write) {
-    return expr.visit(core::overloaded{
+    return std::visit(core::overloaded{
         [&](const core::arena_ptr<ast::variable_expr>& e) -> core::value& {
              if (e->name_.lexeme_ == "this") {
                  if (this_idx_ == MAX_THIS_IDX) [[unlikely]]
@@ -165,16 +166,16 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr, core::loc
              return st.fields_[*idx];
          },
          [&](const auto&) -> core::value& { raise_error(loc, err::not_an_lvalue); }
-    });
+    }, expr);
 }
 
 core::value interpreter::evaluate(const ast::expression& expr) {
-    return expr.visit(core::overloaded{
-        [&](const core::arena_ptr<ast::literal_expr>& e) -> core::value { return e->value_; },
-        [&](const core::arena_ptr<ast::variable_expr>& e) -> core::value {
+    return std::visit(core::overloaded{
+        [&](const core::arena_ptr<ast::literal_expr>& e) { return e->value_; },
+        [&](const core::arena_ptr<ast::variable_expr>& e) {
             return evaluate_lvalue(expr, e->name_.loc_, false);
         },
-        [&](const core::arena_ptr<ast::member_access_expr>& e) -> core::value {
+        [&](const core::arena_ptr<ast::member_access_expr>& e) {
             if (is_lvalue(e->object_)) return evaluate_lvalue(expr, e->member_.loc_, false);
             auto&& obj = evaluate(e->object_);
             if (!obj.is_struct()) [[unlikely]]
@@ -185,13 +186,13 @@ core::value interpreter::evaluate(const ast::expression& expr) {
                 raise_error(e->member_.loc_, err::no_such_field, st.type_->name_, e->member_.lexeme_);
             return st.fields_[*idx];
         },
-        [&](const core::arena_ptr<ast::binary_expr>& e) -> core::value { return evaluate(*e); },
-        [&](const core::arena_ptr<ast::assignment_expr>& e) -> core::value { return evaluate(*e); },
-        [&](const core::arena_ptr<ast::unary_expr>& e) -> core::value { return evaluate(*e); },
-        [&](const core::arena_ptr<ast::postfix_expr>& e) -> core::value { return evaluate(*e); },
-        [&](const core::arena_ptr<ast::call_expr>& e) -> core::value { return evaluate(*e); },
-        [&](const core::arena_ptr<ast::method_call_expr>& e) -> core::value { return evaluate(*e); },
-    });
+        [&](const core::arena_ptr<ast::binary_expr>& e) { return evaluate(*e); },
+        [&](const core::arena_ptr<ast::assignment_expr>& e) { return evaluate(*e); },
+        [&](const core::arena_ptr<ast::unary_expr>& e) { return evaluate(*e); },
+        [&](const core::arena_ptr<ast::postfix_expr>& e) { return evaluate(*e); },
+        [&](const core::arena_ptr<ast::call_expr>& e) { return evaluate(*e); },
+        [&](const core::arena_ptr<ast::method_call_expr>& e) { return evaluate(*e); },
+    }, expr);
 }
 
 core::value interpreter::evaluate(const ast::binary_expr& expr) {
@@ -259,8 +260,16 @@ core::value interpreter::evaluate(const ast::unary_expr& expr) {
     const auto [type, op, loc] = expr.op_;
     try {
         switch (type) {
-            case tt::INCREMENT: { auto&& t = evaluate_lvalue(expr.operand_, loc, true); ++t; return t; }
-            case tt::DECREMENT: { auto&& t = evaluate_lvalue(expr.operand_, loc, true); --t; return t; }
+            case tt::INCREMENT: { 
+                auto&& t = evaluate_lvalue(expr.operand_, loc, true); 
+                t.is_int() ? t = t + core::value::int_t{1} : t = t + core::value::double_t{1};
+                return t;
+            }
+            case tt::DECREMENT: { 
+                auto&& t = evaluate_lvalue(expr.operand_, loc, true); 
+                t.is_int() ? t = t - core::value::int_t{1} : t = t - core::value::double_t{1};
+                return t; 
+            }
             default: break;
         }
 
@@ -279,8 +288,22 @@ core::value interpreter::evaluate(const ast::unary_expr& expr) {
 core::value interpreter::evaluate(const ast::postfix_expr& expr) {
     const auto [type, op, loc] = expr.op_;
     try {
-        auto&& t = evaluate_lvalue(expr.operand_, loc, true);
-        return type == tt::INCREMENT ? t++ : t--;
+        switch (type) {
+            case tt::INCREMENT: {
+                auto&& t = evaluate_lvalue(expr.operand_, loc, true);
+                const auto tmp = t;
+                t.is_int() ? t = t + core::value::int_t{1} : t = t + core::value::double_t{1};
+                return tmp;
+            }
+            case tt::DECREMENT: {
+                auto&& t = evaluate_lvalue(expr.operand_, loc, true);
+                const auto tmp = t;
+                t.is_int() ? t = t - core::value::int_t{1} : t = t - core::value::double_t{1};
+                return tmp;
+            }
+            default:
+                raise_error(loc, err::unsupported_postfix_operator);
+        }
     } catch (const core::value_error& e) { raise_error(loc, e.code_, op); }
 }
 
@@ -306,7 +329,7 @@ core::value interpreter::evaluate(const ast::call_expr& expr) {
     std::ranges::transform(expr.args_, std::back_inserter(args), [&](auto&& a) { return evaluate(a); });
 
     try {
-        return func->info_.visit([&](const auto& ptr) { return call(ptr, args); });
+        return std::visit([&](const auto& ptr) { return call(ptr, args); }, func->info_);
     } catch (const core::value_error& e) { raise_error(loc, e.code_, name); }
 }
 
@@ -315,36 +338,33 @@ core::value interpreter::evaluate(const ast::method_call_expr& expr) {
 
     if (is_lvalue(expr.object_)) {
         auto&& recv = evaluate_lvalue(expr.object_, loc, true);
+        if (!recv.is_struct()) raise_error(loc, err::not_a_struct);
 
-        if (recv.is_struct()) {
-            recv.make_unique_struct();
-            auto&& st = recv.to_struct();
-            const auto struct_it = registry_.find(st.type_->name_);
-            const auto st_ast = struct_it->info_.get<core::symbol_registry::struct_ptr>();
-            const auto method_it = std::ranges::find(st_ast->methods_, name, [](auto&& m) { return m.name_.lexeme_; });
-            if (method_it == st_ast->methods_.end()) [[unlikely]]
-                raise_error(loc, err::no_such_method, st.type_->name_, name);
+        recv.make_unique_struct();
+        auto&& st = recv.to_struct();
+        const auto struct_it = registry_.find(st.type_->name_);
+        const auto st_ast = std::get<core::symbol_registry::struct_ptr>(struct_it->info_);
+        const auto method_it = std::ranges::find(st_ast->methods_, name, [](auto&& m) { return m.name_.lexeme_; });
+        if (method_it == st_ast->methods_.end()) [[unlikely]]
+            raise_error(loc, err::no_such_method, st.type_->name_, name);
 
-            auto args_buf = std::array<std::byte, 512>{};
-            auto args_mr = std::pmr::monotonic_buffer_resource{args_buf.data(), args_buf.size()};
-            auto args = std::pmr::vector<core::value>(&args_mr);
-            args.reserve(expr.args_.size());
-            std::ranges::transform(expr.args_, std::back_inserter(args), [&](auto&& a) { return evaluate(a); });
+        auto args_buf = std::array<std::byte, 512>{};
+        auto args_mr = std::pmr::monotonic_buffer_resource{args_buf.data(), args_buf.size()};
+        auto args = std::pmr::vector<core::value>(&args_mr);
+        args.reserve(expr.args_.size());
+        std::ranges::transform(expr.args_, std::back_inserter(args), [&](auto&& a) { return evaluate(a); });
 
-            const auto recv_idx = static_cast<std::size_t>(&recv - slots_.data());
+        const auto recv_idx = static_cast<std::size_t>(&recv - slots_.data());
 
-            const auto saved_this = this_idx_;
-            struct this_guard {
-                std::size_t& r;
-                std::size_t p;
-                ~this_guard() { r = p; }
-            } g{this_idx_, saved_this};
-            this_idx_ = recv_idx;
+        const auto saved_this = this_idx_;
+        struct this_guard {
+            std::size_t& r;
+            std::size_t p;
+            ~this_guard() { r = p; }
+        } g{this_idx_, saved_this};
+        this_idx_ = recv_idx;
 
-            return call(&*method_it, args);
-        }
-
-        raise_error(loc, err::not_a_struct);
+        return call(&*method_it, args);
     }
 
     raise_error(loc, err::not_a_struct);

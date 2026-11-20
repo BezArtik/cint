@@ -19,7 +19,7 @@ symbol_registry::symbol_registry(std::span<const ast::statement> ast, diagnostic
 }
 // clang-format off
 void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink) {
-    stmt.visit(overloaded{
+    std::visit(overloaded{
         [&](const core::arena_ptr<ast::func_declaration_stmt>& func) {
             auto name = func->name_.lexeme_;
             if (std::ranges::find(entries_, name, &entry::name_) != entries_.end()) {
@@ -37,7 +37,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink&
             entries_.emplace_back(name, strct.get());
         },
         [](const auto&) {}
-    });
+    }, stmt);
 }
 // clang-format on
 

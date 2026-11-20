@@ -16,34 +16,37 @@ struct builtin_def {
     builtin_fn impl_;
 };
 
+#define BUILTINS(X)        \
+    X(print, print)        \
+    X(input, input)        \
+    X(sqrt, sqrt)          \
+    X(sin, sin)            \
+    X(exp, exp)            \
+    X(rand_int, rand_int)  \
+    X(rand_dbl, rand_dbl)  \
+    X(srand, srand)        \
+    X(abs, abs)            \
+    X(gcd, gcd)            \
+    X(int, int_cast)       \
+    X(double, double_cast) \
+    X(str, str_cast)
+
 namespace detail {
 
-value print(std::span<const value> args);
-value input(std::span<const value> args);
-value sqrt(std::span<const value> args);
-value sin(std::span<const value> args);
-value exp(std::span<const value> args);
-value rand_int(std::span<const value> args);
-value rand_dbl(std::span<const value> args);
-value srand(std::span<const value> args);
-value abs(std::span<const value> args);
-value gcd(std::span<const value> args);
+#define DECLARE_BUILTIN(lang_name, fn_name) value fn_name(std::span<const value> args);
+
+BUILTINS(DECLARE_BUILTIN)
+#undef DECLARE_BUILTIN
 
 }  // namespace detail
 
-// clang-format off
 inline constexpr std::array builtins = {
-    builtin_def{"print", detail::print},       
-    builtin_def{"input", detail::input},
-    builtin_def{"sqrt", detail::sqrt},         
-    builtin_def{"sin", detail::sin},
-    builtin_def{"exp", detail::exp},                  
-    builtin_def{"rand_int", detail::rand_int},
-    builtin_def{"rand_dbl", detail::rand_dbl}, 
-    builtin_def{"srand", detail::srand},
-    builtin_def{"abs", detail::abs},
-    builtin_def{"gcd", detail::gcd}
+#define ENTRY_BUILTIN(lang_name, fn_name) builtin_def{#lang_name, detail::fn_name},
+
+    BUILTINS(ENTRY_BUILTIN)
+#undef ENTRY_BUILTIN
 };
-// clang-format on
+
+#undef BUILTINS
 
 }  // namespace cint::core

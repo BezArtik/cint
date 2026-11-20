@@ -166,36 +166,4 @@ TEST(value_test, bit_ops) {
     EXPECT_EQ((v{v::int_t{8}} >> v{v::int_t{3}}).to_int(), 1);
 }
 
-TEST(value_test, prefix_inc) {
-    auto x = v{v::int_t{5}};
-    auto& r = ++x;
-    EXPECT_EQ(x.to_int(), 6);
-    EXPECT_EQ(r.to_int(), 6);
-}
-
-TEST(value_test, postfix_inc) {
-    auto x = v{v::int_t{5}};
-    auto old = x++;
-    EXPECT_EQ(x.to_int(), 6);
-    EXPECT_EQ(old.to_int(), 5);
-}
-
-TEST(value_test, inc_struct_throws) {
-    auto st = core::struct_type{"P", {"x"}};
-    auto s = v{v::struct_t{&st, {v{v::int_t{1}}}}};
-    EXPECT_THROW(++s, core::value_error);
-}
-
-TEST(value_test, from_string_int) {
-    EXPECT_EQ(v::from_string("42", false).to_int(), 42);
-}
-
-TEST(value_test, from_string_double) {
-    EXPECT_DOUBLE_EQ(v::from_string("3.14", true).to_double(), 3.14);
-}
-
-TEST(value_test, from_string_invalid) {
-    EXPECT_THROW(std::ignore = v::from_string("abc", false), core::value_error);
-}
-
 }  // namespace cint::tests

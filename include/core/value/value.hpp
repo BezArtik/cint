@@ -1,13 +1,12 @@
 // core/value/value.hpp
+
 #pragma once
 #include "core/error/error_codes.hpp"
 #include "core/type/struct_type.hpp"
-#include "core/utils/variant.hpp"
 
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -28,7 +27,7 @@ public:
     using bool_t = bool;
     using string_t = std::string;
     struct struct_t {
-        const core::struct_type* type_;
+        const struct_type* type_;
         std::vector<value> fields_;
     };
 
@@ -38,8 +37,6 @@ public:
     value(bool_t v) : data_{std::move(v)} {}
     value(string_t v) : data_{std::move(v)} {}
     value(struct_t v) : data_{std::make_shared<struct_t>(std::move(v))} {}
-
-    [[nodiscard]] static value from_string(std::string_view text, bool is_double);
 
     [[nodiscard]] int_t to_int() const;
     [[nodiscard]] double_t to_double() const;
@@ -52,7 +49,6 @@ public:
     [[nodiscard]] bool is_double() const noexcept;
     [[nodiscard]] bool is_bool() const noexcept;
     [[nodiscard]] bool is_string() const noexcept;
-    [[nodiscard]] bool is_list() const noexcept;
     [[nodiscard]] bool is_struct() const noexcept;
     [[nodiscard]] bool is_void() const noexcept;
 
@@ -81,15 +77,11 @@ public:
     friend value operator<<(const value& a, const value& b);
     friend value operator>>(const value& a, const value& b);
 
-    value& operator++();
-    value& operator--();
-    value operator++(int);
-    value operator--(int);
-
 private:
     using struct_impl = std::shared_ptr<struct_t>;
+    using void_t = std::monostate;
 
-    core::variant<std::monostate, int_t, double_t, bool_t, string_t, struct_impl> data_;
+    std::variant<void_t, int_t, double_t, bool_t, string_t, struct_impl> data_;
 };
 
 }  // namespace cint::core

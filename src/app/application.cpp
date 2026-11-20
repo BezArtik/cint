@@ -66,7 +66,7 @@ int run_pipeline(std::string_view source, debug::debug_writer& writer) {
         return EXIT_FAILURE;
     }
 
-    const auto registry = core::symbol_registry(ast, sink);
+    const auto registry = core::symbol_registry{ast, sink};
     if (sink.has_errors()) {
         renderer.render(sink.begin(), sink.end());
         return EXIT_FAILURE;

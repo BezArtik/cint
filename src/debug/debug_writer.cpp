@@ -26,8 +26,8 @@ struct level_guard {
 
 }  // namespace
 
-std::string debug_writer::indent() const {
-    return std::string(curr_level_ * 2, ' ');
+std::uint32_t debug_writer::indent() const noexcept {
+    return curr_level_ * 2;
 }
 
 bool debug_writer::enabled(trace_level level) const noexcept {
@@ -41,11 +41,12 @@ void debug_writer::print_tokens(std::span<const core::token> tokens) {
                "\n═══════════════════════════════════════════════════════\n"
                "  LEXICAL ANALYSIS\n"
                "═══════════════════════════════════════════════════════\n\n");
-    std::println(os_, "{}", std::string(60, '-'));
+    std::println(os_, "{:-<60}", "");
 
-    for (auto&& tok : tokens)
-        std::print(os_, "{:<20}{:<25}{}:{}\n", core::token_type_names[static_cast<size_t>(tok.type_)],
-                   tok.lexeme_.empty() ? "(empty)" : tok.lexeme_, tok.loc_.line_, tok.loc_.column_);
+    for (auto&& tok : tokens) {
+        const auto [type, lex, loc] = tok;
+        std::println(os_, "{:<20}{:<25}{}", core::token_type_names[static_cast<std::size_t>(type)], lex, loc);
+    }
 
     std::println(os_);
 }
@@ -67,7 +68,7 @@ void debug_writer::print_ast(std::span<const ast::statement> statements) {
 void debug_writer::print(const ast::statement& stmt, const core::value* result) {
     if (!enabled(trace_level::ast) && !enabled(trace_level::execution)) return;
 
-    stmt.visit([&](const auto& s) { print(*s); });
+    std::visit([&](const auto& s) { print(*s); }, stmt);
 
     if (result && enabled(trace_level::execution)) std::println(os_, "  -> {}", result->to_string());
 }
@@ -75,212 +76,245 @@ void debug_writer::print(const ast::statement& stmt, const core::value* result) 
 void debug_writer::print(const ast::expression& expr, const core::value* result) {
     if (!enabled(trace_level::ast) && !enabled(trace_level::execution)) return;
 
-    expr.visit([&](const auto& e) { print(*e); });
+    std::visit([&](const auto& e) { print(*e); }, expr);
 
     if (result && enabled(trace_level::execution)) std::println(os_, "  -> {}", result->to_string());
 }
 
 void debug_writer::print_return(std::string_view func_name, const core::value& result) {
     if (!enabled(trace_level::returns)) return;
-    std::println(os_, "{} [RETURN] {} -> {}", indent(), func_name, result.to_string());
+    std::println(os_, "{:{}}[RETURN] {} -> {}", "", indent(), func_name, result.to_string());
 }
 
 void debug_writer::print_var(std::string_view name, const core::value& val) {
     if (!enabled(trace_level::execution)) return;
-    std::println(os_, "{} [VAR] {} = {}", indent(), name, val.to_string());
+    std::println(os_, "{:{}}[VAR] {} = {}", "", indent(), name, val.to_string());
 }
 
 void debug_writer::print(const ast::expression_stmt& stmt) {
-    std::println(os_, "{} [EXEC] ExpressionStmt", indent());
+    std::println(os_, "{:{}}[EXEC] ExpressionStmt", "", indent());
     auto guard = level_guard{curr_level_};
     print(stmt.expr_);
 }
 
 void debug_writer::print(const ast::var_declaration_stmt& stmt) {
-    std::println(os_, "{} [EXEC] VarDeclaration: {}", indent(), stmt.name_.lexeme_);
+    std::println(os_, "{:{}}[EXEC] VarDeclaration: {}", "", indent(), stmt.name_.lexeme_);
     auto guard = level_guard{curr_level_};
     print(stmt.initializer_);
 }
 
 void debug_writer::print(const ast::block_stmt& stmt) {
-    std::println(os_, "{} [EXEC] BlockStmt [{} statements]", indent(), stmt.statements_.size());
+    std::println(os_, "{:{}}[EXEC] BlockStmt [{} statements]", "", indent(), stmt.statements_.size());
     auto guard = level_guard{curr_level_};
     for (auto&& inner : stmt.statements_) print(inner);
 }
 
 void debug_writer::print(const ast::while_stmt& stmt) {
-    std::println(os_, "{} [EXEC] WhileStmt", indent());
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}[EXEC] WhileStmt", "", pad);
 
-    std::println(os_, "{} Condition:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Condition:", "", inner_pad);
     print(stmt.condition_);
 
-    std::println(os_, "{} Body:", indent());
+    std::println(os_, "{:{}}Body:", "", inner_pad);
     print(stmt.block_);
 }
 
 void debug_writer::print(const ast::for_stmt& stmt) {
-    std::println(os_, "{} [EXEC] ForStmt", indent());
+    const auto pad = indent();
+    std::println(os_, "{:{}}[EXEC] ForStmt", "", pad);
+
     auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
 
     if (stmt.initializer_) {
-        std::println(os_, "{} Initializer:", indent());
+        std::println(os_, "{:{}}Initializer:", "", inner_pad);
         print(*stmt.initializer_);
     }
 
     if (stmt.condition_) {
-        std::println(os_, "{} Condition:", indent());
+        std::println(os_, "{:{}}Condition:", "", inner_pad);
         print(*stmt.condition_);
     }
 
     if (stmt.increment_) {
-        std::println(os_, "{} Increment:", indent());
+        std::println(os_, "{:{}}Increment:", "", inner_pad);
         print(*stmt.increment_);
     }
 
-    std::println(os_, "{} Body:", indent());
+    std::println(os_, "{:{}}Body:", "", inner_pad);
     print(stmt.block_);
 }
 
 void debug_writer::print(const ast::if_stmt& stmt) {
-    std::println(os_, "{} [EXEC] IfStmt", indent());
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}[EXEC] IfStmt", "", pad);
 
-    std::println(os_, "{} Condition:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Condition:", "", inner_pad);
     print(stmt.condition_);
 
-    std::println(os_, "{} Then:", indent());
+    std::println(os_, "{:{}}Then:", "", inner_pad);
     print(stmt.then_block_);
 
     if (stmt.else_block_) {
-        std::println(os_, "{} Else:", indent());
+        std::println(os_, "{:{}}Else:", "", inner_pad);
         print(*stmt.else_block_);
     }
 }
 
 void debug_writer::print(const ast::return_stmt& stmt) {
+    const auto pad = indent();
     if (stmt.value_) {
-        std::println(os_, "{} [EXEC] ReturnStmt", indent());
+        std::println(os_, "{:{}}[EXEC] ReturnStmt", "", pad);
         auto guard = level_guard{curr_level_};
         print(*stmt.value_);
     } else {
-        std::println(os_, "{} [EXEC] ReturnStmt (void)", indent());
+        std::println(os_, "{:{}}[EXEC] ReturnStmt (void)", "", pad);
     }
 }
 
 void debug_writer::print(const ast::func_declaration_stmt& stmt) {
-    std::println(os_, "{} [EXEC] FuncDeclaration: {}", indent(), stmt.name_.lexeme_);
+    const auto pad = indent();
+    std::println(os_, "{:{}}[EXEC] FuncDeclaration: {}", "", pad, stmt.name_.lexeme_);
 
     auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
 
     auto&& params = stmt.params_;
     if (params.empty()) {
-        std::println(os_, "{} Params: (none)", indent());
+        std::println(os_, "{:{}}Params: (none)", "", inner_pad);
     } else {
-        auto params_str = std::string{};
-        for (auto&& p : params)
-            std::format_to(std::back_inserter(params_str), "{}{}", params_str.empty() ? "" : " ", p.lexeme_);
-        std::println(os_, "{} Params: {}", indent(), params_str);
+        std::print(os_, "{:{}}Params:", "", inner_pad);
+        for (auto&& p : params) std::print(os_, " {}", p.lexeme_);
+        std::println(os_);
     }
 
-    std::println(os_, "{} Body:", indent());
+    std::println(os_, "{:{}}Body:", "", inner_pad);
     for (auto&& inner : stmt.body_) print(inner);
 }
 
 void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
-    std::println(os_, "{} [EXEC] StructDeclaration: {}", indent(), stmt.type_.name_);
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}[EXEC] StructDeclaration: {}", "", pad, stmt.type_.name_);
 
-    std::println(os_, "{} Fields:", indent());
-    for (auto&& name : stmt.type_.field_names_) {
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Fields:", "", inner_pad);
+    {
         auto field_guard = level_guard{curr_level_};
-        std::println(os_, "{} {}", indent(), name);
+        const auto field_pad = indent();
+        for (auto&& name : stmt.type_.field_names_) std::println(os_, "{:{}}{}", "", field_pad, name);
     }
 
     if (!stmt.methods_.empty()) {
-        std::println(os_, "{} Methods:", indent());
+        std::println(os_, "{:{}}Methods:", "", inner_pad);
         for (auto&& method : stmt.methods_) print(method);
     }
 }
 
 void debug_writer::print(const ast::literal_expr& expr) {
-    std::println(os_, "{} Literal: {}{}", indent(), expr.value_.to_string(), expr.loc_);
+    std::println(os_, "{:{}}Literal: {}{}", "", indent(), expr.value_.to_string(), expr.loc_);
 }
 
 void debug_writer::print(const ast::variable_expr& expr) {
-    std::println(os_, "{} Variable: {}{}", indent(), expr.name_.lexeme_, expr.name_.loc_);
+    std::println(os_, "{:{}}Variable: {}{}", "", indent(), expr.name_.lexeme_, expr.name_.loc_);
 }
 
 void debug_writer::print(const ast::binary_expr& expr) {
-    std::println(os_, "{} Binary: {}{}", indent(), expr.op_.lexeme_, expr.op_.loc_);
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}Binary: {}{}", "", pad, expr.op_.lexeme_, expr.op_.loc_);
 
-    std::println(os_, "{} Left:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Left:", "", inner_pad);
     print(expr.left_);
 
-    std::println(os_, "{} Right:", indent());
+    std::println(os_, "{:{}}Right:", "", inner_pad);
     print(expr.right_);
 }
 
 void debug_writer::print(const ast::assignment_expr& expr) {
-    std::println(os_, "{} Assignment: {}{}", indent(), expr.op_.lexeme_, expr.op_.loc_);
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}Assignment: {}{}", "", pad, expr.op_.lexeme_, expr.op_.loc_);
 
-    std::println(os_, "{} Target:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Target:", "", inner_pad);
     print(expr.target_);
 
-    std::println(os_, "{} Value:", indent());
+    std::println(os_, "{:{}}Value:", "", inner_pad);
     print(expr.value_);
 }
 
 void debug_writer::print(const ast::unary_expr& expr) {
-    std::println(os_, "{} Unary: {}{}", indent(), expr.op_.lexeme_, expr.op_.loc_);
+    const auto pad = indent();
+    std::println(os_, "{:{}}Unary: {}{}", "", pad, expr.op_.lexeme_, expr.op_.loc_);
     auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
 void debug_writer::print(const ast::postfix_expr& expr) {
-    std::println(os_, "{} Postfix: {}{}", indent(), expr.op_.lexeme_, expr.op_.loc_);
+    const auto pad = indent();
+    std::println(os_, "{:{}}Postfix: {}{}", "", pad, expr.op_.lexeme_, expr.op_.loc_);
     auto guard = level_guard{curr_level_};
     print(expr.operand_);
 }
 
 void debug_writer::print(const ast::call_expr& expr) {
+    const auto pad = indent();
     if (expr.args_.empty()) {
-        std::println(os_, "{} Call: {}{} (no args)", indent(), expr.callee_.lexeme_, expr.callee_.loc_);
+        std::println(os_, "{:{}}Call: {}{} (no args)", "", pad, expr.callee_.lexeme_, expr.callee_.loc_);
         return;
     }
 
-    std::println(os_, "{} Call: {}{}", indent(), expr.callee_.lexeme_, expr.callee_.loc_);
+    std::println(os_, "{:{}}Call: {}{}", "", pad, expr.callee_.lexeme_, expr.callee_.loc_);
     auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
     for (auto&& [pos, arg] : std::views::enumerate(expr.args_)) {
-        std::print(os_, "{} Arg {}:", indent(), pos);
+        std::println(os_, "{:{}}Arg {}:", "", inner_pad, pos);
         print(arg);
     }
 }
 
 void debug_writer::print(const ast::method_call_expr& expr) {
-    std::println(os_, "{} MethodCall: .{}{}", indent(), expr.method_.lexeme_, expr.method_.loc_);
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}MethodCall: .{}{}", "", pad, expr.method_.lexeme_, expr.method_.loc_);
 
-    std::println(os_, "{} Receiver:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Receiver:", "", inner_pad);
     print(expr.object_);
 
     if (!expr.args_.empty()) {
-        std::println(os_, "{} Args:", indent());
+        std::println(os_, "{:{}}Args:", "", inner_pad);
         auto args_guard = level_guard{curr_level_};
+        const auto arg_pad = indent();
         for (auto&& [pos, arg] : std::views::enumerate(expr.args_)) {
-            std::println(os_, "{} Arg {}:", indent(), pos);
+            std::println(os_, "{:{}}Arg {}:", "", arg_pad, pos);
             print(arg);
         }
     }
 }
 
 void debug_writer::print(const ast::member_access_expr& expr) {
-    std::println(os_, "{} MemberAccess: .{}{}", indent(), expr.member_.lexeme_, expr.member_.loc_);
-    auto guard = level_guard{curr_level_};
+    const auto pad = indent();
+    std::println(os_, "{:{}}MemberAccess: .{}{}", "", pad, expr.member_.lexeme_, expr.member_.loc_);
 
-    std::println(os_, "{} Object:", indent());
+    auto guard = level_guard{curr_level_};
+    const auto inner_pad = indent();
+
+    std::println(os_, "{:{}}Object:", "", inner_pad);
     print(expr.object_);
 }
 

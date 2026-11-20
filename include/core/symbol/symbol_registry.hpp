@@ -3,7 +3,6 @@
 #include "ast/node.hpp"
 #include "core/builtins/builtins.hpp"
 #include "core/error/diagnostic.hpp"
-#include "core/utils/variant.hpp"
 
 #include <array>
 #include <cstddef>
@@ -35,7 +34,7 @@ public:
 private:
     struct entry {
         std::string_view name_;
-        core::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;
+        std::variant<func_ptr, builtin_func_ptr, struct_ptr> info_;
     };
 
     void add_ast_entry(const ast::statement& stmt, diagnostic_sink& sink);

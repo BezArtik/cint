@@ -22,6 +22,7 @@ namespace cint::core {
     X(expected_equal,                        "Expected '='")                                    \
     X(expected_left_paren_for,               "Expected '(' after 'for'")                        \
     X(nested_declaration,                    "Nested fn/struct declarations are not supported") \
+    X(invalid_number,                        "Invalid number")                                  \
                                                                                                 \
     X(redeclaration,                         "Redeclaration of '{}'")                           \
                                                                                                 \
@@ -44,6 +45,7 @@ namespace cint::core {
                                                                                                 \
     X(unsupported_binary_operator,           "Unsupported binary operator")                     \
     X(unsupported_unary_operator,            "Unsupported unary operator")                      \
+    X(unsupported_postfix_operator,          "Unsupported postfix operator")                    \
                                                                                                 \
     X(division_by_zero,                      "Division by zero")                                \
     X(modulo_by_zero,                        "Modulo by zero")                                  \

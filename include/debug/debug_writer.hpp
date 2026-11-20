@@ -69,7 +69,7 @@ private:
     void print(const ast::method_call_expr& expr);
     void print(const ast::member_access_expr& expr);
 
-    std::string indent() const;
+    std::uint32_t indent() const noexcept;
 
     trace_level mask_;
     std::ostream& os_;

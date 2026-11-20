@@ -7,6 +7,8 @@
 #include "core/error/diagnostic.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/token/token_types.hpp"
+#include "core/value/conversions.hpp"
+#include "core/value/value.hpp"
 #include "parser/slot_allocator.hpp"
 
 #include <algorithm>
@@ -194,7 +196,7 @@ ast::statement parser::fn_declaration() {
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
     auto&& block_stmt = block_statement();
-    auto&& body = block_stmt.get<core::arena_ptr<ast::block_stmt>>()->statements_;
+    auto&& body = std::get<core::arena_ptr<ast::block_stmt>>(block_stmt)->statements_;
 
     return ast::make_stmt<ast::func_declaration_stmt>(arena_, name, std::move(params), std::move(body), frame.end(),
                                                       name.loc_);
@@ -210,7 +212,7 @@ ast::statement parser::struct_declaration() {
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
         if (match({tt::KW_FN})) {
             auto&& fn = fn_declaration();
-            methods.push_back(std::move(*fn.get<core::arena_ptr<ast::func_declaration_stmt>>()));
+            methods.push_back(std::move(*std::get<core::arena_ptr<ast::func_declaration_stmt>>(fn)));
         } else {
             auto&& fname = consume(tt::IDENTIFIER, err::expected_identifier);
             field_names.push_back(fname.lexeme_);
@@ -377,12 +379,15 @@ ast::expression parser::postfix() {
 
 ast::expression parser::primary() {
     if (match({tt::NUMBER})) {
-        const auto token = prev();
-        const auto is_double = token.lexeme_.find('.') != std::string_view::npos;
-        try {
-            auto&& val = core::value::from_string(token.lexeme_, is_double);
-            return ast::make_expr<ast::literal_expr>(arena_, std::move(val), token.loc_);
-        } catch (const core::value_error& e) { raise_error(sink_, token.loc_, e.code_); }
+        const auto [_, lex, loc] = prev();
+        const auto is_double = lex.find('.') != std::string_view::npos;
+        auto from_string = [&]<core::numerical T> {
+            const auto num = core::to_numbers<T>(lex);
+            if (!num) raise_error(sink_, loc, err::invalid_number);
+            return ast::make_expr<ast::literal_expr>(arena_, *num, loc);
+        };
+        return is_double ? from_string.operator()<core::value::double_t>()
+                         : from_string.operator()<core::value::int_t>();
     }
 
     if (match({tt::STRING})) {

@@ -14,13 +14,13 @@ namespace {
 
 template <typename T>
 const T* as(const ast::statement& s) noexcept {
-    const auto p = s.get_if<core::arena_ptr<T>>();
+    const auto p = std::get_if<core::arena_ptr<T>>(&s);
     return p ? p->get() : nullptr;
 }
 
 template <typename T>
 const T* as(const ast::expression& e) noexcept {
-    const auto p = e.get_if<core::arena_ptr<T>>();
+    const auto p = std::get_if<core::arena_ptr<T>>(&e);
     return p ? p->get() : nullptr;
 }
 

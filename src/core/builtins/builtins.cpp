@@ -72,4 +72,16 @@ value gcd(std::span<const value> args) {
     return std::gcd(args[0].to_int(), args[1].to_int());
 }
 
+value int_cast(std::span<const value> args) {
+    return args[0].to_int();
+}
+
+value double_cast(std::span<const value> args) {
+    return args[0].to_double();
+}
+
+value str_cast(std::span<const value> args) {
+    return args[0].to_string();
+}
+
 }  // namespace cint::core::detail
