@@ -20,7 +20,7 @@ std::byte* align_ptr(std::byte* ptr, std::size_t alignment) noexcept {
 
 }  // namespace
 
-void* arena::allocate_raw(std::size_t size, std::size_t alignment) {
+void* arena::allocate(std::size_t size, std::size_t alignment) {
     if (size == 0) size = 1;
     if (alignment == 0) alignment = 1;
 
@@ -45,15 +45,6 @@ void* arena::allocate_raw(std::size_t size, std::size_t alignment) {
 
     current_ = ptr + size;
     return ptr;
-}
-
-void arena::reset() noexcept {
-    for (auto it = destructors_.rbegin(), endit = destructors_.rend(); it != endit; ++it) it->destroy_(it->obj_);
-    destructors_.clear();
-
-    blocks_.clear();
-    current_ = nullptr;
-    end_ = nullptr;
 }
 
 }  // namespace cint::core

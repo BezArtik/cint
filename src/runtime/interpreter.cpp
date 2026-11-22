@@ -10,6 +10,7 @@
 #include "core/error/error_codes.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/token/token_types.hpp"
+#include "core/utils/literal_pool.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
@@ -50,9 +51,10 @@ struct interpreter::execution_result {
 };
 
 interpreter::interpreter(std::span<const ast::statement> statements, const core::symbol_registry& registry,
-                         debug::debug_writer& writer)
+                         debug::debug_writer& writer, const core::literal_pool& literals)
     : registry_{registry},
       writer_{writer},
+      literals_{literals},
       exec_enabled_debug_{writer.enabled(debug::trace_level::execution)},
       ret_enabled_debug_{writer.enabled(debug::trace_level::returns)} {
     for (auto&& stmt : statements) {
@@ -159,11 +161,12 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr, core::loc
              if (!obj.is_struct()) [[unlikely]]
                  raise_error(e->member_.loc_, err::not_a_struct);
              if (for_write) obj.make_unique_struct();
-             auto& st = obj.to_struct();
-             auto idx = st.type_->field_index(e->member_.lexeme_);
-             if (!idx) [[unlikely]]
-                 raise_error(e->member_.loc_, err::no_such_field, st.type_->name_, e->member_.lexeme_);
-             return st.fields_[*idx];
+             auto&& st = obj.to_struct();
+             auto&& names = st.node_->field_names_;
+             const auto it = std::ranges::find(names, e->member_.lexeme_);
+             if (it == names.end()) [[unlikely]]
+                 raise_error(e->member_.loc_, err::no_such_field, st.node_->name_, e->member_.lexeme_);
+             return st.fields_[std::distance(names.begin(), it)];
          },
          [&](const auto&) -> core::value& { raise_error(loc, err::not_an_lvalue); }
     }, expr);
@@ -171,7 +174,7 @@ core::value& interpreter::evaluate_lvalue(const ast::expression& expr, core::loc
 
 core::value interpreter::evaluate(const ast::expression& expr) {
     return std::visit(core::overloaded{
-        [&](const core::arena_ptr<ast::literal_expr>& e) { return e->value_; },
+        [&](const core::arena_ptr<ast::literal_expr>& e) { return literals_.get(e->pool_idx_); },
         [&](const core::arena_ptr<ast::variable_expr>& e) {
             return evaluate_lvalue(expr, e->name_.loc_, false);
         },
@@ -181,10 +184,11 @@ core::value interpreter::evaluate(const ast::expression& expr) {
             if (!obj.is_struct()) [[unlikely]]
                 raise_error(e->member_.loc_, err::not_a_struct);
             auto&& st = obj.to_struct();
-            const auto idx = st.type_->field_index(e->member_.lexeme_);
-            if (!idx) [[unlikely]]
-                raise_error(e->member_.loc_, err::no_such_field, st.type_->name_, e->member_.lexeme_);
-            return st.fields_[*idx];
+            auto&& names = st.node_->field_names_;
+            const auto it = std::ranges::find(names, e->member_.lexeme_);
+            if (it == names.end()) [[unlikely]]
+            raise_error(e->member_.loc_, err::no_such_field, st.node_->name_, e->member_.lexeme_);
+            return st.fields_[std::distance(names.begin(), it)];
         },
         [&](const core::arena_ptr<ast::binary_expr>& e) { return evaluate(*e); },
         [&](const core::arena_ptr<ast::assignment_expr>& e) { return evaluate(*e); },
@@ -342,11 +346,11 @@ core::value interpreter::evaluate(const ast::method_call_expr& expr) {
 
         recv.make_unique_struct();
         auto&& st = recv.to_struct();
-        const auto struct_it = registry_.find(st.type_->name_);
+        const auto struct_it = registry_.find(st.node_->name_);
         const auto st_ast = std::get<core::symbol_registry::struct_ptr>(struct_it->info_);
         const auto method_it = std::ranges::find(st_ast->methods_, name, [](auto&& m) { return m.name_.lexeme_; });
         if (method_it == st_ast->methods_.end()) [[unlikely]]
-            raise_error(loc, err::no_such_method, st.type_->name_, name);
+            raise_error(loc, err::no_such_method, st.node_->name_, name);
 
         auto args_buf = std::array<std::byte, 512>{};
         auto args_mr = std::pmr::monotonic_buffer_resource{args_buf.data(), args_buf.size()};
@@ -415,11 +419,8 @@ core::value interpreter::call(core::symbol_registry::func_ptr ptr, std::span<con
 
 core::value interpreter::call(core::symbol_registry::struct_ptr ptr, std::span<const core::value> args) {
     if (!args.empty()) [[unlikely]]
-        raise_error(ptr->loc_, err::argument_count_mismatch, ptr->type_.name_, 0, args.size());
-
-    auto&& st = ptr->type_;
-    auto fields = std::vector<core::value>(st.field_names_.size());
-    return core::value::struct_t{&st, std::move(fields)};
+        raise_error(ptr->loc_, err::argument_count_mismatch, ptr->name_, 0, args.size());
+    return core::value::struct_t{ptr, std::vector<core::value>(ptr->field_names_.size())};
 }
 
 }  // namespace cint

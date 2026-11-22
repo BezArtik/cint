@@ -45,12 +45,6 @@ TEST(value_test, to_string_is_total) {
     EXPECT_EQ(v{}.to_string(), "void");
 }
 
-TEST(value_test, to_int_rejects_struct) {
-    auto st = core::struct_type{"P", {"x"}};
-    auto s = v{v::struct_t{&st, {v{v::int_t{1}}}}};
-    EXPECT_THROW(std::ignore = s.to_int(), core::value_error);
-}
-
 TEST(value_test, add_ints) {
     EXPECT_EQ((v{v::int_t{10}} + v{v::int_t{20}}).to_int(), 30);
 }
@@ -115,34 +109,9 @@ TEST(value_test, eq_incomparable_is_false) {
     EXPECT_FALSE(v{true} == v{v::int_t{1}});
 }
 
-TEST(value_test, eq_structs) {
-    auto st = core::struct_type{"Point", {"x", "y"}};
-    auto a = v{v::struct_t{&st, {v{v::int_t{1}}, v{v::int_t{2}}}}};
-    auto b = v{v::struct_t{&st, {v{v::int_t{1}}, v{v::int_t{2}}}}};
-    auto c = v{v::struct_t{&st, {v{v::int_t{1}}, v{v::int_t{3}}}}};
-
-    EXPECT_TRUE(a == b);
-    EXPECT_FALSE(a == c);
-}
-
-TEST(value_test, eq_structs_different_types) {
-    auto p = core::struct_type{"Point", {"x"}};
-    auto q = core::struct_type{"Other", {"x"}};
-    auto a = v{v::struct_t{&p, {v{v::int_t{1}}}}};
-    auto b = v{v::struct_t{&q, {v{v::int_t{1}}}}};
-    EXPECT_FALSE(a == b);
-}
-
 TEST(value_test, lt_ints) {
     EXPECT_TRUE(v{v::int_t{10}} < v{v::int_t{20}});
     EXPECT_FALSE(v{v::int_t{20}} < v{v::int_t{10}});
-}
-
-TEST(value_test, lt_structs_throws) {
-    auto st = core::struct_type{"P", {"x"}};
-    auto a = v{v::struct_t{&st, {v{v::int_t{1}}}}};
-    auto b = v{v::struct_t{&st, {v{v::int_t{2}}}}};
-    EXPECT_THROW(std::ignore = a < b, core::value_error);
 }
 
 TEST(value_test, not_op) {

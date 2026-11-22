@@ -70,11 +70,11 @@ value::bool_t value::to_bool() const {
 value::string_t value::to_string() const {
     auto format_struct = [&](const value::struct_t& s) {
         auto res = value::string_t{};
-        res.reserve(s.fields_.size() + s.type_->field_names_.size());
+        res.reserve(s.fields_.size() + s.node_->field_names_.size());
         const auto it = std::back_inserter(res);
-        std::format_to(it, "{} (", s.type_->name_);
+        std::format_to(it, "{} (", s.node_->name_);
         for (auto&& [i, name, value] :
-             std::views::zip(std::views::iota(0ul, s.fields_.size()), s.type_->field_names_, s.fields_)) {
+             std::views::zip(std::views::iota(0ul, s.fields_.size()), s.node_->field_names_, s.fields_)) {
             if (i) std::format_to(it, ", ");
             std::format_to(it, "{}: {}", name, value.to_string());
         }
@@ -123,7 +123,7 @@ bool operator==(const value& a, const value& b) noexcept {
             [](value::bool_t l, value::bool_t r) { return l == r; },
             [](const value::string_t& l, const value::string_t& r) { return l == r; },
             [](const value::struct_impl& l, const value::struct_impl& r) {
-                if (l->type_ != r->type_) return false;
+                if (l->node_ != r->node_) return false;
                 return std::ranges::equal(l->fields_, r->fields_);
             },
             [](value::void_t, value::void_t) { return true; }, 

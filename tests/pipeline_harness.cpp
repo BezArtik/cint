@@ -19,7 +19,8 @@ void pipeline_harness::lex() {
 void pipeline_harness::parse() {
     lex();
     if (parsed_) return;
-    auto p = parser{tokens_, sink_, arena_};
+
+    auto p = parser{tokens_, sink_, arena_, literals_};
     ast_ = p.parse();
     parsed_ = true;
 }
@@ -30,7 +31,7 @@ void pipeline_harness::interpret() {
     const auto registry = core::symbol_registry{ast_, sink_};
     auto writer = debug::debug_writer{debug::trace_level::none};
     try {
-        const auto interp = interpreter{ast_, registry, writer};
+        const auto interp = interpreter{ast_, registry, writer, literals_};
     } catch (const runtime_error& e) { sink_.report_formatted(e.loc_, e.code_, e.message_); }
 }
 

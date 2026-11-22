@@ -201,7 +201,7 @@ void debug_writer::print(const ast::func_declaration_stmt& stmt) {
 
 void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
     const auto pad = indent();
-    std::println(os_, "{:{}}[EXEC] StructDeclaration: {}", "", pad, stmt.type_.name_);
+    std::println(os_, "{:{}}[EXEC] StructDeclaration: {}", "", pad, stmt.name_);
 
     auto guard = level_guard{curr_level_};
     const auto inner_pad = indent();
@@ -210,7 +210,7 @@ void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
     {
         auto field_guard = level_guard{curr_level_};
         const auto field_pad = indent();
-        for (auto&& name : stmt.type_.field_names_) std::println(os_, "{:{}}{}", "", field_pad, name);
+        for (auto&& name : stmt.field_names_) std::println(os_, "{:{}}{}", "", field_pad, name);
     }
 
     if (!stmt.methods_.empty()) {
@@ -220,7 +220,7 @@ void debug_writer::print(const ast::struct_declaration_stmt& stmt) {
 }
 
 void debug_writer::print(const ast::literal_expr& expr) {
-    std::println(os_, "{:{}}Literal: {}{}", "", indent(), expr.value_.to_string(), expr.loc_);
+    std::println(os_, "{:{}}Literal: {}{}", "", indent(), expr.literal_.lexeme_, expr.literal_.loc_);
 }
 
 void debug_writer::print(const ast::variable_expr& expr) {

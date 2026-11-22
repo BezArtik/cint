@@ -4,15 +4,14 @@
 #include "ast/node.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/value/value.hpp"
 
 #include <cstdint>
 
 namespace cint::ast {
 
 struct literal_expr {
-    core::value value_;
-    core::location loc_;
+    core::token literal_;
+    std::uint32_t pool_idx_;
 };
 
 struct variable_expr {
@@ -58,9 +57,9 @@ struct member_access_expr {
     core::token member_;
 };
 
-template <typename T, typename... Args>
+template <typename Expr, typename... Args>
 [[nodiscard]] expression make_expr(core::arena& arena, Args&&... args) {
-    return {core::make_arena<T>(arena, std::forward<Args>(args)...)};
+    return {core::make_object<Expr>(arena, std::forward<Args>(args)...)};
 }
 
 }  // namespace cint::ast

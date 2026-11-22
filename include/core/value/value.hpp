@@ -1,8 +1,8 @@
 // core/value/value.hpp
 
 #pragma once
+#include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
-#include "core/type/struct_type.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -27,14 +27,14 @@ public:
     using bool_t = bool;
     using string_t = std::string;
     struct struct_t {
-        const struct_type* type_;
+        const ast::struct_declaration_stmt* node_;
         std::vector<value> fields_;
     };
 
     value() = default;
-    value(int_t v) : data_{std::move(v)} {}
-    value(double_t v) : data_{std::move(v)} {}
-    value(bool_t v) : data_{std::move(v)} {}
+    value(int_t v) : data_{v} {}
+    value(double_t v) : data_{v} {}
+    value(bool_t v) : data_{v} {}
     value(string_t v) : data_{std::move(v)} {}
     value(struct_t v) : data_{std::make_shared<struct_t>(std::move(v))} {}
 

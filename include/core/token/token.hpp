@@ -28,7 +28,7 @@ template <>
 struct formatter<cint::core::location> {
     constexpr auto parse(std::format_parse_context& ctx) { return ctx.begin(); }
 
-    auto format(const cint::core::location loc, std::format_context& ctx) const {
+    auto format(cint::core::location loc, std::format_context& ctx) const {
         return std::format_to(ctx.out(), " [line {}:{}]", loc.line_, loc.column_);
     }
 };

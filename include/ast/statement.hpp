@@ -4,10 +4,10 @@
 #include "ast/node.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
-#include "core/type/struct_type.hpp"
 
 #include <cstdint>
 #include <optional>
+#include <string_view>
 #include <utility>
 
 namespace cint::ast {
@@ -62,14 +62,15 @@ struct func_declaration_stmt {
 };
 
 struct struct_declaration_stmt {
-    core::struct_type type_;
+    std::string_view name_;
+    core::arena_vector<std::string_view> field_names_;
     core::arena_vector<ast::func_declaration_stmt> methods_;
     core::location loc_;
 };
 
 template <typename Stmt, typename... Args>
 [[nodiscard]] statement make_stmt(core::arena& arena, Args&&... args) {
-    return {core::make_arena<Stmt>(arena, std::forward<Args>(args)...)};
+    return {core::make_object<Stmt>(arena, std::forward<Args>(args)...)};
 }
 
 }  // namespace cint::ast

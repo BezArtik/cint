@@ -29,7 +29,7 @@ void symbol_registry::add_ast_entry(const ast::statement& stmt, diagnostic_sink&
             entries_.emplace_back(name, func.get());
         },
         [&](const core::arena_ptr<ast::struct_declaration_stmt>& strct) {
-            auto name = strct->type_.name_;
+            auto name = strct->name_;
             if (std::ranges::find(entries_, name, &entry::name_) != entries_.end()) {
                 sink.report(strct->loc_, error_code::redeclaration, name);
                 return;

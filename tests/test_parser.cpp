@@ -264,8 +264,9 @@ TEST(parser_test, if_statement) {
 
     const auto ifs = must<ast::if_stmt>(func->body_[0]);
     const auto cond = must<ast::literal_expr>(ifs->condition_);
-    EXPECT_TRUE(cond->value_.is_bool());
-    EXPECT_EQ(cond->value_.to_bool(), true);
+    const auto value = h.literals().get(cond->pool_idx_);
+    EXPECT_TRUE(value.is_bool());
+    EXPECT_EQ(value.to_bool(), true);
     EXPECT_FALSE(ifs->else_block_);
 }
 
@@ -331,7 +332,8 @@ TEST(parser_test, return_with_value) {
     ASSERT_TRUE(ret->value_);
 
     const auto lit = must<ast::literal_expr>(*ret->value_);
-    EXPECT_EQ(lit->value_.to_int(), 42);
+    const auto value = h.literals().get(lit->pool_idx_);
+    EXPECT_EQ(value.to_int(), 42);
 }
 
 TEST(parser_test, struct_two_fields) {
@@ -342,10 +344,10 @@ TEST(parser_test, struct_two_fields) {
     ASSERT_EQ(h.ast().size(), 1);
 
     const auto decl = must<ast::struct_declaration_stmt>(h.ast()[0]);
-    EXPECT_EQ(decl->type_.name_, "Point");
-    ASSERT_EQ(decl->type_.field_names_.size(), 2);
-    EXPECT_EQ(decl->type_.field_names_[0], "x");
-    EXPECT_EQ(decl->type_.field_names_[1], "y");
+    EXPECT_EQ(decl->name_, "Point");
+    ASSERT_EQ(decl->field_names_.size(), 2);
+    EXPECT_EQ(decl->field_names_[0], "x");
+    EXPECT_EQ(decl->field_names_[1], "y");
     EXPECT_TRUE(decl->methods_.empty());
 }
 
@@ -356,8 +358,8 @@ TEST(parser_test, struct_with_method) {
     ASSERT_FALSE(h.had_error());
 
     const auto decl = must<ast::struct_declaration_stmt>(h.ast()[0]);
-    EXPECT_EQ(decl->type_.name_, "Counter");
-    ASSERT_EQ(decl->type_.field_names_.size(), 1);
+    EXPECT_EQ(decl->name_, "Counter");
+    ASSERT_EQ(decl->field_names_.size(), 1);
     ASSERT_EQ(decl->methods_.size(), 1);
     EXPECT_EQ(decl->methods_[0].name_.lexeme_, "get");
 }

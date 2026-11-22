@@ -5,6 +5,7 @@
 #include "ast/statement.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/token/token.hpp"
+#include "core/utils/literal_pool.hpp"
 #include "core/value/value.hpp"
 #include "debug/debug_writer.hpp"
 
@@ -27,7 +28,7 @@ struct runtime_error : std::exception {
 class interpreter {
 public:
     interpreter(std::span<const ast::statement> statements, const core::symbol_registry& registry,
-                debug::debug_writer& writer);
+                debug::debug_writer& writer, const core::literal_pool& literals);
 
 private:
     struct execution_result;
@@ -61,6 +62,7 @@ private:
 
     const core::symbol_registry& registry_;
     debug::debug_writer& writer_;
+    const core::literal_pool& literals_;
     const bool exec_enabled_debug_{};
     const bool ret_enabled_debug_{};
     std::vector<core::value> slots_;

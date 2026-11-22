@@ -206,7 +206,7 @@ ast::statement parser::struct_declaration() {
     const auto name = consume(tt::IDENTIFIER, err::expected_identifier);
     consume(tt::LEFT_BRACE, err::expected_left_brace);
 
-    auto field_names = std::vector<std::string_view>{};
+    auto field_names = core::arena_vector<std::string_view>{arena_};
     auto methods = core::arena_vector<ast::func_declaration_stmt>{arena_};
 
     while (!check(tt::RIGHT_BRACE) && !is_at_end()) {
@@ -221,8 +221,8 @@ ast::statement parser::struct_declaration() {
     }
     consume(tt::RIGHT_BRACE, err::expected_right_brace);
 
-    auto&& st = core::struct_type{name.lexeme_, std::move(field_names)};
-    return ast::make_stmt<ast::struct_declaration_stmt>(arena_, std::move(st), std::move(methods), name.loc_);
+    return ast::make_stmt<ast::struct_declaration_stmt>(arena_, name.lexeme_, std::move(field_names),
+                                                        std::move(methods), name.loc_);
 }
 
 ast::statement parser::statement() {
@@ -379,12 +379,12 @@ ast::expression parser::postfix() {
 
 ast::expression parser::primary() {
     if (match({tt::NUMBER})) {
-        const auto [_, lex, loc] = prev();
-        const auto is_double = lex.find('.') != std::string_view::npos;
+        const auto token = prev();
+        const auto is_double = token.lexeme_.find('.') != std::string_view::npos;
         auto from_string = [&]<core::numerical T> {
-            const auto num = core::to_numbers<T>(lex);
-            if (!num) raise_error(sink_, loc, err::invalid_number);
-            return ast::make_expr<ast::literal_expr>(arena_, *num, loc);
+            const auto num = core::to_numbers<T>(token.lexeme_);
+            if (!num) raise_error(sink_, token.loc_, err::invalid_number);
+            return ast::make_expr<ast::literal_expr>(arena_, token, literals_.intern(*num));
         };
         return is_double ? from_string.operator()<core::value::double_t>()
                          : from_string.operator()<core::value::int_t>();
@@ -393,11 +393,11 @@ ast::expression parser::primary() {
     if (match({tt::STRING})) {
         const auto token = prev();
         const auto raw = token.lexeme_.substr(1, token.lexeme_.size() - 2);
-        return ast::make_expr<ast::literal_expr>(arena_, core::value::string_t{raw}, token.loc_);
+        return ast::make_expr<ast::literal_expr>(arena_, token, literals_.intern(core::value::string_t{raw}));
     }
 
-    if (match({tt::KW_TRUE})) return ast::make_expr<ast::literal_expr>(arena_, true, prev().loc_);
-    if (match({tt::KW_FALSE})) return ast::make_expr<ast::literal_expr>(arena_, false, prev().loc_);
+    if (match({tt::KW_TRUE})) return ast::make_expr<ast::literal_expr>(arena_, prev(), literals_.intern(true));
+    if (match({tt::KW_FALSE})) return ast::make_expr<ast::literal_expr>(arena_, prev(), literals_.intern(false));
 
     if (match({tt::IDENTIFIER})) {
         const auto name = prev();

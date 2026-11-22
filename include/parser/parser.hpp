@@ -5,6 +5,7 @@
 #include "core/error/error_codes.hpp"
 #include "core/memory/arena.hpp"
 #include "core/token/token.hpp"
+#include "core/utils/literal_pool.hpp"
 #include "parser/slot_allocator.hpp"
 
 #include <span>
@@ -13,8 +14,9 @@ namespace cint {
 
 class parser {
 public:
-    parser(std::span<const core::token> tokens, core::diagnostic_sink& sink, core::arena& arena)
-        : tokens_{tokens}, sink_{sink}, arena_{arena} {}
+    parser(std::span<const core::token> tokens, core::diagnostic_sink& sink, core::arena& arena,
+           core::literal_pool& literals)
+        : tokens_{tokens}, sink_{sink}, arena_{arena}, literals_{literals} {}
 
     [[nodiscard]] ast::stmt_list parse();
 
@@ -52,6 +54,7 @@ private:
     core::diagnostic_sink& sink_;
     std::size_t current_{};
     core::arena& arena_;
+    core::literal_pool& literals_;
     slot_allocator slots_;
     std::uint32_t global_max_slots_{};
 };
