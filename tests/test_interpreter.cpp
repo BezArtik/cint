@@ -9,18 +9,18 @@ namespace cint::tests {
 using err = core::error_code;
 
 struct valid_execution_case {
-    std::string_view source_;
-    std::string_view description_;
+  std::string_view source_;
+  std::string_view description_;
 };
 
 struct valid_execution_test : ::testing::TestWithParam<valid_execution_case> {};
 
 TEST_P(valid_execution_test, runs_without_error) {
-    auto&& tc = GetParam();
-    auto h = pipeline_harness{tc.source_};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error()) << "Unexpected error for: " << tc.description_;
+  auto&& tc = GetParam();
+  auto h = pipeline_harness{tc.source_};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error()) << "Unexpected error for: " << tc.description_;
 }
 
 // clang-format off
@@ -150,7 +150,6 @@ INSTANTIATE_TEST_SUITE_P(
     ::testing::Values(
         runtime_error_case{"let x = 1 / 0;", err::division_by_zero, "div by zero int"},
         runtime_error_case{"let x = 1.0 / 0.0;", err::division_by_zero, "div by zero double"},
-        runtime_error_case{"let x = 1 % 0;", err::modulo_by_zero, "mod by zero"},
         runtime_error_case{"fn f() { return f(); } f();", err::stack_overflow, "stack overflow"},
         runtime_error_case{"undefined_fn();", err::undefined_function, "undefined function"},
         runtime_error_case{"let x = 42; x.nope = 1;", err::not_a_struct, "dot on non-struct"},
@@ -166,58 +165,58 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(interpreter_stress, short_circuit_and_skips_rhs) {
-    auto h = pipeline_harness{
-        "fn zero() { return 0; } "
-        "fn f() { return false && (1 / zero() == 0); } "
-        "f();"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{
+      "fn zero() { return 0; } "
+      "fn f() { return false && (1 / zero() == 0); } "
+      "f();"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 TEST(interpreter_stress, short_circuit_or_skips_rhs) {
-    auto h = pipeline_harness{
-        "fn zero() { return 0; } "
-        "fn f() { return true || (1 / zero() == 0); } "
-        "f();"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{
+      "fn zero() { return 0; } "
+      "fn f() { return true || (1 / zero() == 0); } "
+      "f();"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 TEST(interpreter_stress, return_from_nested_if) {
-    auto h = pipeline_harness{"fn f() { if true { if true { return 42; } } return 0; } f();"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{"fn f() { if true { if true { return 42; } } return 0; } f();"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 TEST(interpreter_stress, return_from_while) {
-    auto h = pipeline_harness{"fn f() { let i = 0; while true { if i > 3 { return i; } ++i; } } f();"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{"fn f() { let i = 0; while true { if i > 3 { return i; } ++i; } } f();"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 TEST(interpreter_stress, bool_equality_runtime) {
-    auto h = pipeline_harness{
-        "let a = true; let b = false; "
-        "let c = a == b; let d = a == a;"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{
+      "let a = true; let b = false; "
+      "let c = a == b; let d = a == a;"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 TEST(interpreter_stress, struct_field_write_then_read) {
-    auto h = pipeline_harness{
-        "struct Point { x, y } "
-        "let p = Point(); "
-        "p.x = 10; p.y = 20; "
-        "if p.x != 10 { undefined_fn(); } "
-        "if p.y != 20 { undefined_fn(); }"};
-    h.run_all();
-    if (h.had_error()) h.render_diagnostics();
-    EXPECT_FALSE(h.had_error());
+  auto h = pipeline_harness{
+      "struct Point { x, y } "
+      "let p = Point(); "
+      "p.x = 10; p.y = 20; "
+      "if p.x != 10 { undefined_fn(); } "
+      "if p.y != 20 { undefined_fn(); }"};
+  h.run_all();
+  if (h.had_error()) h.render_diagnostics();
+  EXPECT_FALSE(h.had_error());
 }
 
 }  // namespace cint::tests

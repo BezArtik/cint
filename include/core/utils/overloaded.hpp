@@ -5,7 +5,7 @@ namespace cint::core {
 
 template <typename... Ts>
 struct overloaded : Ts... {
-    using Ts::operator()...;
+  using Ts::operator()...;
 };
 
 }  // namespace cint::core

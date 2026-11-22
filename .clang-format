@@ -1,25 +1,11 @@
 BasedOnStyle: Google
-IndentWidth: 4
-TabWidth: 4
-UseTab: Never
+IndentWidth: 2
 ColumnLimit: 120
-AccessModifierOffset: -4
-BreakBeforeBraces: Attach
-NamespaceIndentation: None
 
-
-SortIncludes: true
+SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^"(.*)\.hpp"$'
+  - Regex: '^".*"'
     Priority: 1
-  - Regex: '^"(core|ast|lexer|parser|semantics|runtime|debug)/'
+  - Regex: '^<.*>'
     Priority: 2
-  - Regex: '^<'
-    Priority: 3
-
-
-AllowShortFunctionsOnASingleLine: Inline
-AllowShortIfStatementsOnASingleLine: true
-AllowShortLoopsOnASingleLine: true
-AllowShortBlocksOnASingleLine: Always

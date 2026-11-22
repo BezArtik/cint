@@ -53,7 +53,7 @@ namespace cint::core {
 
 enum class error_code : std::uint8_t {
 #define X(code, msg) code,
-    ERROR(X)
+  ERROR(X)
 #undef X
 };
 

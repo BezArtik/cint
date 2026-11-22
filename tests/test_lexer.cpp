@@ -13,27 +13,27 @@ using tt = core::token_type;
 using err = core::error_code;
 
 void expect_token(const core::token& tok, tt type, std::string_view lexeme = {}) {
-    EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
-    if (!lexeme.empty())
-        EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<std::uint8_t>(type);
+  EXPECT_EQ(tok.type_, type) << "Unexpected token type for lexeme '" << tok.lexeme_ << "'";
+  if (!lexeme.empty())
+    EXPECT_EQ(tok.lexeme_, lexeme) << "Unexpected lexeme for token type " << static_cast<std::uint8_t>(type);
 }
 
 struct single_token_case {
-    std::string_view source_;
-    tt expected_type_;
-    std::string_view expected_lexeme_{};
+  std::string_view source_;
+  tt expected_type_;
+  std::string_view expected_lexeme_{};
 };
 
 struct single_token_test : ::testing::TestWithParam<single_token_case> {};
 
 TEST_P(single_token_test, recognized) {
-    auto&& tc = GetParam();
-    auto h = pipeline_harness{tc.source_};
-    h.lex();
-    ASSERT_FALSE(h.had_error());
-    ASSERT_GE(h.tokens().size(), 2);
-    expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
-    EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
+  auto&& tc = GetParam();
+  auto h = pipeline_harness{tc.source_};
+  h.lex();
+  ASSERT_FALSE(h.had_error());
+  ASSERT_GE(h.tokens().size(), 2);
+  expect_token(h.tokens()[0], tc.expected_type_, tc.expected_lexeme_);
+  EXPECT_EQ(h.tokens()[1].type_, tt::END_OF_FILE);
 }
 
 // clang-format off
@@ -244,37 +244,37 @@ INSTANTIATE_TEST_SUITE_P(
 // clang-format on
 
 TEST(lexer_test, line_comment) {
-    auto h = pipeline_harness{"42 // comment\n43"};
-    h.lex();
-    ASSERT_FALSE(h.had_error());
-    ASSERT_EQ(h.tokens().size(), 3);
-    expect_token(h.tokens()[0], tt::NUMBER, "42");
-    expect_token(h.tokens()[1], tt::NUMBER, "43");
-    EXPECT_EQ(h.tokens()[2].type_, tt::END_OF_FILE);
+  auto h = pipeline_harness{"42 // comment\n43"};
+  h.lex();
+  ASSERT_FALSE(h.had_error());
+  ASSERT_EQ(h.tokens().size(), 3);
+  expect_token(h.tokens()[0], tt::NUMBER, "42");
+  expect_token(h.tokens()[1], tt::NUMBER, "43");
+  EXPECT_EQ(h.tokens()[2].type_, tt::END_OF_FILE);
 }
 
 TEST(lexer_test, unterminated_string) {
-    auto h = pipeline_harness{"\"unterminated"};
-    h.lex();
-    if (!h.had_error(err::unterminated_string)) h.render_diagnostics();
-    EXPECT_TRUE(h.had_error(err::unterminated_string));
+  auto h = pipeline_harness{"\"unterminated"};
+  h.lex();
+  if (!h.had_error(err::unterminated_string)) h.render_diagnostics();
+  EXPECT_TRUE(h.had_error(err::unterminated_string));
 }
 
 TEST(lexer_test, unexpected_character) {
-    auto h = pipeline_harness{"@"};
-    h.lex();
-    if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
-    EXPECT_TRUE(h.had_error(err::unexpected_character));
+  auto h = pipeline_harness{"@"};
+  h.lex();
+  if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
+  EXPECT_TRUE(h.had_error(err::unexpected_character));
 }
 
 TEST(lexer_test, unexpected_character_recovery) {
-    auto h = pipeline_harness{"42 @ 43"};
-    h.lex();
-    if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
-    EXPECT_TRUE(h.had_error(err::unexpected_character));
-    ASSERT_GE(h.tokens().size(), 3);
-    expect_token(h.tokens()[0], tt::NUMBER, "42");
-    expect_token(h.tokens()[1], tt::NUMBER, "43");
+  auto h = pipeline_harness{"42 @ 43"};
+  h.lex();
+  if (!h.had_error(err::unexpected_character)) h.render_diagnostics();
+  EXPECT_TRUE(h.had_error(err::unexpected_character));
+  ASSERT_GE(h.tokens().size(), 3);
+  expect_token(h.tokens()[0], tt::NUMBER, "42");
+  expect_token(h.tokens()[1], tt::NUMBER, "43");
 }
 
 }  // namespace cint::tests
