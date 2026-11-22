@@ -1,9 +1,9 @@
 #include "core/value/value.hpp"
 
+#include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/value/conversions.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <format>
 #include <iterator>
@@ -18,6 +18,10 @@ namespace {
 
 [[noreturn]] void invalid_conversion() {
     throw value_error{error_code::invalid_conversion};
+}
+
+[[noreturn]] void division_by_zero() {
+    throw value_error{error_code::division_by_zero};
 }
 
 template <typename T>
@@ -124,7 +128,7 @@ bool operator==(const value& a, const value& b) noexcept {
             [](const value::string_t& l, const value::string_t& r) { return l == r; },
             [](const value::struct_impl& l, const value::struct_impl& r) {
                 if (l->node_ != r->node_) return false;
-                return std::ranges::equal(l->fields_, r->fields_);
+                return l->fields_ == r->fields_;
             },
             [](value::void_t, value::void_t) { return true; }, 
             [](const auto&, const auto&) { return false; }
@@ -221,19 +225,19 @@ value operator*(const value& a, const value& b) {
 value operator/(const value& a, const value& b) {
     return std::visit(overloaded{
             [](value::int_t l, value::int_t r) -> value {
-                if (r == 0) throw value_error{error_code::division_by_zero};
+                if (r == 0) division_by_zero();
                 return l / r;
             },
             [](value::int_t l, value::double_t r) -> value {
-                if (r == 0.0) throw value_error{error_code::division_by_zero};
+                if (r == 0.0) division_by_zero();
                 return static_cast<value::double_t>(l) / r;
             },
             [](value::double_t l, value::int_t r) -> value {
-                if (r == 0) throw value_error{error_code::division_by_zero};
+                if (r == 0) division_by_zero();
                 return l / static_cast<value::double_t>(r);
             },
             [](value::double_t l, value::double_t r) -> value {
-                if (r == 0.0) throw value_error{error_code::division_by_zero};
+                if (r == 0.0) division_by_zero();
                 return l / r;
             },
             [](const auto&, const auto&) -> value { invalid_conversion(); }
@@ -243,7 +247,7 @@ value operator/(const value& a, const value& b) {
 value operator%(const value& a, const value& b) {
     return std::visit(overloaded{
             [](value::int_t l, value::int_t r) -> value {
-                if (r == 0) throw value_error{error_code::modulo_by_zero};
+                if (r == 0) division_by_zero();
                 return l % r;
             },
             [](const auto&, const auto&) -> value { invalid_conversion(); }

@@ -48,7 +48,6 @@ namespace cint::core {
     X(unsupported_postfix_operator,          "Unsupported postfix operator")                    \
                                                                                                 \
     X(division_by_zero,                      "Division by zero")                                \
-    X(modulo_by_zero,                        "Modulo by zero")                                  \
     X(invalid_conversion,                    "Invalid type conversion")
 // clang-format on
 
