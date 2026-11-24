@@ -16,24 +16,24 @@ struct builtin_def {
   builtin_fn impl_;
 };
 
-#define BUILTINS(X)      \
-  X(print, print)        \
-  X(input, input)        \
-  X(sqrt, sqrt)          \
-  X(sin, sin)            \
-  X(exp, exp)            \
-  X(rand_int, rand_int)  \
-  X(rand_dbl, rand_dbl)  \
-  X(srand, srand)        \
-  X(abs, abs)            \
-  X(gcd, gcd)            \
-  X(int, int_cast)       \
-  X(double, double_cast) \
-  X(str, str_cast)
+#define BUILTINS(X) \
+  X(print)          \
+  X(input)          \
+  X(sqrt)           \
+  X(sin)            \
+  X(exp)            \
+  X(rand_int)       \
+  X(rand_dbl)       \
+  X(srand)          \
+  X(abs)            \
+  X(gcd)            \
+  X(to_int)         \
+  X(to_double)      \
+  X(to_str)
 
 namespace detail {
 
-#define DECLARE_BUILTIN(lang_name, fn_name) value fn_name(std::span<const value> args);
+#define DECLARE_BUILTIN(name) value name(std::span<const value> args);
 
 BUILTINS(DECLARE_BUILTIN)
 #undef DECLARE_BUILTIN
@@ -41,7 +41,7 @@ BUILTINS(DECLARE_BUILTIN)
 }  // namespace detail
 
 inline constexpr std::array builtins = {
-#define ENTRY_BUILTIN(lang_name, fn_name) builtin_def{#lang_name, detail::fn_name},
+#define ENTRY_BUILTIN(name) builtin_def{#name, detail::name},
 
     BUILTINS(ENTRY_BUILTIN)
 #undef ENTRY_BUILTIN

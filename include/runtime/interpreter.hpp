@@ -1,8 +1,6 @@
 // runtime/interpreter.hpp
 #pragma once
-#include "ast/expression.hpp"
-#include "ast/node.hpp"
-#include "ast/statement.hpp"
+#include "ast/nodes.hpp"
 #include "core/symbol/symbol_registry.hpp"
 #include "core/token/token.hpp"
 #include "core/utils/literal_pool.hpp"

@@ -1,6 +1,6 @@
 // parser/parser.hpp
 #pragma once
-#include "ast/node.hpp"
+#include "ast/nodes.hpp"
 #include "core/error/diagnostic.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/memory/arena.hpp"

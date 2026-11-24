@@ -1,7 +1,7 @@
 // debug/debug_writer.hpp
 #pragma once
 
-#include "ast/node.hpp"
+#include "ast/nodes.hpp"
 #include "core/token/token.hpp"
 #include "core/value/value.hpp"
 

@@ -1,11 +1,13 @@
+# tests/CMakeLists.txt
+
 add_library(test_harness STATIC
     pipeline_harness.hpp
     pipeline_harness.cpp
 )
-target_link_libraries(test_harness PRIVATE interpreter-lib)
+target_link_libraries(test_harness PRIVATE interpreter-lib ast-headers)
 target_include_directories(test_harness PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${PROJECT_SOURCE_DIR}/src/../include
+    ${PROJECT_SOURCE_DIR}/include
 )
 
 add_executable(tests
@@ -17,11 +19,12 @@ add_executable(tests
 
 target_link_libraries(tests PRIVATE
     GTest::gtest_main
+    ast-headers
     test_harness
 )
 
 target_include_directories(tests PRIVATE
-    ${PROJECT_SOURCE_DIR}/src/../include
+    ${PROJECT_SOURCE_DIR}/include
 )
 
 include(GoogleTest)

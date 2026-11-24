@@ -12,7 +12,7 @@ fn fib(n) {
     return b;
 }
 
-let n = int(input());
+let n = to_int(input());
 
 print("Fibonacci numbers:");
 for (let i = 0; i < n; ++i) {

@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "ast/node.hpp"
+#include "ast/nodes.hpp"
 #include "core/error/diagnostic.hpp"
 #include "core/error/diagnostic_renderer.hpp"
 #include "core/error/error_codes.hpp"

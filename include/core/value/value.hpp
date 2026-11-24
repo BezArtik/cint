@@ -1,7 +1,7 @@
 // core/value/value.hpp
 
 #pragma once
-#include "ast/statement.hpp"
+#include "ast/nodes.hpp"
 #include "core/error/error_codes.hpp"
 
 #include <cstdint>

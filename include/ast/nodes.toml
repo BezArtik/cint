@@ -1,0 +1,146 @@
+namespace = "cint::ast"
+
+[families.expression]
+short = "expr"
+variant_name = "expression"
+list_name = "expr_list"
+factory_name = "make_expr"
+includes = [
+  "core/token/token.hpp",
+  "<cstdint>",
+]
+
+[families.expression.nodes.literal]
+fields = [
+  { name = "literal_", type = "core::token" },
+  { name = "pool_idx_", type = "std::uint32_t" },
+]
+
+[families.expression.nodes.variable]
+fields = [
+  { name = "name_", type = "core::token" },
+  { name = "slot_", type = "std::uint32_t" },
+]
+
+[families.expression.nodes.binary]
+fields = [
+  { name = "left_", type = "expression" },
+  { name = "op_", type = "core::token" },
+  { name = "right_", type = "expression" },
+]
+
+[families.expression.nodes.assignment]
+fields = [
+  { name = "target_", type = "expression" },
+  { name = "op_", type = "core::token" },
+  { name = "value_", type = "expression" },
+]
+
+[families.expression.nodes.unary]
+fields = [
+  { name = "op_", type = "core::token" },
+  { name = "operand_", type = "expression" },
+]
+
+[families.expression.nodes.postfix]
+fields = [
+  { name = "operand_", type = "expression" },
+  { name = "op_", type = "core::token" },
+]
+
+[families.expression.nodes.call]
+fields = [
+  { name = "callee_", type = "core::token" },
+  { name = "args_", type = "expr_list" },
+]
+
+[families.expression.nodes.method_call]
+fields = [
+  { name = "object_", type = "expression" },
+  { name = "method_", type = "core::token" },
+  { name = "args_", type = "expr_list" },
+]
+
+[families.expression.nodes.member_access]
+fields = [
+  { name = "object_", type = "expression" },
+  { name = "member_", type = "core::token" },
+]
+
+[families.statement]
+short = "stmt"
+variant_name = "statement"
+list_name = "stmt_list"
+factory_name = "make_stmt"
+includes = [
+  "core/memory/arena.hpp",
+  "core/token/token.hpp",
+  "<cstdint>",
+  "<optional>",
+  "<string_view>",
+]
+
+[families.statement.nodes.expression]
+fields = [
+  { name = "expr_", type = "expression" },
+]
+
+[families.statement.nodes.var_declaration]
+fields = [
+  { name = "name_", type = "core::token" },
+  { name = "slot_", type = "std::uint32_t" },
+  { name = "initializer_", type = "expression" },
+]
+
+[families.statement.nodes.block]
+fields = [
+  { name = "statements_", type = "stmt_list" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.while]
+fields = [
+  { name = "condition_", type = "expression" },
+  { name = "block_", type = "statement" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.for]
+fields = [
+  { name = "initializer_", type = "std::optional<statement>" },
+  { name = "condition_", type = "std::optional<expression>" },
+  { name = "increment_", type = "std::optional<expression>" },
+  { name = "block_", type = "statement" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.if]
+fields = [
+  { name = "condition_", type = "expression" },
+  { name = "then_block_", type = "statement" },
+  { name = "else_block_", type = "std::optional<statement>" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.return]
+fields = [
+  { name = "value_", type = "std::optional<expression>" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.func_declaration]
+fields = [
+  { name = "name_", type = "core::token" },
+  { name = "params_", type = "core::arena_vector<core::token>" },
+  { name = "body_", type = "stmt_list" },
+  { name = "max_slots_", type = "std::uint32_t" },
+  { name = "loc_", type = "core::location" },
+]
+
+[families.statement.nodes.struct_declaration]
+fields = [
+  { name = "name_", type = "std::string_view" },
+  { name = "field_names_", type = "core::arena_vector<std::string_view>" },
+  { name = "methods_", type = "core::arena_vector<func_declaration_stmt>" },
+  { name = "loc_", type = "core::location" },
+]

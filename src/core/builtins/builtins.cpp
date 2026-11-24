@@ -62,10 +62,10 @@ value abs(std::span<const value> args) { return std::abs(args[0].to_int()); }
 
 value gcd(std::span<const value> args) { return std::gcd(args[0].to_int(), args[1].to_int()); }
 
-value int_cast(std::span<const value> args) { return args[0].to_int(); }
+value to_int(std::span<const value> args) { return args[0].to_int(); }
 
-value double_cast(std::span<const value> args) { return args[0].to_double(); }
+value to_double(std::span<const value> args) { return args[0].to_double(); }
 
-value str_cast(std::span<const value> args) { return args[0].to_string(); }
+value to_str(std::span<const value> args) { return args[0].to_string(); }
 
 }  // namespace cint::core::detail

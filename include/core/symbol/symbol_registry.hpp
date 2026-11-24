@@ -1,6 +1,6 @@
 // core/symbol/symbol_registry.hpp
 #pragma once
-#include "ast/node.hpp"
+#include "ast/nodes.hpp"
 #include "core/builtins/builtins.hpp"
 #include "core/error/diagnostic.hpp"
 

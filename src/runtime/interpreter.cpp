@@ -3,7 +3,6 @@
 #include "runtime/interpreter.hpp"
 
 #include "ast/expression.hpp"
-#include "ast/node.hpp"
 #include "ast/statement.hpp"
 #include "core/builtins/builtins.hpp"
 #include "core/error/diagnostic.hpp"

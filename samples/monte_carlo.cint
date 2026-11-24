@@ -21,5 +21,6 @@ fn monte_carlo_pi(iterations) {
     return 4.0 * inside / iterations;
 }
 
-print(monte_carlo_pi(1000000));
+let x = to_int(input());
+print(monte_carlo_pi(x));
 

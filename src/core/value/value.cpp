@@ -1,5 +1,6 @@
 #include "core/value/value.hpp"
 
+#include "ast/statement.hpp"
 #include "core/error/error_codes.hpp"
 #include "core/utils/overloaded.hpp"
 #include "core/value/conversions.hpp"

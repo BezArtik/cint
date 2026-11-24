@@ -1,6 +1,8 @@
+#src/CMakeLists.txt
+
 add_library(interpreter-lib STATIC)
 
-target_link_libraries(interpreter-lib PRIVATE CLI11::CLI11)
+target_link_libraries(interpreter-lib PRIVATE CLI11::CLI11 ast-headers)
 target_compile_features(interpreter-lib PUBLIC cxx_std_23)
 
 target_sources(interpreter-lib PRIVATE
